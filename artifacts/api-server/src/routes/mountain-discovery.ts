@@ -83,9 +83,15 @@ interface MountainDiscoveryCursor {
   id: string;
 }
 
+export interface MountainDiscoverySearchOptions {
+  summitMinM?: number;
+  summitMaxM?: number;
+  sort?: "recommended" | "name_asc" | "summit_asc" | "summit_desc";
+}
+
 export interface MountainDiscoveryDependencies {
-  catalogueSearch: (query: string, limit: number, cursor?: MountainDiscoveryCursor) => Promise<CatalogueRow[]>;
-  savedSearch: (query: string, limit: number, cursor?: MountainDiscoveryCursor) => Promise<SavedSearchRow[]>;
+  catalogueSearch: (query: string, limit: number, cursor?: MountainDiscoveryCursor, options?: MountainDiscoverySearchOptions) => Promise<CatalogueRow[]>;
+  savedSearch: (query: string, limit: number, cursor?: MountainDiscoveryCursor, options?: MountainDiscoverySearchOptions) => Promise<SavedSearchRow[]>;
   catalogueIdentityExists: (identity: MountainIdentity) => Promise<boolean>;
   savedIdentityExists: (identityKey: string) => Promise<boolean>;
   saveCandidate: (candidate: MountainDiscoveryCandidate) => Promise<SavedRow>;
@@ -110,7 +116,16 @@ const catalogueRankSql = `CASE
   ELSE 3
 END`;
 
-const catalogueSearchSql = `
+export function buildCatalogueDiscoverySql(options: MountainDiscoverySearchOptions = {}): string {
+  const primaryRank = options.sort === "name_asc" ? "0::float8"
+    : options.sort === "summit_asc" ? "COALESCE(m.elevation_m, 100000)::float8"
+    : options.sort === "summit_desc" ? "COALESCE(-m.elevation_m, 100000)::float8"
+    : catalogueRankSql;
+  // Keep the existing query placeholders typed even when relevance is not the
+  // primary order; PostgreSQL rejects unused untyped parameter positions.
+  const rank = primaryRank === catalogueRankSql ? primaryRank
+    : `(${primaryRank}) + 0 * (${catalogueRankSql})`;
+  return `
 SELECT
   m.id::text AS "id",
   m.name AS "name",
@@ -121,7 +136,7 @@ SELECT
   ST_Y(m.geom)::float8 AS "latitude",
   ST_X(m.geom)::float8 AS "longitude",
   m.status AS "status",
-  ${catalogueRankSql} AS "sortRank",
+  ${rank} AS "sortRank",
   lower(m.name) COLLATE "C" AS "sortName",
   lower(COALESCE(m.country, '')) COLLATE "C" AS "sortCountry",
   lower(COALESCE(m.region, '')) COLLATE "C" AS "sortRegion",
@@ -129,6 +144,8 @@ SELECT
   lower(COALESCE(m.area, '')) COLLATE "C" AS "sortArea"
 FROM public.mountains AS m
 WHERE m.geom IS NOT NULL
+  AND ($12::float8 IS NULL OR m.elevation_m >= $12::float8)
+  AND ($13::float8 IS NULL OR m.elevation_m <= $13::float8)
   AND (
     m.name ILIKE $1 ESCAPE '\\'
     OR COALESCE(m.region, '') ILIKE $1 ESCAPE '\\'
@@ -136,9 +153,9 @@ WHERE m.geom IS NOT NULL
     OR COALESCE(m.area, '') ILIKE $1 ESCAPE '\\'
   )
   AND (
-    $3::int IS NULL
+    $3::float8 IS NULL
     OR (
-      ${catalogueRankSql},
+      ${rank},
       lower(m.name) COLLATE "C",
       lower(COALESCE(m.country, '')) COLLATE "C",
       lower(COALESCE(m.region, '')) COLLATE "C",
@@ -146,7 +163,7 @@ WHERE m.geom IS NOT NULL
       lower(COALESCE(m.area, '')) COLLATE "C",
       m.id::text COLLATE "C"
     ) > (
-      $3::int,
+      $3::float8,
       $4::text COLLATE "C",
       $5::text COLLATE "C",
       $6::text COLLATE "C",
@@ -158,14 +175,15 @@ WHERE m.geom IS NOT NULL
 ORDER BY "sortRank", "sortName", "sortCountry", "sortRegion", "sortSource", "sortArea", m.id::text COLLATE "C"
 LIMIT $2
 `;
+}
 
 function escapedLikeTerm(value: string): string {
   return value.replace(/[\\%_]/g, "\\$&");
 }
 
-async function searchCatalogue(query: string, limit: number, cursor?: MountainDiscoveryCursor): Promise<CatalogueRow[]> {
+async function searchCatalogue(query: string, limit: number, cursor?: MountainDiscoveryCursor, options: MountainDiscoverySearchOptions = {}): Promise<CatalogueRow[]> {
   try {
-    return await executeEngineReadOnlyQuery<CatalogueRow>(catalogueSearchSql, [
+    return await executeEngineReadOnlyQuery<CatalogueRow>(buildCatalogueDiscoverySql(options), [
       `%${escapedLikeTerm(query)}%`,
       limit,
       cursor?.sortRank ?? null,
@@ -177,6 +195,8 @@ async function searchCatalogue(query: string, limit: number, cursor?: MountainDi
       cursor?.id ?? null,
       query,
       `${escapedLikeTerm(query)}%`,
+      options.summitMinM ?? null,
+      options.summitMaxM ?? null,
     ]);
   } catch {
     throw new MountainCatalogueUnavailableError();
@@ -193,13 +213,17 @@ const fieldsPattern = (query: string) => {
   );
 };
 
-async function searchSaved(query: string, limit: number, cursor?: MountainDiscoveryCursor): Promise<SavedSearchRow[]> {
-  const rank = sql<number>`CASE
+async function searchSaved(query: string, limit: number, cursor?: MountainDiscoveryCursor, options: MountainDiscoverySearchOptions = {}): Promise<SavedSearchRow[]> {
+  const relevance = sql<number>`CASE
     WHEN lower(trim(${aiMountainDiscoveries.name})) = lower(${query}) THEN 0
     WHEN ${aiMountainDiscoveries.name} ILIKE ${`${escapedLikeTerm(query)}%`} ESCAPE '\\' THEN 1
     WHEN ${aiMountainDiscoveries.name} ILIKE ${`%${escapedLikeTerm(query)}%`} ESCAPE '\\' THEN 2
     ELSE 3
   END`;
+  const rank = options.sort === "name_asc" ? sql<number>`0::float8`
+    : options.sort === "summit_asc" ? sql<number>`COALESCE(${aiMountainDiscoveries.elevationM}, 100000)::float8`
+    : options.sort === "summit_desc" ? sql<number>`COALESCE(-${aiMountainDiscoveries.elevationM}, 100000)::float8`
+    : relevance;
   const afterCursor = cursor
     ? sql`(
         ${rank},
@@ -210,7 +234,7 @@ async function searchSaved(query: string, limit: number, cursor?: MountainDiscov
         lower(COALESCE(${aiMountainDiscoveries.area}, '')) COLLATE "C",
         ${aiMountainDiscoveries.id} COLLATE "C"
       ) > (
-        ${cursor.sortRank}::int,
+        ${cursor.sortRank}::float8,
         ${cursor.sortName}::text COLLATE "C",
         ${cursor.sortCountry}::text COLLATE "C",
         ${cursor.sortRegion}::text COLLATE "C",
@@ -238,7 +262,10 @@ async function searchSaved(query: string, limit: number, cursor?: MountainDiscov
       sortArea: sql<string>`lower(COALESCE(${aiMountainDiscoveries.area}, '')) COLLATE "C"`,
     })
     .from(aiMountainDiscoveries)
-    .where(sql`${fieldsPattern(escapedLikeTerm(query))}${afterCursor ? sql` AND ${afterCursor}` : sql``}`)
+    .where(sql`${fieldsPattern(escapedLikeTerm(query))}
+      ${options.summitMinM != null ? sql` AND ${aiMountainDiscoveries.elevationM} >= ${options.summitMinM}` : sql``}
+      ${options.summitMaxM != null ? sql` AND ${aiMountainDiscoveries.elevationM} <= ${options.summitMaxM}` : sql``}
+      ${afterCursor ? sql` AND ${afterCursor}` : sql``}`)
     .orderBy(
       rank,
       sql`lower(${aiMountainDiscoveries.name}) COLLATE "C"`,
@@ -405,10 +432,13 @@ function savedItem(row: SavedRow): MountainDiscoveryItem {
   };
 }
 
-function normalizedIdentity(item: Pick<MountainDiscoveryItem, "name" | "country" | "region">): string {
-  return JSON.stringify([item.name, item.country, item.region]
-    .map((part) => part.normalize("NFKC").trim().toLocaleLowerCase("en"))
-  );
+function normalizedIdentity(item: Pick<MountainDiscoveryItem, "name" | "country" | "region" | "latitude" | "longitude">): string {
+  // Names and broad regions are not unique: Snowdonia has distinct Tryfans.
+  // Keep their catalogue locations separate; only co-located duplicates merge.
+  return JSON.stringify([
+    ...[item.name, item.country, item.region].map(part => part.normalize("NFKC").trim().toLocaleLowerCase("en")),
+    item.latitude, item.longitude,
+  ]);
 }
 
 function identityKeyFor(identity: MountainIdentity): string {
@@ -481,23 +511,32 @@ export function createMountainDiscoveryHandlers(
   const dependencies = { ...defaultDependencies, ...overrides };
   const search: RequestHandler = async (req, res) => {
     const parsed = z.object({
-      q: z.string().trim().min(2).max(100),
+      q: z.string().trim().max(100),
+      browse: z.literal("1").optional(),
+      summitMinM: z.coerce.number().finite().min(-500).max(10000).optional(),
+      summitMaxM: z.coerce.number().finite().min(-500).max(10000).optional(),
+      sort: z.enum(["recommended", "name_asc", "summit_asc", "summit_desc"]).default("recommended"),
       limit: z.coerce.number().int().min(1).max(50).default(20),
       offset: z.coerce.number().int().min(0).max(1_000_000).default(0),
-    }).safeParse(req.query);
+    }).refine(value => value.q.length >= 2 || (value.q === "" && value.browse === "1"))
+      .refine(value => value.summitMinM == null || value.summitMaxM == null || value.summitMinM <= value.summitMaxM)
+      .safeParse(req.query);
     if (!parsed.success) {
-      res.status(400).json({ error: "Search term must be 2–100 characters; limit and offset must be valid." });
+      res.status(400).json({ error: "Use a 2–100 character search or browse=1, and valid height, limit and offset values." });
       return;
     }
     const { q, limit, offset } = parsed.data;
+    const options: MountainDiscoverySearchOptions = {
+      summitMinM: parsed.data.summitMinM, summitMaxM: parsed.data.summitMaxM, sort: parsed.data.sort,
+    };
     try {
       const catalogueStream: SearchStream<CatalogueRow> = {
-        search: dependencies.catalogueSearch,
+        search: (query, size, cursor) => dependencies.catalogueSearch(query, size, cursor, options),
         buffer: [],
         exhausted: false,
       };
       const savedStream: SearchStream<SavedSearchRow> = {
-        search: dependencies.savedSearch,
+        search: (query, size, cursor) => dependencies.savedSearch(query, size, cursor, options),
         buffer: [],
         exhausted: false,
       };

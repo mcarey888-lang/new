@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createMountainDiscoveryHandlers,
   MountainCatalogueUnavailableError,
+  buildCatalogueDiscoverySql,
 } from "../routes/mountain-discovery";
 import { createMountainLookupHandler } from "../routes/mountain";
 
@@ -39,6 +40,52 @@ const catalogueRow = {
 };
 
 describe("mountain discovery", () => {
+  it("preserves separate same-name mountains in one region rather than swapping them when sorted", async () => {
+    const rows = [
+      { ...catalogueRow, id: "small-hill", name: "Tryfan", elevationM: 595, latitude: 53.1, longitude: -4.1 },
+      { ...catalogueRow, id: "mountain", name: "Tryfan", elevationM: 918, latitude: 53.115, longitude: -3.997 },
+    ];
+    const handlers = createMountainDiscoveryHandlers({
+      catalogueSearch: vi.fn().mockResolvedValue(rows),
+      savedSearch: vi.fn().mockResolvedValue([]),
+    });
+    const result = await invoke(handlers.search, { query: { q: "Tryfan" } });
+    expect(result.body).toMatchObject({ items: [{ id: "small-hill" }, { id: "mountain" }], hasMore: false });
+  });
+
+  it("accepts explicit browse with height ranges and passes them to both sources", async () => {
+    const catalogueSearch = vi.fn().mockResolvedValue([]);
+    const savedSearch = vi.fn().mockResolvedValue([]);
+    const handlers = createMountainDiscoveryHandlers({ catalogueSearch, savedSearch });
+    const result = await invoke(handlers.search, { query: { q: "", browse: "1", summitMinM: "200", summitMaxM: "900", sort: "summit_desc" } });
+    expect(result.status).toBe(200);
+    const options = { summitMinM: 200, summitMaxM: 900, sort: "summit_desc" };
+    expect(catalogueSearch).toHaveBeenCalledWith("", 250, undefined, options);
+    expect(savedSearch).toHaveBeenCalledWith("", 250, undefined, options);
+  });
+
+  it("rejects reversed or invalid ranges and empty searches without explicit browse", async () => {
+    const catalogueSearch = vi.fn().mockResolvedValue([]);
+    const handlers = createMountainDiscoveryHandlers({ catalogueSearch, savedSearch: vi.fn().mockResolvedValue([]) });
+    for (const query of [
+      { q: "" }, { q: "A", browse: "1" }, { q: "Ben", summitMinM: "nope" },
+      { q: "Ben", summitMinM: "1000", summitMaxM: "200" }, { q: "Ben", sort: "bogus" },
+    ]) expect((await invoke(handlers.search, { query })).status).toBe(400);
+    expect(catalogueSearch).not.toHaveBeenCalled();
+  });
+
+  it("puts summit ranges in SQL before ordering and limit, preserving typed cursor parameters", () => {
+    const sql = buildCatalogueDiscoverySql({ summitMinM: 200, sort: "summit_desc" });
+    expect(sql).toContain("m.elevation_m >= $12::float8");
+    expect(sql).toContain("m.elevation_m <= $13::float8");
+    expect(sql).toContain("COALESCE(-m.elevation_m, 100000)::float8");
+    expect(sql).toContain("$10::text");
+    expect(sql).toContain("$11 ESCAPE");
+    expect(sql).toContain("$3::float8");
+    expect(sql.indexOf("m.elevation_m >= $12")).toBeLessThan(sql.indexOf('ORDER BY'));
+    expect(buildCatalogueDiscoverySql({ sort: "name_asc" })).toContain("0::float8");
+  });
+
   it("places an exact Mont Blanc match ahead of nearby peaks across paginated sources", async () => {
     const sortFields = {
       sortCountry: "france", sortRegion: "haute-savoie", sortArea: "mont blanc massif", sortSource: 0,

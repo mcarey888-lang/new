@@ -14,3 +14,9 @@ Explore should concentrate on finding mountains/routes and getting parking direc
 **Why:** The user explicitly said these labels make the app appear incomplete and reduce confidence, and requested a simpler discovery and parking experience on 2026-10-07.
 
 **How to apply:** Hide empty feature placeholders and unavailable actions, retain useful safety/access advice, and label researched parking as suggested rather than pretending it is a confirmed pin.
+
+Explore must offer summit height and route ascent as separate filters, not one ambiguous “elevation” control. Difficulty and estimated time describe routes, not a mountain in isolation.
+
+**Why:** The user explicitly chose both measurements as separate filters; discovery should help people choose suitable mountains and routes without confusing altitude with climbing effort.
+
+**How to apply:** Keep filter labels and result sections explicit about their scope, and do not invent missing ascent, time or difficulty values for catalogue peaks.

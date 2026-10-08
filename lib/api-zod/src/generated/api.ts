@@ -8,6 +8,121 @@
 import * as zod from "zod";
 
 /**
+ * @summary Resolve an expedition target or build its local walking stages
+ */
+export const searchVirtualExpeditionBodyTargetMountainMin = 2;
+export const searchVirtualExpeditionBodyTargetMountainMax = 200;
+
+export const searchVirtualExpeditionBodyUserLocationMin = 2;
+export const searchVirtualExpeditionBodyUserLocationMax = 300;
+
+export const searchVirtualExpeditionBodyRadiusDefault = 30;
+export const searchVirtualExpeditionBodyRadiusMax = 200;
+
+export const searchVirtualExpeditionBodyDaysOverrideMax = 9007199254740991;
+
+export const SearchVirtualExpeditionBody = zod.object({
+  targetMountain: zod
+    .string()
+    .min(searchVirtualExpeditionBodyTargetMountainMin)
+    .max(searchVirtualExpeditionBodyTargetMountainMax),
+  userLocation: zod
+    .string()
+    .min(searchVirtualExpeditionBodyUserLocationMin)
+    .max(searchVirtualExpeditionBodyUserLocationMax),
+  radius: zod
+    .number()
+    .min(1)
+    .max(searchVirtualExpeditionBodyRadiusMax)
+    .default(searchVirtualExpeditionBodyRadiusDefault),
+  daysOverride: zod
+    .number()
+    .min(1)
+    .max(searchVirtualExpeditionBodyDaysOverrideMax)
+    .nullish()
+    .describe(
+      "Available walking days or stages, not consecutive calendar days.",
+    ),
+  mode: zod.enum(["automatic", "manual", "manual_builder"]).optional(),
+  resolveOnly: zod.boolean().optional(),
+});
+
+export const SearchVirtualExpeditionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+/**
+ * @summary Search mountain names and places with paginated summit-height filtering
+ */
+export const getMountainDiscoveryQueryQMax = 100;
+
+export const getMountainDiscoveryQueryLimitDefault = 20;
+export const getMountainDiscoveryQueryLimitMax = 50;
+
+export const getMountainDiscoveryQueryOffsetDefault = 0;
+export const getMountainDiscoveryQueryOffsetMin = 0;
+export const getMountainDiscoveryQueryOffsetMax = 1000000;
+
+export const getMountainDiscoveryQuerySummitMinMMin = -500;
+export const getMountainDiscoveryQuerySummitMinMMax = 10000;
+
+export const getMountainDiscoveryQuerySummitMaxMMin = -500;
+export const getMountainDiscoveryQuerySummitMaxMMax = 10000;
+
+export const getMountainDiscoveryQuerySortDefault = `recommended`;
+
+export const GetMountainDiscoveryQueryParams = zod.object({
+  q: zod.coerce
+    .string()
+    .max(getMountainDiscoveryQueryQMax)
+    .describe("Search term; empty only with browse=1."),
+  browse: zod.enum(["1"]).optional(),
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(getMountainDiscoveryQueryLimitMax)
+    .default(getMountainDiscoveryQueryLimitDefault),
+  offset: zod.coerce
+    .number()
+    .min(getMountainDiscoveryQueryOffsetMin)
+    .max(getMountainDiscoveryQueryOffsetMax)
+    .default(getMountainDiscoveryQueryOffsetDefault),
+  summitMinM: zod.coerce
+    .number()
+    .min(getMountainDiscoveryQuerySummitMinMMin)
+    .max(getMountainDiscoveryQuerySummitMinMMax)
+    .optional(),
+  summitMaxM: zod.coerce
+    .number()
+    .min(getMountainDiscoveryQuerySummitMaxMMin)
+    .max(getMountainDiscoveryQuerySummitMaxMMax)
+    .optional(),
+  sort: zod
+    .enum(["recommended", "name_asc", "summit_asc", "summit_desc"])
+    .default(getMountainDiscoveryQuerySortDefault),
+});
+
+export const GetMountainDiscoveryResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      country: zod.string(),
+      region: zod.string(),
+      area: zod.string().nullable(),
+      elevationM: zod.number().nullable(),
+      latitude: zod.number(),
+      longitude: zod.number(),
+      source: zod.enum(["catalogue", "ai"]),
+      verificationStatus: zod.enum(["verified", "imported", "ai_unverified"]),
+    }),
+  ),
+  hasMore: zod.boolean(),
+  catalogueStatus: zod.enum(["available"]),
+});
+
+/**
  * @summary Find sourced parking suggestions and reuse shared research
  */
 export const lookupMountainParkingOptionsBodyMountainNameMin = 2;

@@ -16,7 +16,7 @@ import { useAuth } from "@clerk/expo";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  ChevronRight, Compass, Map as MapIcon, MapPin, Mountain as MountainIcon,
+  ChevronRight, Clock, Compass, Map as MapIcon, MapPin, Mountain as MountainIcon,
   Route as RouteIcon, Search, TrendingUp, X, Activity
 } from "lucide-react-native";
 import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
@@ -28,6 +28,11 @@ import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import { createExploreAiRequestGuard } from "@/utils/exploreRequestGuard";
 import { appendApprovedImageRevision } from "@/utils/mountainImage";
 import { looksLikeUkPostcode, normalizeUkPostcode } from "@/utils/explorePostcode";
+import { ExploreSearchControls } from "@/components/explore/ExploreSearchControls";
+import {
+  DEFAULT_EXPLORE_FILTERS, activeExploreFilterCount, filterExploreRoutes, mountainDiscoveryParameters,
+  type ExploreFilters, type ExploreSort,
+} from "@/utils/exploreFilters";
 import type { NearbyHill } from "@/context/AppContext";
 import { personalHillCoverKey, readPersonalHillCover } from "@/utils/personalHillCover";
 
@@ -40,17 +45,6 @@ const DIFF_TONE: Record<string, string> = {
   Moderate: EXPLORE.verified,
   Hard: EXPLORE.unverified,
 };
-
-type FilterId = "all" | "mountains" | "hills" | "loops" | "moderate" | "hard";
-
-const FILTERS: { id: FilterId; label: string; icon: React.ElementType; match: (t: Trail) => boolean }[] = [
-  { id: "all", label: "Browse", icon: Compass, match: () => true },
-  { id: "mountains", label: "Mountains", icon: MountainIcon, match: t => t.terrain === "mountain" },
-  { id: "hills", label: "Hills", icon: TrendingUp, match: t => t.terrain === "hill" },
-  { id: "loops", label: "Loops", icon: RouteIcon, match: t => t.routeType === "loop" },
-  { id: "moderate", label: "Moderate", icon: Activity, match: t => t.difficulty === "Moderate" },
-  { id: "hard", label: "Hard", icon: Activity, match: t => t.difficulty === "Hard" },
-];
 
 function mountainSubject(name: string): string {
   return name
@@ -170,7 +164,7 @@ function FeaturedCard({ trail }: { trail: Trail }) {
           </View>
           <View style={styles.tagPill}>
             <Activity size={10} color={BASECAMP.textDim} />
-            <Text style={styles.tagPillText}>{trail.elevationGain}m</Text>
+            <Text style={styles.tagPillText}>{trail.elevationGain}m ascent</Text>
           </View>
         </View>
       </View>
@@ -229,7 +223,11 @@ function ResultRow({ trail }: { trail: Trail }) {
           <View style={styles.resultStats}>
             <View style={styles.resultTag}>
               <TrendingUp size={11} color={BASECAMP.textDim} />
-              <Text style={styles.resultTagText}>{trail.elevationGain.toLocaleString()} m</Text>
+              <Text style={styles.resultTagText}>{trail.elevationGain.toLocaleString()} m ascent</Text>
+            </View>
+            <View style={styles.resultTag}>
+              <Clock size={11} color={BASECAMP.textDim} />
+              <Text style={styles.resultTagText}>{trail.estimatedTime}</Text>
             </View>
             <View style={styles.resultTag}>
               <RouteIcon size={11} color={BASECAMP.textDim} />
@@ -249,7 +247,7 @@ function ResultRow({ trail }: { trail: Trail }) {
 
 function DiscoveryResultRow({ item }: { item: DiscoveryItem }) {
   const [failed, setFailed] = useState(false);
-  const place = [item.region, item.country].filter(Boolean).join(", ");
+  const place = [item.area, item.region, item.country].filter(Boolean).join(", ");
   const statusLabel = item.verificationStatus === "verified" ? "Mountain" : "Mountain suggestion";
   return (
     <SRPanel
@@ -272,7 +270,7 @@ function DiscoveryResultRow({ item }: { item: DiscoveryItem }) {
             {typeof item.elevationM === "number" && Number.isFinite(item.elevationM) ? (
               <View style={styles.resultTag}>
                 <TrendingUp size={11} color={BASECAMP.textDim} />
-                <Text style={styles.resultTagText}>{Math.round(item.elevationM).toLocaleString()} m elevation</Text>
+                <Text style={styles.resultTagText}>{Math.round(item.elevationM).toLocaleString()} m summit</Text>
               </View>
             ) : null}
           </View>
@@ -340,6 +338,12 @@ function NearbyHillResultRow({ hill, postcode, coverUri }: { hill: NearbyHill; p
               <TrendingUp size={11} color={BASECAMP.textDim} />
               <Text style={styles.resultTagText}>{hill.elevation} m ascent</Text>
             </View>
+            {hill.estimatedTime ? (
+              <View style={styles.resultTag}>
+                <Clock size={11} color={BASECAMP.textDim} />
+                <Text style={styles.resultTagText}>{hill.estimatedTime}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
         <ChevronRight size={15} color={BASECAMP.textFaint} />
@@ -355,7 +359,13 @@ export default function ExploreScreen() {
   const reducedMotion = useReducedMotion() ?? false;
 
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<FilterId>("all");
+  const [filters, setFilters] = useState<ExploreFilters>(DEFAULT_EXPLORE_FILTERS);
+  const [sort, setSort] = useState<ExploreSort>("recommended");
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+  const sortRef = useRef(sort);
+  sortRef.current = sort;
+  const lastNearbyRef = useRef<string | null>(null);
   const [discoveryItems, setDiscoveryItems] = useState<DiscoveryItem[]>([]);
   const [discoveryLoading, setDiscoveryLoading] = useState(false);
   const [catalogueSearched, setCatalogueSearched] = useState(false);
@@ -376,6 +386,7 @@ export default function ExploreScreen() {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const committedQueryRef = useRef<string | null>(null);
   const latestQuery = useRef("");
+  const summitScopedRef = useRef(false);
   latestQuery.current = query.trim();
   const [heroFailed, setHeroFailed] = useState(false);
   const [heroUri, setHeroUri] = useState<string | null>(null);
@@ -398,7 +409,13 @@ export default function ExploreScreen() {
   const postcode = normalizeUkPostcode(textQuery);
   const incompletePostcode = !postcode && looksLikeUkPostcode(textQuery);
   const queryTooShort = Array.from(textQuery).length < 2;
-  const searching = textQuery.length > 0 || filter !== "all";
+  const filterCount = activeExploreFilterCount(filters);
+  const refined = filterCount > 0 || sort !== "recommended";
+  const searching = textQuery.length > 0 || refined;
+  const catalogueWanted = filters.kind !== "routes";
+  summitScopedRef.current = filters.summitMinM != null || filters.summitMaxM != null;
+  const summitScoped = filters.summitMinM != null || filters.summitMaxM != null;
+  const browseMode = !textQuery && refined && catalogueWanted;
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -434,8 +451,13 @@ export default function ExploreScreen() {
     setCatalogueUnavailable(false);
     try {
       const offset = append ? discoveryItems.length : 0;
+      const params = mountainDiscoveryParameters(filtersRef.current, sortRef.current);
+      params.set("q", term);
+      params.set("limit", "20");
+      params.set("offset", String(offset));
+      if (!term) params.set("browse", "1");
       const response = await fetch(
-        `${API_BASE}/mountain-discovery?q=${encodeURIComponent(term)}&limit=20&offset=${offset}`,
+        `${API_BASE}/mountain-discovery?${params.toString()}`,
         { signal: controller.signal },
       );
       if (currentRequest !== requestId.current) return;
@@ -462,7 +484,10 @@ export default function ExploreScreen() {
       setDiscoveryError(null);
       setAiError(null);
       setAiNoResult(false);
-      if (committed && data.items.length === 0) void requestAiSuggestion(term, true);
+      if (committed && data.items.length === 0 && term && !summitScopedRef.current
+        && filterExploreRoutes(CURATED_HILLS, term, DEFAULT_EXPLORE_FILTERS, "recommended").length === 0) {
+        void requestAiSuggestion(term, true);
+      }
     } catch (error) {
       if ((error as Error)?.name === "AbortError" || currentRequest !== requestId.current) return;
       setDiscoveryError(error instanceof Error ? error.message : "Search could not be completed.");
@@ -514,7 +539,7 @@ export default function ExploreScreen() {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
-    if (!textQuery) {
+    const resetCatalogue = () => {
       requestId.current += 1;
       abortRef.current?.abort();
       setDiscoveryItems([]);
@@ -525,31 +550,36 @@ export default function ExploreScreen() {
       setHasMore(false);
       setAiError(null);
       setAiNoResult(false);
-      return;
+    };
+    if (postcode) {
+      if (lastNearbyRef.current === postcode) return;
+      resetCatalogue();
+      debounceTimerRef.current = setTimeout(() => {
+        debounceTimerRef.current = null;
+        lastNearbyRef.current = postcode;
+        void fetchNearbyHills(postcode);
+      }, 450);
+      return () => {
+        if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
+      };
     }
-    if (queryTooShort) {
-      requestId.current += 1;
-      abortRef.current?.abort();
-      setDiscoveryLoading(false);
-      setCatalogueSearched(false);
-      setDiscoveryItems([]);
-      setHasMore(false);
+    resetCatalogue();
+    if (!textQuery) {
+      if (!browseMode) return;
+    } else if (queryTooShort || incompletePostcode || !catalogueWanted) {
       return;
-    }
-    if (incompletePostcode) return;
-    if (committedQueryRef.current === textQuery) return;
+    } else if (committedQueryRef.current === textQuery) return;
     debounceTimerRef.current = setTimeout(() => {
       debounceTimerRef.current = null;
-      if (postcode) void fetchNearbyHills(postcode);
-      else void fetchCatalogue(textQuery);
-    }, postcode ? 450 : 300);
+      void fetchCatalogue(textQuery);
+    }, 300);
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
       }
     };
-  }, [textQuery, queryTooShort, postcode, incompletePostcode]);
+  }, [textQuery, queryTooShort, postcode, incompletePostcode, filters, sort, browseMode, catalogueWanted]);
 
   useEffect(() => () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -564,8 +594,8 @@ export default function ExploreScreen() {
       debounceTimerRef.current = null;
     }
     committedQueryRef.current = term;
-    if (postcode) void fetchNearbyHills(postcode);
-    else if (!incompletePostcode) void fetchCatalogue(term, false, true);
+    if (postcode) { lastNearbyRef.current = postcode; void fetchNearbyHills(postcode); }
+    else if (!incompletePostcode && catalogueWanted) void fetchCatalogue(term, false, true);
   };
 
   const updateQuery = (value: string) => {
@@ -591,7 +621,7 @@ export default function ExploreScreen() {
     setNearbyLoading(false);
     setNearbySearched(false);
     setNearbyError(null);
-    if (normalizeUkPostcode(value)) setFilter("hills");
+    lastNearbyRef.current = null;
   };
 
   const requestAiSuggestion = async (termOverride?: string, afterSuccessfulEmptySearch = false) => {
@@ -635,16 +665,141 @@ export default function ExploreScreen() {
     }
   };
 
-  const results = useMemo(() => {
-    const matcher = FILTERS.find(f => f.id === filter)?.match ?? (() => true);
-    return CURATED_HILLS.filter(matcher);
-  }, [filter]);
+  const applyControls = (next: ExploreFilters, nextSort: ExploreSort) => {
+    committedQueryRef.current = null;
+    aiRequestGuard.invalidate();
+    setAiLoading(false);
+    setFilters(next);
+    setSort(nextSort);
+  };
+  const resetControls = () => applyControls(DEFAULT_EXPLORE_FILTERS, "recommended");
+
+  const routeResults = useMemo(
+    () => (postcode || filters.kind === "mountains") ? [] : filterExploreRoutes(CURATED_HILLS, textQuery, filters, sort),
+    [postcode, textQuery, filters, sort],
+  );
+  const nearbyRows = useMemo(() => filterExploreRoutes(
+    nearbyHills.map(hill => ({
+      hill, name: hill.name, location: null, difficulty: hill.grade,
+      elevationGain: hill.elevation, estimatedTime: hill.estimatedTime ?? null,
+    })), "", { ...filters, kind: "all" }, sort), [nearbyHills, filters, sort]);
+  const routesFirst = sort !== "summit_asc" && sort !== "summit_desc";
 
   const featured = useMemo(
     () => CURATED_HILLS.filter(t => t.terrain === "mountain").slice(0, 5),
     [],
   );
   const popular = useMemo(() => CURATED_HILLS.slice(0, 8), []);
+
+  const sectionLabel = (title: string, count: number | null) => (
+    <View style={styles.sectionLabelRow}>
+      <Text style={styles.sectionLabel}>{title}</Text>
+      {count != null ? <Text style={styles.sectionCount}>{count} {count === 1 ? "result" : "results"}</Text> : null}
+    </View>
+  );
+
+  const routesBlock = filters.kind === "mountains" ? null : (
+    <View key="routes" style={styles.resultGroup}>
+      {sectionLabel("Routes", routeResults.length)}
+      {routeResults.length > 0
+        ? routeResults.map(trail => <ResultRow key={trail.id} trail={trail} />)
+        : (
+          <View style={styles.emptySearch}>
+            <Text style={styles.emptyTitle}>No routes match</Text>
+            <Text style={styles.emptyBody}>Try a wider ascent or time range, or a different difficulty.</Text>
+            {refined ? (
+              <Pressable onPress={resetControls} accessibilityRole="button" style={styles.textAction}>
+                <Text style={styles.actionText}>Reset filters</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+    </View>
+  );
+
+  const showMountains = catalogueWanted && !(textQuery && queryTooShort);
+  const mountainsBlock = !catalogueWanted ? null : (
+    <View key="mountains" style={styles.resultGroup}>
+      {sectionLabel("Mountains", discoveryLoading && discoveryItems.length === 0 ? null : (showMountains && catalogueSearched ? discoveryItems.length : null))}
+      {showMountains ? (
+        <>
+          {summitScoped ? (
+            <Text style={styles.searchScope}>Summit height filters apply to mountains. Route filters do not change this list.</Text>
+          ) : null}
+          {(discoveryLoading || !catalogueSearched) && discoveryItems.length === 0 && !discoveryError ? (
+            <View style={styles.searchStatus}>
+              <ActivityIndicator size="small" color={EXPLORE.accent} />
+              <Text style={styles.statusText}>Searching mountains…</Text>
+            </View>
+          ) : null}
+          {discoveryError ? (
+            <View style={styles.errorPanel}>
+              <Text style={styles.errorText}>{discoveryError}</Text>
+              <Pressable onPress={() => void fetchCatalogue(textQuery)} accessibilityRole="button" style={styles.textAction}>
+                <Text style={styles.actionText}>Retry catalogue search</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {!discoveryError ? discoveryItems.map(item => (
+            <DiscoveryResultRow key={`${item.source}:${item.id}`} item={item} />
+          )) : null}
+          {!discoveryLoading && catalogueSearched && !discoveryError && discoveryItems.length === 0 ? (
+            <View style={styles.emptySearch}>
+              <MapPin size={20} color={BASECAMP.textDim} />
+              <Text style={styles.emptyTitle}>No mountains match</Text>
+              {summitScoped ? (
+                <>
+                  <Text style={styles.emptyBody}>No catalogue mountains fall in this summit height range. Widen the range to see more.</Text>
+                  <Pressable onPress={resetControls} accessibilityRole="button" style={styles.textAction}>
+                    <Text style={styles.actionText}>Reset filters</Text>
+                  </Pressable>
+                </>
+              ) : routeResults.length > 0 ? (
+                <Text style={styles.emptyBody}>Matching routes are listed in the Routes section. Open a route to view the mountain details.</Text>
+              ) : textQuery ? (
+                <>
+                  <Text style={styles.emptyBody}>
+                    {catalogueUnavailable
+                      ? "AI suggestions are unavailable while the catalogue is down."
+                      : "Press Search or use the button below to find and save a peak suggestion."}
+                  </Text>
+                  {!catalogueUnavailable ? (
+                    <>
+                      <Pressable
+                        onPress={() => void requestAiSuggestion()}
+                        disabled={aiLoading}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Find and save a peak suggestion for ${textQuery} with AI`}
+                        style={styles.aiAction}
+                      >
+                        {aiLoading
+                          ? <ActivityIndicator size="small" color={BASECAMP.ink} />
+                          : <Text style={styles.aiActionText}>Find and save with AI</Text>}
+                      </Pressable>
+                      {aiError ? <Text style={styles.errorText}>{aiError}</Text> : null}
+                      {aiNoResult ? <Text style={styles.statusText}>No AI suggestion was available for this query.</Text> : null}
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+            </View>
+          ) : null}
+          {hasMore && !discoveryError ? (
+            <Pressable
+              onPress={() => void fetchCatalogue(textQuery, true)}
+              disabled={discoveryLoading}
+              accessibilityRole="button"
+              style={styles.loadMore}
+            >
+              {discoveryLoading
+                ? <ActivityIndicator size="small" color={EXPLORE.accent} />
+                : <Text style={styles.actionText}>Load more mountains</Text>}
+            </Pressable>
+          ) : null}
+        </>
+      ) : null}
+    </View>
+  );
 
   const topPad = Platform.OS === "web" ? 20 : insets.top + 12;
   const Section = reducedMotion ? View : Animated.View;
@@ -655,7 +810,9 @@ export default function ExploreScreen() {
         {!heroFailed ? (
           <Image
             source={heroUri ? { uri: heroUri } : require("../../assets/images/hero-base-camp.png")}
-            style={StyleSheet.absoluteFill}
+            // Bundled images supply intrinsic dimensions; explicitly constrain
+            // both artwork sources to the header rather than the full page.
+            style={[StyleSheet.absoluteFill, { width: "100%", height: "100%" }]}
             resizeMode="cover"
             onError={() => {
               if (heroUri) setHeroUri(null);
@@ -736,7 +893,7 @@ export default function ExploreScreen() {
               onPress={submitSearch}
               disabled={queryTooShort}
               accessibilityRole="button"
-              accessibilityLabel="Search peaks or local hills by postcode"
+              accessibilityLabel="Search mountains, routes or local hills by postcode"
               accessibilityState={{ disabled: queryTooShort }}
               hitSlop={HIT.slop}
             >
@@ -744,13 +901,13 @@ export default function ExploreScreen() {
             </Pressable>
             <TextInput
               style={styles.searchInput}
-              placeholder="Peaks, regions or UK postcode..."
+              placeholder="Mountains, routes or postcode..."
               placeholderTextColor={BASECAMP.textDim}
               value={query}
               onChangeText={updateQuery}
               returnKeyType="search"
               onSubmitEditing={submitSearch}
-              accessibilityLabel="Search peaks, regions or UK postcode"
+              accessibilityLabel="Search mountains, routes, regions or UK postcode"
             />
             {query.length > 0 ? (
               <Pressable
@@ -765,181 +922,84 @@ export default function ExploreScreen() {
           </View>
         </View>
 
-        {/* ── Filter chips ─────────────────────────────────────────────── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
-          accessibilityRole="tablist"
-        >
-          {FILTERS.map(f => {
-            const on = f.id === filter;
-            const Icon = f.icon;
-            return (
-              <Pressable
-                key={f.id}
-                onPress={() => setFilter(f.id)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={f.label}
-                style={[styles.chip, on && styles.chipOn]}
-              >
-                <Icon size={24} color={on ? EXPLORE.accent : "rgba(255,255,255,0.85)"} />
-                <Text style={[styles.chipLabel, on && styles.chipLabelOn]}>
-                  {f.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <ExploreSearchControls filters={filters} sort={sort} onApply={applyControls} onReset={resetControls} />
+        <View style={{ height: SP.md }} />
 
         {searching ? (
-          /* ── Results ───────────────────────────────────────────────── */
           <Section
             entering={reducedMotion ? undefined : FadeInDown.duration(320)}
             style={styles.resultsSection}
           >
             <View style={styles.gutter}>
-              <SRSectionHeader title={queryTooShort
-                ? "Search"
-                : postcode ? `Hills near ${postcode}`
+              <SRSectionHeader title={postcode ? `Hills near ${postcode}`
                 : incompletePostcode ? "Find local hills"
-                : textQuery ? "Mountain search"
-                : "Selected peaks"} />
+                : textQuery ? "Search results"
+                : "Filtered results"} />
             </View>
-            {textQuery ? (
-              <View style={[styles.gutter, styles.resultList]}>
-                {queryTooShort ? (
-                  <View
-                    accessible
-                    accessibilityLiveRegion="polite"
-                    accessibilityLabel="Enter at least two characters to search the mountain catalogue. Terrain filters apply only to the curated browse list."
-                  >
-                    <Text style={styles.shortQueryHint}>
-                      Enter at least two characters to search the mountain catalogue. Terrain filters apply only to the curated browse list.
-                    </Text>
-                  </View>
-                ) : postcode ? (
-                  <>
-                    <Text style={styles.searchScope}>
-                      Training hills around {postcode} (25 km). Distances and ascent are approximate; check route details before setting out.
-                    </Text>
-                    {(nearbyLoading || !nearbySearched) && !nearbyError ? (
-                      <View style={styles.searchStatus}>
-                        <ActivityIndicator size="small" color={EXPLORE.accent} />
-                        <Text style={styles.statusText}>Finding local hills…</Text>
-                      </View>
-                    ) : null}
-                    {nearbyError ? (
-                      <View style={styles.errorPanel}>
-                        <Text style={styles.errorText}>{nearbyError}</Text>
-                        <Pressable onPress={() => void fetchNearbyHills(postcode)} accessibilityRole="button" style={styles.textAction}>
-                          <Text style={styles.actionText}>Retry local hill search</Text>
-                        </Pressable>
-                      </View>
-                    ) : nearbyHills.map(hill => (
-                      <NearbyHillResultRow
-                        key={`${hill.routeIdentityKey ?? hill.name}:${hill.lat ?? ""}`}
-                        hill={hill}
-                        postcode={postcode}
-                        coverUri={coverUris[personalHillCoverKey(userId, {
-                          name: hill.name, latitude: hill.lat, longitude: hill.lng,
-                          routeIdentityKey: hill.routeIdentityKey, summitIdentityKey: hill.summitIdentityKey,
-                        }) ?? ""]}
-                      />
-                    ))}
-                    {nearbySearched && !nearbyLoading && !nearbyError && nearbyHills.length === 0 ? (
-                      <View style={styles.emptySearch}>
-                        <MapPin size={20} color={BASECAMP.textDim} />
-                        <Text style={styles.emptyTitle}>No hills found within 25 km</Text>
-                        <Text style={styles.emptyBody}>Try a different postcode or widen the search radius in Training Hills.</Text>
-                        <Pressable onPress={() => router.push("/hills-finder" as any)} accessibilityRole="button" style={styles.textAction}>
-                          <Text style={styles.actionText}>Open Training Hills</Text>
-                        </Pressable>
-                      </View>
-                    ) : null}
-                  </>
-                ) : incompletePostcode ? (
-                  <Text style={styles.shortQueryHint}>Enter a full UK postcode to find local training hills.</Text>
-                ) : (
-                  <>
-                <Text style={styles.searchScope}>
-                  Search peaks worldwide by name or region. If there is no catalogue match, press Search to find and save an unverified AI suggestion.
-                </Text>
-                {(discoveryLoading || !catalogueSearched) && discoveryItems.length === 0 && !discoveryError ? (
-                  <View style={styles.searchStatus}>
-                    <ActivityIndicator size="small" color={EXPLORE.accent} />
-                    <Text style={styles.statusText}>Searching mountains…</Text>
-                  </View>
-                ) : null}
-                {discoveryError ? (
-                  <View style={styles.errorPanel}>
-                    <Text style={styles.errorText}>{discoveryError}</Text>
-                    <Pressable onPress={() => void fetchCatalogue(textQuery)} accessibilityRole="button" style={styles.textAction}>
-                      <Text style={styles.actionText}>Retry catalogue search</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-                {!discoveryError ? discoveryItems.map(item => (
-                  <DiscoveryResultRow key={`${item.source}:${item.id}`} item={item} />
-                )) : null}
-                {!discoveryLoading && catalogueSearched && !discoveryError && discoveryItems.length === 0 ? (
-                  <View style={styles.emptySearch}>
-                    <MapPin size={20} color={BASECAMP.textDim} />
-                    <Text style={styles.emptyTitle}>No catalogue matches</Text>
-                    <Text style={styles.emptyBody}>
-                      {catalogueUnavailable
-                        ? "AI suggestions are unavailable while the catalogue is down."
-                        : "Press Search or use the button below to find and save an unverified peak."}
-                    </Text>
-                    {!catalogueUnavailable ? (
-                      <>
-                        <Pressable
-                          onPress={() => void requestAiSuggestion()}
-                          disabled={aiLoading}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Find and save an unverified peak for ${textQuery} with AI`}
-                          style={styles.aiAction}
-                        >
-                          {aiLoading
-                            ? <ActivityIndicator size="small" color={BASECAMP.ink} />
-                            : <Text style={styles.aiActionText}>Find and save with AI</Text>}
-                        </Pressable>
-                        {aiError ? <Text style={styles.errorText}>{aiError}</Text> : null}
-                        {aiNoResult ? <Text style={styles.statusText}>No AI suggestion was available for this query.</Text> : null}
-                      </>
-                    ) : null}
-                  </View>
-                ) : null}
-                {hasMore && !discoveryError ? (
-                  <Pressable
-                    onPress={() => void fetchCatalogue(textQuery, true)}
-                    disabled={discoveryLoading}
-                    accessibilityRole="button"
-                    style={styles.loadMore}
-                  >
-                    {discoveryLoading
-                      ? <ActivityIndicator size="small" color={EXPLORE.accent} />
-                      : <Text style={styles.actionText}>Load more mountains</Text>}
-                  </Pressable>
-                ) : null}
-                  </>
-                )}
-              </View>
-            ) : results.length === 0 ? (
-              <SREmptyState
-                icon={<MapPin size={20} color={BASECAMP.textDim} />}
-                title="Nothing matches that filter"
-                body="These terrain filters apply to the curated browse list. Search by name or region to explore the wider mountain catalogue."
-                action="Clear filters"
-                onAction={() => setFilter("all")}
-                style={styles.gutter}
-              />
-            ) : (
-              <View style={[styles.gutter, styles.resultList]}>
-                {results.map(trail => <ResultRow key={trail.id} trail={trail} />)}
-              </View>
-            )}
+            <View style={[styles.gutter, styles.resultList]}>
+              {postcode ? (
+                <>
+                  <Text style={styles.searchScope}>
+                    Routes and hills around {postcode} (25 km). Ascent is the climbing on the route, not summit height. Distances and ascent are approximate; check route details before setting out.
+                  </Text>
+                  {(nearbyLoading || !nearbySearched) && !nearbyError ? (
+                    <View style={styles.searchStatus}>
+                      <ActivityIndicator size="small" color={EXPLORE.accent} />
+                      <Text style={styles.statusText}>Finding local hills…</Text>
+                    </View>
+                  ) : null}
+                  {nearbyError ? (
+                    <View style={styles.errorPanel}>
+                      <Text style={styles.errorText}>{nearbyError}</Text>
+                      <Pressable onPress={() => { lastNearbyRef.current = postcode; void fetchNearbyHills(postcode); }} accessibilityRole="button" style={styles.textAction}>
+                        <Text style={styles.actionText}>Retry local hill search</Text>
+                      </Pressable>
+                    </View>
+                  ) : nearbyRows.map(({ hill }) => (
+                    <NearbyHillResultRow
+                      key={`${hill.routeIdentityKey ?? hill.name}:${hill.lat ?? ""}`}
+                      hill={hill}
+                      postcode={postcode}
+                      coverUri={coverUris[personalHillCoverKey(userId, {
+                        name: hill.name, latitude: hill.lat, longitude: hill.lng,
+                        routeIdentityKey: hill.routeIdentityKey, summitIdentityKey: hill.summitIdentityKey,
+                      }) ?? ""]}
+                    />
+                  ))}
+                  {nearbySearched && !nearbyLoading && !nearbyError && nearbyHills.length > 0 && nearbyRows.length === 0 ? (
+                    <View style={styles.emptySearch}>
+                      <Text style={styles.emptyTitle}>No local routes match these filters</Text>
+                      <Pressable onPress={resetControls} accessibilityRole="button" style={styles.textAction}>
+                        <Text style={styles.actionText}>Reset filters</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                  {nearbySearched && !nearbyLoading && !nearbyError && nearbyHills.length === 0 ? (
+                    <View style={styles.emptySearch}>
+                      <MapPin size={20} color={BASECAMP.textDim} />
+                      <Text style={styles.emptyTitle}>No hills found within 25 km</Text>
+                      <Text style={styles.emptyBody}>Try a different postcode or widen the search radius in Training Hills.</Text>
+                      <Pressable onPress={() => router.push("/hills-finder" as any)} accessibilityRole="button" style={styles.textAction}>
+                        <Text style={styles.actionText}>Open Training Hills</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </>
+              ) : incompletePostcode ? (
+                <Text style={styles.shortQueryHint}>Enter a full UK postcode to find local training hills.</Text>
+              ) : (
+                <>
+                  {textQuery && queryTooShort ? (
+                    <View accessible accessibilityLiveRegion="polite"
+                      accessibilityLabel="Enter at least two characters to search the mountain catalogue.">
+                      <Text style={styles.shortQueryHint}>Enter at least two characters to search the mountain catalogue.</Text>
+                    </View>
+                  ) : null}
+                  {routesFirst ? routesBlock : mountainsBlock}
+                  {routesFirst ? mountainsBlock : routesBlock}
+                </>
+              )}
+            </View>
           </Section>
         ) : (
           <>
@@ -1022,7 +1082,7 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BASECAMP.ink },
   gutter: { paddingHorizontal: BASECAMP.gutter },
-  heroBg: { position: "absolute", left: 0, right: 0, top: 0, height: 320 },
+  heroBg: { position: "absolute", left: 0, right: 0, top: 0, height: 320, overflow: "hidden" },
   modeHeader: { alignItems: "center", paddingBottom: 8, backgroundColor: BASECAMP.ink },
 
   appBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SP.sm },
@@ -1076,6 +1136,10 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, minWidth: 0, fontSize: 12, lineHeight: 15, fontFamily: "Inter_400Regular", color: BASECAMP.text },
 
+  sectionLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  sectionLabel: { ...TYPE.eyebrow, color: BASECAMP.textMuted, textTransform: 'uppercase' },
+  sectionCount: { ...TYPE.caption, color: BASECAMP.textDim },
+  resultGroup: { gap: SP.sm, marginBottom: SP.lg },
   chipRow: { paddingHorizontal: BASECAMP.gutter, gap: 8, paddingTop: 12 },
   chip: {
     width: 62, height: 62, borderRadius: 6.5,

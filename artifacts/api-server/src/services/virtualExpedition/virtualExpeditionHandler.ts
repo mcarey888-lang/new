@@ -305,11 +305,11 @@ function buildDeterministicPlan(
   // summit gets one day, and never gets an empty filler day.
   const dayCount = match.matchMethod === "quickest_high_summits_v1"
     ? Math.max(1, match.selectedHills.length)
-    : Math.min(3, Math.max(1, profile.estimatedDays));
+    : Math.min(Math.max(1, profile.estimatedDays), Math.max(1, match.selectedHills.length));
   const days: ExpeditionPlan["days"] = Array.from({ length: dayCount }, (_, index) => ({
     label: dayCount === 1 ? "Expedition day" : `Day ${index + 1}`,
-    title: index === 0 ? "Primary ascent day" : "Back-to-back endurance day",
-    focus: index === 0 ? "sustained climbing and terrain match" : "recovery under continued ascent",
+    title: index === 0 ? "Primary ascent stage" : "Additional walking stage",
+    focus: index === 0 ? "sustained climbing and terrain match" : "continue towards your expedition objective at your own pace",
     routes: [],
   }));
   const dayAscent = new Array(dayCount).fill(0) as number[];
@@ -443,7 +443,7 @@ export function createVirtualExpeditionHandler(
         targetRegion: z.string().trim().min(2).max(160).optional(),
         userLocation: z.string().trim().min(2).max(300),
         radius: z.number().positive().max(200).optional().default(30),
-        daysOverride: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional().nullable(),
+        daysOverride: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional().nullable(),
         expeditionStyle: z.literal("quickest_high_summits").optional().default("quickest_high_summits"),
         difficultyPreference: z.string().optional().nullable(),
         targetRouteIdentityKey: z.string().trim().min(1).max(200).optional().nullable(),

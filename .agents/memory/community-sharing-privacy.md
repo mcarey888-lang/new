@@ -1,6 +1,6 @@
 ---
 name: Community sharing privacy
-description: Product consent boundary for member-visible SummitReady posts.
+description: Product consent boundaries for community posts and user-shared routes.
 ---
 
 Member sharing is an opt-in, per-post audience choice between Only me and all signed-in SummitReady members. Existing activity, journal photos, qualified Elevation Bank totals, and location are never published automatically. An owned photo post must remain private until its media upload finishes; changing a private post to members requires an explicit confirmation.
@@ -20,3 +20,9 @@ When a successfully loaded member feed is empty, show the fictional preview with
 **Why:** Placing an empty-state panel directly above fictional story cards made the feed appear to contradict itself.
 
 **How to apply:** Keep the private “My posts” empty state separate; a failed member feed must display its error rather than example cards.
+
+Users should retain their own saved routes and be able to share created routes so other users can search for and use them. Explicitly published community routes should appear immediately, without an approval queue.
+
+**Why:** The user requested an AllTrails-like shared route library and selected immediate publication.
+
+**How to apply:** Keep private saved plans separate from public community copies. Publication must be an explicit route-sharing action, never an automatic consequence of recording a hike or saving a private plan. This choice does not relax the existing photo, activity or location-history privacy boundaries.

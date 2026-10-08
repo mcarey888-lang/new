@@ -34,15 +34,19 @@ import type {
   GetCanonicalHistoryParams,
   GetCommunityPosts200,
   GetCommunityPostsParams,
+  GetMountainDiscoveryParams,
   HealthStatus,
+  MountainDiscoveryPage,
   MountainHeroGenerationInput,
   MountainHeroGenerationStarted,
   MountainHeroPrompt,
   MountainParkingLookupInput,
   MountainParkingLookupResult,
   ReportCommunityPost201,
+  SearchVirtualExpedition200,
   UpdateCommunityPostVisibility200,
   UploadCommunityPostPhoto200,
+  VirtualExpeditionSearchInput,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -53,6 +57,199 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Resolve an expedition target or build its local walking stages
+ */
+export const getSearchVirtualExpeditionUrl = () => {
+  return `/api/virtual-expedition`;
+};
+
+export const searchVirtualExpedition = async (
+  virtualExpeditionSearchInput: VirtualExpeditionSearchInput,
+  options?: RequestInit,
+): Promise<SearchVirtualExpedition200> => {
+  return customFetch<SearchVirtualExpedition200>(
+    getSearchVirtualExpeditionUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(virtualExpeditionSearchInput),
+    },
+  );
+};
+
+export const getSearchVirtualExpeditionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof searchVirtualExpedition>>,
+    TError,
+    { data: BodyType<VirtualExpeditionSearchInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof searchVirtualExpedition>>,
+  TError,
+  { data: BodyType<VirtualExpeditionSearchInput> },
+  TContext
+> => {
+  const mutationKey = ["searchVirtualExpedition"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof searchVirtualExpedition>>,
+    { data: BodyType<VirtualExpeditionSearchInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return searchVirtualExpedition(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SearchVirtualExpeditionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof searchVirtualExpedition>>
+>;
+export type SearchVirtualExpeditionMutationBody =
+  BodyType<VirtualExpeditionSearchInput>;
+export type SearchVirtualExpeditionMutationError = ErrorType<void>;
+
+/**
+ * @summary Resolve an expedition target or build its local walking stages
+ */
+export const useSearchVirtualExpedition = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof searchVirtualExpedition>>,
+    TError,
+    { data: BodyType<VirtualExpeditionSearchInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof searchVirtualExpedition>>,
+  TError,
+  { data: BodyType<VirtualExpeditionSearchInput> },
+  TContext
+> => {
+  return useMutation(getSearchVirtualExpeditionMutationOptions(options));
+};
+
+/**
+ * @summary Search mountain names and places with paginated summit-height filtering
+ */
+export const getGetMountainDiscoveryUrl = (
+  params: GetMountainDiscoveryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/mountain-discovery?${stringifiedParams}`
+    : `/api/mountain-discovery`;
+};
+
+export const getMountainDiscovery = async (
+  params: GetMountainDiscoveryParams,
+  options?: RequestInit,
+): Promise<MountainDiscoveryPage> => {
+  return customFetch<MountainDiscoveryPage>(
+    getGetMountainDiscoveryUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetMountainDiscoveryQueryKey = (
+  params?: GetMountainDiscoveryParams,
+) => {
+  return [`/api/mountain-discovery`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetMountainDiscoveryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMountainDiscovery>>,
+  TError = ErrorType<void>,
+>(
+  params: GetMountainDiscoveryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMountainDiscovery>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMountainDiscoveryQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMountainDiscovery>>
+  > = ({ signal }) =>
+    getMountainDiscovery(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMountainDiscovery>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMountainDiscoveryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMountainDiscovery>>
+>;
+export type GetMountainDiscoveryQueryError = ErrorType<void>;
+
+/**
+ * @summary Search mountain names and places with paginated summit-height filtering
+ */
+
+export function useGetMountainDiscovery<
+  TData = Awaited<ReturnType<typeof getMountainDiscovery>>,
+  TError = ErrorType<void>,
+>(
+  params: GetMountainDiscoveryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMountainDiscovery>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMountainDiscoveryQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Find sourced parking suggestions and reuse shared research

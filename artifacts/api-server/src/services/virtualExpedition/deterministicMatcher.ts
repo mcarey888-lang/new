@@ -1013,12 +1013,18 @@ export function matchQuickestHighSummits(
   const safeCandidates = eligible.slice(0, OPTIMISATION_POOL_SIZE);
   type QuickCombo = typeof safeCandidates;
   const combos: QuickCombo[] = [];
+  // A long calendar window must not expand into 2^36 combinations and
+  // exhaust the shared API process. Keep legacy small plans exhaustive.
+  let optimisationVisits = 0;
+  let searchLimitReached = false;
   const addCombos = (start: number, wanted: number, picked: QuickCombo): void => {
+    if (++optimisationVisits > 250_000) { searchLimitReached = true; return; }
     if (picked.length === wanted) {
       combos.push(picked);
       return;
     }
     for (let i = start; i < safeCandidates.length; i += 1) {
+      if (searchLimitReached) break;
       const candidate = safeCandidates[i];
       if (picked.some(existing => summitIdentity(existing.hill) === summitIdentity(candidate.hill))) continue;
       if (picked.some(existing => validCoordinates(existing.hill) && validCoordinates(candidate.hill)
@@ -1027,7 +1033,6 @@ export function matchQuickestHighSummits(
     }
   };
   const maxCardinality = Math.min(Math.max(1, profile.estimatedDays), safeCandidates.length);
-  for (let cardinality = 1; cardinality <= maxCardinality; cardinality += 1) addCombos(0, cardinality, []);
 
   const comboFacts = (combo: QuickCombo) => {
     const ascent = combo.reduce((sum, item) => sum + item.hill.elevation, 0);
@@ -1042,6 +1047,15 @@ export function matchQuickestHighSummits(
     const facts = comboFacts(combo);
     return facts.ascentError <= ascentTolerance && facts.distanceError <= distanceTolerance;
   };
+  for (let cardinality = 1; cardinality <= maxCardinality && !searchLimitReached; cardinality += 1) {
+    addCombos(0, cardinality, []);
+    // Complete the whole cardinality before selecting its best match.
+    // A larger calendar allowance does not require searching larger plans
+    // once the minimum-cardinality normal match is known.
+    if (combos.some(combo => inTolerance(
+      combo, QUICK_SUMMIT_NORMAL_ASCENT_TOLERANCE, QUICK_SUMMIT_NORMAL_DISTANCE_TOLERANCE,
+    ))) break;
+  }
   const sourceRank = (item: QuickCombo[number]) =>
     item.hill.routeDataStatus === "external_route" ? 3
       : item.hill.dataSource === "canonical_verified" ? 2
@@ -1127,6 +1141,9 @@ export function matchQuickestHighSummits(
   if (toleranceMode === "approximate") warnings.push("No widened-tolerance match; tolerance could not be met, so the closest safe quality approximation was selected.");
   if (selectedCount < profile.estimatedDays) {
     warnings.push(`Selected ${selectedCount} distinct summit${selectedCount === 1 ? "" : "s"} within the ${profile.estimatedDays}-day maximum; no filler summits were added.`);
+  }
+  if (searchLimitReached) {
+    warnings.push("Automatic search reached its combination budget. This is the best match among evaluated combinations; use Choose Your Own Summits to explore further combinations.");
   }
   if (!selected) warnings.push("No eligible safe summit candidates were available; no route was matched.");
   const selectionReason = toleranceMode === "normal"

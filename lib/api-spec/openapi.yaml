@@ -15,6 +15,47 @@ tags:
   - name: community
     description: Authenticated SummitReady member sharing
 paths:
+  /virtual-expedition:
+    post:
+      operationId: searchVirtualExpedition
+      summary: Resolve an expedition target or build its local walking stages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VirtualExpeditionSearchInput"
+      responses:
+        "200":
+          description: Target profile or expedition recommendations
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400": { description: Invalid search or walking-day count }
+        "409": { description: Choose a matching mountain or target route }
+        "429": { description: Search allowance reached }
+  /mountain-discovery:
+    get:
+      operationId: getMountainDiscovery
+      tags: [mountains]
+      summary: Search mountain names and places with paginated summit-height filtering
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, maxLength: 100 }, description: "Search term; empty only with browse=1." }
+        - { name: browse, in: query, schema: { type: string, enum: ["1"] } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 1000000, default: 0 } }
+        - { name: summitMinM, in: query, schema: { type: number, minimum: -500, maximum: 10000 } }
+        - { name: summitMaxM, in: query, schema: { type: number, minimum: -500, maximum: 10000 } }
+        - { name: sort, in: query, schema: { type: string, enum: [recommended, name_asc, summit_asc, summit_desc], default: recommended } }
+      responses:
+        "200":
+          description: Mountain results filtered and ordered before pagination
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MountainDiscoveryPage"
+        "400": { description: Invalid search or height range }
+        "503": { description: Mountain catalogue unavailable }
   /directions/parking-options:
     post:
       operationId: lookupMountainParkingOptions
@@ -548,6 +589,44 @@ components:
           format: date-time
         hasPhoto:
           type: boolean
+    VirtualExpeditionSearchInput:
+      type: object
+      additionalProperties: true
+      required: [targetMountain, userLocation]
+      properties:
+        targetMountain: { type: string, minLength: 2, maxLength: 200 }
+        userLocation: { type: string, minLength: 2, maxLength: 300 }
+        radius: { type: number, minimum: 1, maximum: 200, default: 30 }
+        daysOverride:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 9007199254740991
+          description: Available walking days or stages, not consecutive calendar days.
+        mode: { type: string, enum: [automatic, manual, manual_builder] }
+        resolveOnly: { type: boolean }
+    MountainDiscoveryItem:
+      type: object
+      required: [id, name, country, region, area, elevationM, latitude, longitude, source, verificationStatus]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        country: { type: string }
+        region: { type: string }
+        area: { type: [string, "null"] }
+        elevationM: { type: [number, "null"] }
+        latitude: { type: number }
+        longitude: { type: number }
+        source: { type: string, enum: [catalogue, ai] }
+        verificationStatus: { type: string, enum: [verified, imported, ai_unverified] }
+    MountainDiscoveryPage:
+      type: object
+      required: [items, hasMore, catalogueStatus]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MountainDiscoveryItem" }
+        hasMore: { type: boolean }
+        catalogueStatus: { type: string, enum: [available] }
     MountainParkingLookupInput:
       type: object
       required: [mountainName, region]

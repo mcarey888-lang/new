@@ -15,6 +15,7 @@ import {
   SlidersHorizontal, LayoutGrid, LayoutList, Globe, Clock, Play,
 } from "lucide-react-native";
 import { VirtualMountainCard } from "@/components/VirtualMountainCard";
+import { ExpeditionDayCount } from "@/components/ExpeditionDayCount";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
@@ -278,7 +279,7 @@ interface PendingExpeditionRequest {
   mountain: string;
   region: string;
   radius: number;
-  daysOverride?: 1 | 2 | 3;
+  daysOverride?: number;
   includeSignatureChallenge: boolean;
   targetRouteIdentityKey?: string;
   targetCountry?: string;
@@ -414,7 +415,8 @@ export default function ExpeditionMountainsScreen() {
   /** Radius in km for the hill search — shown as chips in both browse + results. */
   const [searchRadius, setSearchRadius] = useState<number>(30);
   /** Override the mountain's natural day count (null = use mountain's default). */
-  const [customDays, setCustomDays] = useState<1 | 2 | 3 | null>(null);
+  const [customDays, setCustomDays] = useState<number | null>(null);
+  const [customDayInputValid, setCustomDayInputValid] = useState(true);
   /** Whether the customise panel is expanded in the results view. */
   const [customOpen, setCustomOpen] = useState(false);
   /** Editable location shown inside the results customise panel. */
@@ -563,7 +565,7 @@ export default function ExpeditionMountainsScreen() {
     mountain:     string,
     region:       string,
     radius        = searchRadius,
-    daysOverride?: 1 | 2 | 3,
+    daysOverride?: number,
     includeSignatureChallenge = false,
     targetRouteIdentityKey?: string,
     targetCountry?: string,
@@ -743,6 +745,12 @@ export default function ExpeditionMountainsScreen() {
     setSetupResolved(false);
   }
 
+  function submitCustomSearch() {
+    if (loading || searchMountain.trim().length < 2 || searchRegion.trim().length < 2 || customDays == null) return;
+    handleSearch();
+    resolveTarget();
+  }
+
   function chooseCreationMode(mode: "automatic" | "manual") {
     if (!results || !canShowManualChoices({
       targetMountain: results.targetProfile.name,
@@ -759,7 +767,7 @@ export default function ExpeditionMountainsScreen() {
     };
     void dispatchCreationChoice({ ...setup, location: customLocation || searchRegion, radius: searchRadius }, async payload => {
       await fetchExpedition(results.targetProfile.name, customLocation || searchRegion,
-        searchRadius, payload.daysOverride as 1 | 2 | 3, false,
+        searchRadius, payload.daysOverride ?? undefined, false,
         payload.targetRouteIdentityKey ?? undefined, undefined, undefined,
         payload.mode, [], payload.resolveOnly);
     }, mode);
@@ -1601,33 +1609,13 @@ export default function ExpeditionMountainsScreen() {
                   ))}
                 </View>
 
-                {/* Days */}
-                <Text style={[s.inputLabel, { marginTop: 14, marginBottom: 6 }]}>Duration</Text>
-                <View style={s.chipRow}>
-                  {([
-                    { label: "Mountain default", value: null },
-                    { label: "1 day",            value: 1 as const },
-                    { label: "2 days",            value: 2 as const },
-                    { label: "3 days",            value: 3 as const },
-                  ] as Array<{ label: string; value: 1 | 2 | 3 | null }>).map(opt => {
-                    const active = customDays === opt.value;
-                    return (
-                      <TouchableOpacity
-                        key={opt.label}
-                        onPress={() => setCustomDays(opt.value)}
-                        style={[s.chip, active && { backgroundColor: T.purple + "22", borderColor: T.purple + "50" }]}
-                        activeOpacity={0.75}
-                      >
-                        <Text style={[s.chipText, active && { color: T.purple, fontFamily: "Inter_700Bold" }]}>{opt.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                <ExpeditionDayCount value={customDays} onChange={setCustomDays} allowDefault onValidityChange={setCustomDayInputValid} />
 
                 {/* Regenerate */}
                 <TouchableOpacity
                   onPress={handleRegenerate}
-                  style={s.regenerateBtn}
+                  disabled={!customDayInputValid}
+                  style={[s.regenerateBtn, !customDayInputValid && { opacity: 0.45 }]}
                   activeOpacity={0.85}
                 >
                   <RefreshCw size={14} color="#fff" />
@@ -2270,7 +2258,7 @@ export default function ExpeditionMountainsScreen() {
                   placeholder="Your hiking region (e.g. Lake District)"
                   placeholderTextColor={T.textDim}
                   returnKeyType="search"
-                  onSubmitEditing={handleSearch}
+                  onSubmitEditing={submitCustomSearch}
                 />
               </View>
               <View style={{ marginTop: 12 }}>
@@ -2288,17 +2276,7 @@ export default function ExpeditionMountainsScreen() {
                   ))}
                 </View>
               </View>
-              <View style={{ marginTop: 12 }}>
-                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Available days</Text>
-                <View style={s.chipRow}>
-                  {[1, 2, 3].map(day => (
-                    <TouchableOpacity key={day} onPress={() => setCustomDays(day as 1 | 2 | 3)}
-                      style={[s.chip, customDays === day && s.chipActive]}>
-                      <Text style={[s.chipText, customDays === day && s.chipTextActive]}>{day} {day === 1 ? "day" : "days"}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+              <ExpeditionDayCount value={customDays} onChange={setCustomDays} />
               {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && setupResolved && (
                 <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
                   <TouchableOpacity testID="find-equivalent-summits" onPress={() => chooseCreationMode("automatic")} style={[s.choiceCard, { borderColor: T.green + "55" }]}>
@@ -2311,14 +2289,21 @@ export default function ExpeditionMountainsScreen() {
                   </TouchableOpacity>
                 </View>
               )}
-              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && !setupResolved && (
-                <>
-                <TouchableOpacity onPress={resolveTarget} disabled={customDays == null} style={[s.searchBtn, customDays == null && { opacity: 0.45 }]} activeOpacity={0.85}>
-                  <Search size={15} color="#fff" /><Text style={s.searchBtnText}>Continue</Text>
+              <>
+                <TouchableOpacity
+                  onPress={submitCustomSearch}
+                  accessibilityRole="button"
+                  accessibilityLabel="Search for expedition mountain and routes"
+                  testID="custom-expedition-search"
+                  disabled={loading || customDays == null || searchMountain.trim().length < 2 || searchRegion.trim().length < 2}
+                  style={[s.searchBtn, (loading || customDays == null || searchMountain.trim().length < 2 || searchRegion.trim().length < 2) && { opacity: 0.45 }]}
+                  activeOpacity={0.85}>
+                  <Search size={15} color="#fff" /><Text style={s.searchBtnText}>Search</Text>
                 </TouchableOpacity>
-                {customDays == null && <Text style={s.improveCandidateMeta}>Choose available days before continuing.</Text>}
-                </>
-              )}
+                {(searchMountain.trim().length < 2 || searchRegion.trim().length < 2 || customDays == null) && (
+                  <Text style={s.improveCandidateMeta}>Enter a goal mountain, your hiking region and the number of walking days to search.</Text>
+                )}
+              </>
             </View>
           )}
         </Animated.View>

@@ -85,6 +85,88 @@ export interface CommunityPost {
   hasPhoto: boolean;
 }
 
+export type VirtualExpeditionSearchInputMode =
+  (typeof VirtualExpeditionSearchInputMode)[keyof typeof VirtualExpeditionSearchInputMode];
+
+export const VirtualExpeditionSearchInputMode = {
+  automatic: "automatic",
+  manual: "manual",
+  manual_builder: "manual_builder",
+} as const;
+
+export interface VirtualExpeditionSearchInput {
+  /**
+   * @minLength 2
+   * @maxLength 200
+   */
+  targetMountain: string;
+  /**
+   * @minLength 2
+   * @maxLength 300
+   */
+  userLocation: string;
+  /**
+   * @minimum 1
+   * @maximum 200
+   */
+  radius?: number;
+  /**
+   * Available walking days or stages, not consecutive calendar days.
+   * @minimum 1
+   * @maximum 9007199254740991
+   * @nullable
+   */
+  daysOverride?: number | null;
+  mode?: VirtualExpeditionSearchInputMode;
+  resolveOnly?: boolean;
+  [key: string]: unknown;
+}
+
+export type MountainDiscoveryItemSource =
+  (typeof MountainDiscoveryItemSource)[keyof typeof MountainDiscoveryItemSource];
+
+export const MountainDiscoveryItemSource = {
+  catalogue: "catalogue",
+  ai: "ai",
+} as const;
+
+export type MountainDiscoveryItemVerificationStatus =
+  (typeof MountainDiscoveryItemVerificationStatus)[keyof typeof MountainDiscoveryItemVerificationStatus];
+
+export const MountainDiscoveryItemVerificationStatus = {
+  verified: "verified",
+  imported: "imported",
+  ai_unverified: "ai_unverified",
+} as const;
+
+export interface MountainDiscoveryItem {
+  id: string;
+  name: string;
+  country: string;
+  region: string;
+  /** @nullable */
+  area: string | null;
+  /** @nullable */
+  elevationM: number | null;
+  latitude: number;
+  longitude: number;
+  source: MountainDiscoveryItemSource;
+  verificationStatus: MountainDiscoveryItemVerificationStatus;
+}
+
+export type MountainDiscoveryPageCatalogueStatus =
+  (typeof MountainDiscoveryPageCatalogueStatus)[keyof typeof MountainDiscoveryPageCatalogueStatus];
+
+export const MountainDiscoveryPageCatalogueStatus = {
+  available: "available",
+} as const;
+
+export interface MountainDiscoveryPage {
+  items: MountainDiscoveryItem[];
+  hasMore: boolean;
+  catalogueStatus: MountainDiscoveryPageCatalogueStatus;
+}
+
 export interface MountainParkingLookupInput {
   /**
    * @minLength 2
@@ -363,6 +445,55 @@ export interface CanonicalHistoryResponse {
   reason: string | null;
   items: CanonicalHistoryItem[];
 }
+
+export type SearchVirtualExpedition200 = { [key: string]: unknown };
+
+export type GetMountainDiscoveryParams = {
+  /**
+   * Search term; empty only with browse=1.
+   * @maxLength 100
+   */
+  q: string;
+  browse?: GetMountainDiscoveryBrowse;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  limit?: number;
+  /**
+   * @minimum 0
+   * @maximum 1000000
+   */
+  offset?: number;
+  /**
+   * @minimum -500
+   * @maximum 10000
+   */
+  summitMinM?: number;
+  /**
+   * @minimum -500
+   * @maximum 10000
+   */
+  summitMaxM?: number;
+  sort?: GetMountainDiscoverySort;
+};
+
+export type GetMountainDiscoveryBrowse =
+  (typeof GetMountainDiscoveryBrowse)[keyof typeof GetMountainDiscoveryBrowse];
+
+export const GetMountainDiscoveryBrowse = {
+  NUMBER_1: "1",
+} as const;
+
+export type GetMountainDiscoverySort =
+  (typeof GetMountainDiscoverySort)[keyof typeof GetMountainDiscoverySort];
+
+export const GetMountainDiscoverySort = {
+  recommended: "recommended",
+  name_asc: "name_asc",
+  summit_asc: "summit_asc",
+  summit_desc: "summit_desc",
+} as const;
 
 export type GetCanonicalHistoryParams = {
   filter?: GetCanonicalHistoryFilter;

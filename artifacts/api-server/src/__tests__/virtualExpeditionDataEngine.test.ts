@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Hill } from "../routes/hills-unified.js";
 import type { TargetMountainProfile } from "../routes/virtual-expedition.js";
 import type { TrustedCanonicalRoute, VerifiedCanonicalMountain } from "../services/mountain/canonicalMountainLookup.js";
-import { matchDeterministicExpedition } from "../services/virtualExpedition/deterministicMatcher.js";
+import { matchDeterministicExpedition, matchQuickestHighSummits } from "../services/virtualExpedition/deterministicMatcher.js";
 import {
   createVirtualExpeditionHandler,
   filterCanonicalPrincipalSummits,
@@ -82,6 +82,33 @@ async function invoke(dependencies: VirtualExpeditionHandlerDependencies, body: 
 }
 
 describe("virtual expedition summit-first data engine", () => {
+  it("can match more than three walking stages within a longer availability window", () => {
+    const candidates = Array.from({ length: 7 }, (_, i) => hill(`Summit ${i}`, 1_000 + i));
+    const result = matchQuickestHighSummits(
+      candidates, profile({ estimatedDays: 30, totalElevationGain: 4_200, totalDistance: 56 }),
+    );
+    expect(result.selectedHills.length).toBeGreaterThan(3);
+    expect(result.warnings.join(" ")).not.toContain("combination budget");
+  });
+
+  it("bounds automatic combination work for a long plan and reports the limit", () => {
+    const candidates = Array.from({ length: 36 }, (_, i) => hill(`Peak ${i}`, 1_000 + i));
+    const result = matchQuickestHighSummits(
+      candidates,
+      profile({ estimatedDays: 90, totalElevationGain: 50_000, totalDistance: 1_000 }),
+    );
+    expect(result.warnings.join(" ")).toContain("combination budget");
+  }, 15_000);
+
+  it("retains walking-day capacity for week- and month-long plans without adding empty stages", async () => {
+    for (const daysOverride of [7, 30, 90]) {
+      const response = await invoke(deps(), { daysOverride });
+      expect(response.statusCode).toBe(200);
+      expect(response.body.targetProfile.estimatedDays).toBe(daysOverride);
+      expect(response.body.expedition.days.every((day: { routes: unknown[] }) => day.routes.length > 0)).toBe(true);
+    }
+  });
+
   it("uses a symmetric score for both under- and over-shoots", () => {
     expect(symmetricMatchPercentage(50, 100)).toBe(50);
     expect(symmetricMatchPercentage(200, 100)).toBe(50);

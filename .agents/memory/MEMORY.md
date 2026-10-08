@@ -39,6 +39,7 @@
 - [English place-name display](english-place-name-display.md) — use recognised English equivalents in user-facing route and region names; retain Welsh names without one.
 - [Canonical mountain trust boundary](canonical-mountain-trust-boundary.md) — only verified aliases resolve canonically; canonical routes never use cache or AI.
 - [Virtual expedition trust boundary](virtual-expedition-trust-boundary.md) — verified targets/routes first; explicit fallback lineage; deterministic local routes with stable optional identities.
+- [Custom expedition walking days](custom-expedition-walking-days.md) — user-defined walking-stage capacity, spread over weeks or months rather than consecutive dates.
 - [iOS marketing version source](ios-marketing-version-source.md) — committed native iOS projects must keep Info.plist and Expo versions aligned before EAS builds.
 - [Onboarding prototype preservation](onboarding-prototype-preservation.md) — keep new onboarding concepts as named, versioned prototypes until the user explicitly approves removal.
 - [Summit Data Engine production schema](summit-engine-public-schema.md) — engine data tables belong in public for managed production copies; legacy provenance labels remain stable.
@@ -49,6 +50,7 @@
 - [SDE route read boundary](sde-route-read-boundary.md) — canonical reads use a bounded ENGINE_DATABASE_URL-only server pool; geometry stays hidden without exact rights and validation proof.
 - [Evidence authority ordering](evidence-authority-ordering.md) — evaluator and persistence must share one total order; global event time supersedes producer-rule-local revisions.
 - [Stable approved artwork caching](stable-approved-artwork-caching.md) — stable approved-media URLs must revalidate on every request; versioned review URLs may remain cacheable.
+- [Artwork fallback presentation](artwork-fallback-presentation.md) — remote and bundled tab heroes must retain the same visual footprint; check fallback states, not just warm development loads.
 - [Visual flattening preserves behavior](visual-flattening-preserves-behavior.md) — Basecamp may lose cards, never progress, routes, coach controls, or accessibility semantics.
 - [Exact GitHub Git Data commits](github-git-data-exact-commits.md) — Preserve a commit message's final newline when recreating local commits through GitHub's Git Data API.
 - [Prototype asset audit completeness](prototype-asset-audit-completeness.md) — map every declared icon registry file/key to a canonical asset or documented alias; never exclude keys.
