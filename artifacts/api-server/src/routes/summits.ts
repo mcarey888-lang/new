@@ -3,6 +3,11 @@ import { executeEngineReadOnlyQuery } from "@workspace/db";
 import { buildSummitQuery } from "../services/summits/summitQuery";
 import { MAX_RESULTS, MIN_QUERY_LENGTH, searchResults } from "../services/summits/summitSearch";
 import { filterForZoom, padBBox, parseBBox, toPin, type MountainRow } from "../services/summits/summitPins";
+import { db } from "@workspace/db";
+import { verifiedDirections } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
+import { directionsIdentity, searchParkingCandidates } from "../services/directionsLookup.js";
+import { markConfirmed, MAX_PARKING, parseParkingQuery } from "../services/summits/summitParking";
 
 /**
  * Summit pins for the map.
@@ -149,6 +154,44 @@ router.get("/summits", async (req, res) => {
        and that URL carries a password. */
     req.log?.warn({ zoom }, "summit pin query failed");
     res.status(503).json({ error: "summit_catalogue_unavailable" });
+  }
+});
+
+/**
+ * Car parks near one summit.
+ *
+ * The directions page asks for a single destination because it is taking you
+ * somewhere. The map is a different question — "where could I start from?" —
+ * so this returns the few nearest and says which of them a walker has
+ * actually confirmed with GPS.
+ */
+router.get("/summits/parking", async (req, res) => {
+  const parsed = parseParkingQuery(req.query);
+  if (!parsed) {
+    res.status(400).json({ error: "parking_target_required" });
+    return;
+  }
+
+  try {
+    const candidates = await searchParkingCandidates(parsed.name, {
+      lat: parsed.lat, lng: parsed.lng,
+    }, MAX_PARKING);
+
+    /* Looked up even when nothing was found nearby: a confirmed car park is
+       worth showing on its own, and it is the only one here anybody has
+       stood in. */
+    const [verified] = await db.select().from(verifiedDirections)
+      .where(eq(verifiedDirections.identityKey, directionsIdentity({
+        hillName: parsed.name, summitLat: parsed.lat, summitLng: parsed.lng,
+      }))).limit(1);
+
+    res.set("Cache-Control", "public, max-age=600");
+    res.json({ parking: markConfirmed(candidates, verified ?? null, parsed) });
+  } catch {
+    /* Never the error object. A Nominatim failure is routine, and a database
+       failure carries a URL with a password in it. */
+    req.log?.warn("summit parking lookup failed");
+    res.status(503).json({ error: "parking_unavailable" });
   }
 });
 
