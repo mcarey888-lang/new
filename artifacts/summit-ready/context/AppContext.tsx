@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
 import { restoreTrainingPlan } from "@/utils/trainingPlanRestore";
+import { repairDurations } from "@/utils/hikeDurationMigration";
 import { calculateReadiness, diagnoseScoreStagnation, ScoreInsight } from "@/utils/readinessScore";
 import { computeUnlocked } from "@/utils/achievements";
 import { logTrainingPlanGenerated, logReadinessScoreImproved } from "@/lib/analytics";
@@ -957,9 +958,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Parse explore hikes before the goal block so they're available
         // both for readiness scoring (inside) and hike history (outside).
         const loadedHikes: ExploreHike[] = exploreHikesStr
-          ? (JSON.parse(exploreHikesStr) as ExploreHike[]).map(h =>
-              h.timeTaken > 300 ? { ...h, timeTaken: Math.round(h.timeTaken / 60) } : h
-            )
+          ? repairDurations(JSON.parse(exploreHikesStr) as ExploreHike[])
           : [];
 
         if (goal) {

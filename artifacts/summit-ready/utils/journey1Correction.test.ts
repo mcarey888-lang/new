@@ -41,8 +41,22 @@ describe("the mode toggle has one shared position", () => {
   });
 
   it("screen headers do not create another toggle", () => {
-    for (const screen of ["app/(tabs)/plan.tsx", "app/(tabs)/explore.tsx", "components/basecamp/BasecampHero.tsx"]) {
+    /* The rule is one toggle on screen, not one place it may live. Explore
+       sits it inside its own header instead of floating it, and the shell
+       leaves Explore out so the two cannot both appear. Screens with no such
+       arrangement take the shell's and add none of their own. */
+    for (const screen of ["app/(tabs)/plan.tsx", "components/basecamp/BasecampHero.tsx"]) {
       expect(code(read(screen))).not.toMatch(/<ModeTogglePill/);
+    }
+  });
+
+  it("a screen that renders its own toggle is left out by the shell", () => {
+    const shell = code(read("app/(tabs)/_layout.tsx"));
+    const explore = code(read("app/(tabs)/explore.tsx"));
+    /* Two centred pills colliding is the fault this whole block was written
+       for. Either of these alone is fine; both at once is the bug. */
+    if (/<ModeTogglePill/.test(explore)) {
+      expect(shell).toMatch(/currentRoute !== "explore"/);
     }
   });
 
