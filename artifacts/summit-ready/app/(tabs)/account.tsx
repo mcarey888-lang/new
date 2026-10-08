@@ -109,6 +109,12 @@ const DIFF_ICONS: Record<Difficulty, string> = {
   Easy: "🌿", Moderate: "🏔️", Hard: "⛰️", Alpine: "🗻",
 };
 
+/* `elevation` is the ascent of a normal route up the hill, not the height of
+   its summit — that is what the readiness comparison below needs. The two get
+   confused easily, so anything putting this on screen has to say "ascent":
+   Kilimanjaro's usual trek gains about 1,200 m, while the mountain itself is
+   5,895 m, and a card reading "Tanzania · 1200m" states the second and means
+   the first. */
 const REFERENCE_PEAKS: { name: string; icon: string; elevation: number; difficulty: Difficulty; location: string }[] = [
   { name: "Mam Tor",       icon: "check", elevation: 130,  difficulty: "Easy",     location: "Peak District" },
   { name: "Pen y Fan",     icon: "check", elevation: 296,  difficulty: "Easy",     location: "Brecon Beacons" },
@@ -1022,7 +1028,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
                       <Text style={styles.readyChipName}>{peak.name}</Text>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 }}>
                         <MapPin size={10} color={T.textMuted} />
-                        <Text style={styles.readyChipSub}>{peak.location} · {peak.elevation}m</Text>
+                        <Text style={styles.readyChipSub}>{peak.location} · {peak.elevation}m ascent</Text>
                       </View>
                     </View>
                     <View style={[styles.readyDiffBadge, { backgroundColor: dc + "22" }]}>

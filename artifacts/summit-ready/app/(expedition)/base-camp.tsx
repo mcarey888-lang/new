@@ -70,11 +70,16 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 
 const PILL_OFFSET = 52;
 
+/* No route counts here. The numbers that used to sit on these cards — 48,
+   52, 41, 33 — were written by hand and matched nothing in the catalogue;
+   they were a mock-up's furniture left in the shipping app. A made-up count
+   is worse than no count, because a reader has no way to tell. The card is
+   a way into the region either way. */
 const REGIONS = [
-  { name: "Snowdonia",     slug: "Snowdon",      routes: 48 },
-  { name: "Lake District", slug: "Helvellyn",    routes: 52 },
-  { name: "Scotland",      slug: "Ben Nevis",    routes: 41 },
-  { name: "Peak District", slug: "Kinder Scout", routes: 33 },
+  { name: "Snowdonia",     slug: "Snowdon" },
+  { name: "Lake District", slug: "Helvellyn" },
+  { name: "Scotland",      slug: "Ben Nevis" },
+  { name: "Peak District", slug: "Kinder Scout" },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -1028,9 +1033,6 @@ export default function BaseCampScreen() {
                 />
                 <View style={{ position: "absolute", bottom: 8, left: 8, right: 8 }}>
                   <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" }}>{r.name}</Text>
-                  <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.58)", marginTop: 1 }}>
-                    {r.routes} routes
-                  </Text>
                 </View>
               </TouchableOpacity>
             ))}
