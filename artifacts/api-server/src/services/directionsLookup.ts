@@ -68,7 +68,11 @@ async function nominatim(url: URL): Promise<Place[]> {
 /** A car park, as the map and the directions page both want it. */
 export type ParkingCandidate = {
   placeId: string;
-  name: string;
+  /** Null when OpenStreetMap has no name for it, which is most of them.
+   *  Kept as null rather than filled with a placeholder: four pins all
+   *  reading "Mapped parking near Scafell Pike" tell you nothing and cannot
+   *  be told apart. What to call it instead is the caller's decision. */
+  name: string | null;
   address: string;
   lat: number;
   lng: number;
@@ -115,7 +119,7 @@ export async function searchParkingCandidates(
     .filter(place => eligibleParking(place, summit))
     .map(place => ({
       placeId: `${place.osm_type![0].toUpperCase()}${place.osm_id}`,
-      name: place.name || `Mapped parking near ${hillName}`,
+      name: place.name?.trim() || null,
       address: place.display_name ?? "",
       lat: Number(place.lat),
       lng: Number(place.lon),
@@ -139,7 +143,7 @@ export async function searchParking(_hillName: string, _location: string, summit
   const [place] = await searchParkingCandidates(_hillName, summit, 1);
   return place ? {
     placeId: place.placeId,
-    name: place.name,
+    name: place.name || `Mapped parking near ${_hillName}`,
     address: place.address,
     lat: place.lat,
     lng: place.lng,

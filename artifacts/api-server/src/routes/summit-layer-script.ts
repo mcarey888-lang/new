@@ -499,8 +499,13 @@ function ensureParkingLayers() {
 
 function parkingLabel(place) {
   /* Said on the pin itself, because a green dot alone does not explain
-     itself and the card may be shut. */
-  var name = place.name || "Parking";
+     itself and the card may be shut. Most car parks in OpenStreetMap have no
+     name at all, and labelling six of them the same thing is worse than
+     useless — so an unnamed one is labelled by how far it is from the
+     summit, which is both true and different for each. */
+  var name = place.name
+    ? place.name
+    : "Car park" + (place.distanceM == null ? "" : " · " + parkingDistance(place.distanceM));
   return place.status === "gps_confirmed" ? name : name + " (unconfirmed)";
 }
 
@@ -578,7 +583,7 @@ function setParkingNote(places, failed) {
   var confirmed = places.filter(function (p) { return p.status === "gps_confirmed"; });
   var nearest = places[0];
   if (confirmed.length) {
-    el.textContent = "Parking: " + (confirmed[0].name || "confirmed by walkers") +
+    el.textContent = "Parking: " + (confirmed[0].name || "a confirmed spot") +
       (confirmed[0].distanceM != null ? " · " + parkingDistance(confirmed[0].distanceM) : "") +
       (places.length > 1 ? " · " + (places.length - 1) + " more on the map" : "");
     el.style.color = "#8FC8A6";
@@ -586,7 +591,7 @@ function setParkingNote(places, failed) {
     /* Plural stays hedged. None of these has been confirmed by anybody, and
        the count must not read as corroboration. */
     el.textContent = places.length === 1
-      ? "Possible parking: " + (nearest.name || "found on the map") +
+      ? "Possible parking: " + (nearest.name || "an unnamed car park") +
         (nearest.distanceM != null ? " · " + parkingDistance(nearest.distanceM) : "") + " — not confirmed"
       : places.length + " possible car parks on the map — none confirmed";
     el.style.color = "#C8B98E";
