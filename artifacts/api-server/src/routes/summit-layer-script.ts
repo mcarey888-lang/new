@@ -14,14 +14,14 @@ import { coversViewSource, shouldRefetchSource } from "../services/summits/summi
  * it: not asking the server on every frame, not letting a slow answer
  * overwrite a newer one, and saying so when the list came back cut short.
  */
-export function summitLayerScript(summitsUrl: string, directionsUrl?: string): string {
+export function summitLayerScript(summitsUrl: string, parkingUrl?: string): string {
   const bands = JSON.stringify(zoomBandTable());
   return `
 /* ── Summit pins ────────────────────────────────────────────────────────── */
 
 var SUMMITS_URL = ${JSON.stringify(summitsUrl)};
 var SUMMIT_SEARCH_URL = ${JSON.stringify(summitsUrl + "/search")};
-var DIRECTIONS_URL = ${JSON.stringify(directionsUrl ?? null)};
+var PARKING_URL = ${JSON.stringify(parkingUrl ?? null)};
 var SUMMIT_BANDS = ${bands};
 var SUMMIT_MIN_ZOOM = ${MIN_PIN_ZOOM};
 var SUMMIT_ALL_ZOOM = ${ALL_SUMMITS_ZOOM};
@@ -458,6 +458,7 @@ function clearParking() {
   if (map.getSource("parking")) {
     map.getSource("parking").setData({ type: "FeatureCollection", features: [] });
   }
+  setParkingNote(null);
 }
 
 function ensureParkingLayers() {
@@ -466,22 +467,27 @@ function ensureParkingLayers() {
   map.addLayer({
     id: "parking-dot", type: "circle", source: "parking",
     paint: {
-      "circle-color": "#3C7DD9", "circle-radius": 9,
-      "circle-stroke-color": "#0B1418", "circle-stroke-width": 2,
+      /* Green only for a car park somebody has stood in with a working GPS.
+         The amber ones were found by searching a map, and the colour is the
+         fastest way to say so on a map you are reading one-handed. */
+      "circle-color": ["case", ["==", ["get", "status"], "gps_confirmed"], "#2F8F57", "#B08436"],
+      "circle-radius": ["case", ["==", ["get", "status"], "gps_confirmed"], 10, 8],
+      "circle-stroke-color": "#0B1418",
+      "circle-stroke-width": 2,
     },
   });
   map.addLayer({
-    id: "parking-label", type: "symbol", source: "parking",
+    id: "parking-icon", type: "symbol", source: "parking",
     layout: {
       "text-field": "P", "text-size": 11,
       "text-font": ["Noto Sans Bold", "Open Sans Bold", "Arial Unicode MS Bold"],
-      "text-allow-overlap": true,
+      "text-allow-overlap": true, "text-ignore-placement": true,
     },
     paint: { "text-color": "#FFFFFF" },
   });
   map.addLayer({
     id: "parking-name", type: "symbol", source: "parking",
-    minzoom: 11,
+    minzoom: 12,
     layout: {
       "text-field": ["get", "label"], "text-size": 11,
       "text-font": ["Noto Sans Regular", "Open Sans Regular", "Arial Unicode MS Regular"],
@@ -491,54 +497,100 @@ function ensureParkingLayers() {
   });
 }
 
+function parkingLabel(place) {
+  /* Said on the pin itself, because a green dot alone does not explain
+     itself and the card may be shut. */
+  var name = place.name || "Parking";
+  return place.status === "gps_confirmed" ? name : name + " (unconfirmed)";
+}
+
 function showParkingFor(summit) {
-  if (!DIRECTIONS_URL) return;
+  if (!PARKING_URL) return;
   var token = ++parkingToken;
   clearParking();
-  fetch(DIRECTIONS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      hillName: summit.name,
-      location: summit.place || "",
-      summitLat: summit.lat,
-      summitLng: summit.lng,
-    }),
-  })
+  var url = PARKING_URL +
+    "?lat=" + encodeURIComponent(summit.lat) +
+    "&lng=" + encodeURIComponent(summit.lng) +
+    "&name=" + encodeURIComponent(summit.name || "");
+  fetch(url)
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (data) {
+      /* An answer for a card that has since been closed or replaced belongs
+         to nothing: drawn anyway, it claims to be this hill's parking. */
       if (token !== parkingToken) return;
-      if (!data || typeof data.lat !== "number" || typeof data.lng !== "number") return;
+      var places = (data && data.parking) || [];
+      if (!places.length) { setParkingNote([]); return; }
       ensureParkingLayers();
       map.getSource("parking").setData({
         type: "FeatureCollection",
-        features: [{
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [data.lng, data.lat] },
-          properties: { label: data.name || "Parking", status: data.status || "" },
-        }],
+        features: places.map(function (place) {
+          return {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [place.lng, place.lat] },
+            properties: {
+              label: parkingLabel(place),
+              status: place.status || "internet_lookup",
+              name: place.name || "Parking",
+              distanceM: place.distanceM == null ? null : place.distanceM,
+            },
+          };
+        }),
       });
-      setParkingNote(data);
+      setParkingNote(places);
     })
-    .catch(function () { /* No parking found is a normal answer, not a fault. */ });
+    .catch(function () {
+      if (token !== parkingToken) return;
+      /* Distinguished from "no car parks here", which is a real answer for
+         plenty of hills. */
+      setParkingNote(null, true);
+    });
+}
+
+function parkingDistance(metres) {
+  if (metres == null) return "";
+  return metres < 1000 ? Math.round(metres) + " m" : (metres / 1000).toFixed(1) + " km";
 }
 
 /**
  * Say how much the parking is worth trusting.
  *
- * One of these has been stood in by somebody with a phone; the other was found
- * by searching a map. Drawn the same, a guess sends people down a farm track
- * at seven in the morning, so the card has to tell them apart.
+ * One of these has been stood in by somebody with a phone; the rest were
+ * found by searching a map. Drawn the same, a guess sends people down a farm
+ * track at seven in the morning, so the card has to tell them apart.
  */
-function setParkingNote(data) {
+function setParkingNote(places, failed) {
   var el = document.getElementById("summitParking");
   if (!el) return;
-  if (!data) { el.textContent = ""; el.style.display = "none"; return; }
-  var confirmed = data.status === "gps_confirmed";
-  el.textContent = confirmed
-    ? "Parking: " + (data.name || "confirmed by walkers")
-    : "Possible parking: " + (data.name || "found on the map") + " — not confirmed";
-  el.style.color = confirmed ? "#8FC8A6" : "#C8B98E";
+  if (failed) {
+    el.textContent = "Could not check parking";
+    el.style.color = "#9FB0AC";
+    el.style.display = "block";
+    return;
+  }
+  if (!places) { el.textContent = ""; el.style.display = "none"; return; }
+  if (!places.length) {
+    el.textContent = "No mapped parking found nearby";
+    el.style.color = "#9FB0AC";
+    el.style.display = "block";
+    return;
+  }
+
+  var confirmed = places.filter(function (p) { return p.status === "gps_confirmed"; });
+  var nearest = places[0];
+  if (confirmed.length) {
+    el.textContent = "Parking: " + (confirmed[0].name || "confirmed by walkers") +
+      (confirmed[0].distanceM != null ? " · " + parkingDistance(confirmed[0].distanceM) : "") +
+      (places.length > 1 ? " · " + (places.length - 1) + " more on the map" : "");
+    el.style.color = "#8FC8A6";
+  } else {
+    /* Plural stays hedged. None of these has been confirmed by anybody, and
+       the count must not read as corroboration. */
+    el.textContent = places.length === 1
+      ? "Possible parking: " + (nearest.name || "found on the map") +
+        (nearest.distanceM != null ? " · " + parkingDistance(nearest.distanceM) : "") + " — not confirmed"
+      : places.length + " possible car parks on the map — none confirmed";
+    el.style.color = "#C8B98E";
+  }
   el.style.display = "block";
 }
 

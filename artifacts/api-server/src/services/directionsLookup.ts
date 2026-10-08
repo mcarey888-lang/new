@@ -65,24 +65,84 @@ async function nominatim(url: URL): Promise<Place[]> {
   return request.finally(() => { queuedLookups--; });
 }
 
-export async function searchParking(_hillName: string, _location: string, summit: Coordinates) {
+/** A car park, as the map and the directions page both want it. */
+export type ParkingCandidate = {
+  placeId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  distanceM: number;
+};
+
+/* Car parks do not move, and the map asks again every time a summit card is
+   opened. Without this, tapping five hills queues five serialised lookups at
+   1.1s apart and the sixth is told the lookup is busy. */
+const candidateCache = new Map<string, { at: number; places: ParkingCandidate[] }>();
+const CANDIDATE_TTL_MS = 30 * 60 * 1000;
+const CANDIDATE_CACHE_MAX = 500;
+
+export function parkingCacheKey(summit: Coordinates): string {
+  /* Three decimal places is about 110 m — close enough that two summits
+     sharing a key would share their car parks anyway. */
+  return `${summit.lat.toFixed(3)}:${summit.lng.toFixed(3)}`;
+}
+
+/** Visible for tests; a stale entry would otherwise outlive the case. */
+export function clearParkingCache(): void { candidateCache.clear(); }
+
+/**
+ * Every eligible car park near a summit, nearest first.
+ *
+ * One Nominatim request either way: the search already returns up to fifty
+ * and the old behaviour threw all but the nearest away.
+ */
+export async function searchParkingCandidates(
+  hillName: string, summit: Coordinates, limit = 6,
+): Promise<ParkingCandidate[]> {
+  const key = parkingCacheKey(summit);
+  const hit = candidateCache.get(key);
+  if (hit && Date.now() - hit.at < CANDIDATE_TTL_MS) return hit.places.slice(0, limit);
+
   const url = new URL("https://nominatim.openstreetmap.org/search");
   const lonSpan = 0.07 / Math.max(0.3, Math.cos(summit.lat * Math.PI / 180));
   url.search = new URLSearchParams({
     q: "parking", format: "jsonv2", limit: "50", bounded: "1", extratags: "1",
     viewbox: `${summit.lng - lonSpan},${Math.min(90, summit.lat + 0.055)},${summit.lng + lonSpan},${Math.max(-90, summit.lat - 0.055)}`,
   }).toString();
-  const candidates = (await nominatim(url)).filter(place => eligibleParking(place, summit));
-  candidates.sort((a, b) =>
-    distanceMetres(summit, { lat: Number(a.lat), lng: Number(a.lon) }) -
-    distanceMetres(summit, { lat: Number(b.lat), lng: Number(b.lon) }));
-  const place = candidates[0];
+
+  const places: ParkingCandidate[] = (await nominatim(url))
+    .filter(place => eligibleParking(place, summit))
+    .map(place => ({
+      placeId: `${place.osm_type![0].toUpperCase()}${place.osm_id}`,
+      name: place.name || `Mapped parking near ${hillName}`,
+      address: place.display_name ?? "",
+      lat: Number(place.lat),
+      lng: Number(place.lon),
+      distanceM: Math.round(distanceMetres(summit, { lat: Number(place.lat), lng: Number(place.lon) })),
+    }))
+    .sort((a, b) => a.distanceM - b.distanceM);
+
+  /* Oldest out first. An unbounded map of every summit anybody has tapped is
+     a slow leak in a long-running server. */
+  if (candidateCache.size >= CANDIDATE_CACHE_MAX) {
+    const oldest = candidateCache.keys().next();
+    if (!oldest.done) candidateCache.delete(oldest.value);
+  }
+  candidateCache.set(key, { at: Date.now(), places });
+  return places.slice(0, limit);
+}
+
+export async function searchParking(_hillName: string, _location: string, summit: Coordinates) {
+  /* Unchanged contract: the directions page asks for one place and the GPS
+     confirmation flow keys on its placeId. */
+  const [place] = await searchParkingCandidates(_hillName, summit, 1);
   return place ? {
-    placeId: `${place.osm_type![0].toUpperCase()}${place.osm_id}`,
-    name: place.name || `Mapped parking near ${_hillName}`,
-    address: place.display_name ?? "",
-    lat: Number(place.lat),
-    lng: Number(place.lon),
+    placeId: place.placeId,
+    name: place.name,
+    address: place.address,
+    lat: place.lat,
+    lng: place.lng,
   } : null;
 }
 

@@ -84,7 +84,7 @@ function harness() {
       });
     });
 
-  const body = `${summitLayerScript("/api/summits", "/api/directions/lookup")}
+  const body = `${summitLayerScript("/api/summits", "/api/summits/parking")}
   return { buildSummitSearch: buildSummitSearch, searchInput: function () { return searchInput; },
            searchList: function () { return searchList; }, goToSummit: goToSummit,
            showParkingFor: showParkingFor, hideSummitCard: hideSummitCard,
@@ -217,35 +217,63 @@ describe("the search box", () => {
   });
 });
 
-describe("the car park on the summit card", () => {
-  it("asks the existing directions lookup, with the hill's region to narrow it", async () => {
+describe("the car parks on the summit card", () => {
+  const confirmed = {
+    placeId: "N2", name: "Wasdale Head NT", lat: 54.46, lng: -3.28,
+    distanceM: 1800, status: "gps_confirmed",
+  };
+  const guess = {
+    placeId: "N1", name: "Roadside", lat: 54.47, lng: -3.25,
+    distanceM: 900, status: "internet_lookup",
+  };
+
+  it("asks for car parks near the hill, by position and name", () => {
     const h = harness();
     h.api.showParkingFor(HILL);
     expect(h.calls).toHaveLength(1);
-    expect(h.calls[0]!.url).toBe("/api/directions/lookup");
-    expect(h.calls[0]!.opts!.method).toBe("POST");
-    const sent = JSON.parse(h.calls[0]!.opts!.body!);
-    /* "Scafell Pike" alone matches more than one hill in the catalogue. */
-    expect(sent).toMatchObject({
-      hillName: "Scafell Pike", location: "Cumbria, England",
-      summitLat: HILL.lat, summitLng: HILL.lng,
+    const url = h.calls[0]!.url;
+    expect(url).toContain("/api/summits/parking?");
+    expect(url).toContain("lat=54.454");
+    expect(url).toContain("lng=-3.211");
+    /* The name identifies a confirmed car park, and labels an unnamed one. */
+    expect(url).toContain("name=Scafell%20Pike");
+  });
+
+  it("draws every car park it was given, not only the nearest", async () => {
+    const h = harness();
+    h.api.showParkingFor(HILL);
+    h.queue[0]!.resolve({ parking: [confirmed, guess] });
+    await h.tick();
+    const features = h.parking()!.features;
+    expect(features).toHaveLength(2);
+    expect(features.map(f => f.properties["name"])).toEqual(["Wasdale Head NT", "Roadside"]);
+  });
+
+  it("puts each car park where the lookup said it is", async () => {
+    const h = harness();
+    h.api.showParkingFor(HILL);
+    h.queue[0]!.resolve({ parking: [confirmed] });
+    await h.tick();
+    expect(h.parking()!.features[0]).toMatchObject({
+      geometry: { type: "Point", coordinates: [-3.28, 54.46] },
+      properties: { status: "gps_confirmed", name: "Wasdale Head NT" },
     });
   });
 
   it("marks a walker-confirmed car park as confirmed", async () => {
     const h = harness();
     h.api.showParkingFor(HILL);
-    h.queue[0]!.resolve({ status: "gps_confirmed", name: "Wasdale Head NT", lat: 54.46, lng: -3.28 });
+    h.queue[0]!.resolve({ parking: [confirmed] });
     await h.tick();
     const note = h.byId.get("summitParking")!;
-    expect(note.textContent).toBe("Parking: Wasdale Head NT");
+    expect(note.textContent).toContain("Parking: Wasdale Head NT");
     expect(note.textContent).not.toContain("not confirmed");
   });
 
   it("will not pass a looked-up car park off as a confirmed one", async () => {
     const h = harness();
     h.api.showParkingFor(HILL);
-    h.queue[0]!.resolve({ status: "internet_lookup", name: "Car Park", lat: 54.46, lng: -3.28 });
+    h.queue[0]!.resolve({ parking: [guess] });
     await h.tick();
     const note = h.byId.get("summitParking")!;
     /* Drawn identically, a guess sends somebody down a farm track at dawn.
@@ -255,40 +283,57 @@ describe("the car park on the summit card", () => {
     expect(note.textContent).not.toMatch(/^Parking:/);
   });
 
-  it("puts the car park on the map where the lookup said it is", async () => {
+  it("does not let a count of guesses read as corroboration", async () => {
     const h = harness();
     h.api.showParkingFor(HILL);
-    h.queue[0]!.resolve({ status: "gps_confirmed", name: "Wasdale Head NT", lat: 54.46, lng: -3.28 });
+    h.queue[0]!.resolve({ parking: [guess, { ...guess, placeId: "N3" }, { ...guess, placeId: "N4" }] });
     await h.tick();
-    const features = h.parking()!.features;
-    expect(features).toHaveLength(1);
-    expect(features[0]).toMatchObject({
-      geometry: { type: "Point", coordinates: [-3.28, 54.46] },
-      properties: { label: "Wasdale Head NT", status: "gps_confirmed" },
-    });
+    const note = h.byId.get("summitParking")!;
+    /* Three unconfirmed car parks are not better evidence than one. */
+    expect(note.textContent).toBe("3 possible car parks on the map — none confirmed");
   });
 
-  it("draws nothing when no car park was found", async () => {
+  it("labels an unconfirmed pin as unconfirmed on the map itself", async () => {
+    const h = harness();
+    h.api.showParkingFor(HILL);
+    h.queue[0]!.resolve({ parking: [confirmed, guess] });
+    await h.tick();
+    const labels = h.parking()!.features.map(f => f.properties["label"]);
+    /* The card can be shut; the pin has to stand on its own. */
+    expect(labels).toContain("Wasdale Head NT");
+    expect(labels).toContain("Roadside (unconfirmed)");
+  });
+
+  it("says when no car park was found, which is a real answer", async () => {
     const h = harness();
     h.api.ensureParkingLayers();
     h.api.showParkingFor(HILL);
-    /* A 404 here is a normal answer: plenty of hills have no named parking. */
-    h.queue[0]!.resolve(null);
+    h.queue[0]!.resolve({ parking: [] });
     await h.tick();
     expect(h.parking()!.features).toHaveLength(0);
+    expect(h.byId.get("summitParking")!.textContent).toBe("No mapped parking found nearby");
   });
 
-  it("takes the car park away with the card that owned it", async () => {
+  it("separates a failed check from a hill with no parking", async () => {
     const h = harness();
     h.api.showParkingFor(HILL);
-    h.queue[0]!.resolve({ status: "gps_confirmed", name: "Wasdale Head NT", lat: 54.46, lng: -3.28 });
+    h.queue[0]!.reject(new Error("offline"));
     await h.tick();
-    expect(h.parking()!.features).toHaveLength(1);
+    expect(h.byId.get("summitParking")!.textContent).toBe("Could not check parking");
+  });
+
+  it("takes the car parks away with the card that owned them", async () => {
+    const h = harness();
+    h.api.showParkingFor(HILL);
+    h.queue[0]!.resolve({ parking: [confirmed, guess] });
+    await h.tick();
+    expect(h.parking()!.features).toHaveLength(2);
 
     h.api.hideSummitCard();
-    /* Left behind, it sits there claiming to be the parking for the next
+    /* Left behind, they sit there claiming to be the parking for the next
        hill somebody opens. */
     expect(h.parking()!.features).toHaveLength(0);
+    expect(h.byId.get("summitParking")!.style["display"]).toBe("none");
   });
 
   it("does not let a slow answer land on the card that replaced it", async () => {
@@ -298,11 +343,12 @@ describe("the car park on the summit card", () => {
     h.api.showParkingFor(other);
 
     /* Scafell's answer arrives after Great Gable's card is already open. */
-    h.queue[1]!.resolve({ status: "gps_confirmed", name: "Honister", lat: 54.51, lng: -3.21 });
+    h.queue[1]!.resolve({ parking: [{ ...confirmed, name: "Honister" }] });
     await h.tick();
-    h.queue[0]!.resolve({ status: "gps_confirmed", name: "Wasdale Head NT", lat: 54.46, lng: -3.28 });
+    h.queue[0]!.resolve({ parking: [{ ...confirmed, name: "Wasdale Head NT" }] });
     await h.tick();
 
-    expect(h.parking()!.features[0]!.properties["label"]).toBe("Honister");
+    expect(h.parking()!.features).toHaveLength(1);
+    expect(h.parking()!.features[0]!.properties["name"]).toBe("Honister");
   });
 });
