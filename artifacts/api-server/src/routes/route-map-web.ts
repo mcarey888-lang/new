@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { summitLayerScript } from "./summit-layer-script";
+import { recordingScript } from "./recording-script";
 import { mapControlsScript } from "./map-controls-script";
 
 const router: IRouter = Router();
@@ -154,6 +155,9 @@ export function buildRouteMapHtml(
    *  simply says nothing about parking, which is the honest outcome — a car
    *  park invented to fill the gap is worse than no line at all. */
   parkingUrl?: string,
+  /** True when this page is hosting a recording: the overlay starts switched
+   *  on, so the walker never sees the planning chrome at all. */
+  recording?: boolean,
 ): string {
   const layers = baseLayers(osKey, tilePrefix, hasMapbox);
   const initial = layers[0];
@@ -909,6 +913,15 @@ function handleMsg(ev) {
   if (msg.type === "locate") {
     map.easeTo({ center: [msg.lng, msg.lat], zoom: msg.zoom || 14, duration: 600 });
   }
+  /* Recording. Namespaced, because the page already has a "clear" that means
+     the drawn route and a "locate" that only moves the camera. */
+  if (msg.type === "recPoint") { recAddPoint(msg.lat, msg.lng); return; }
+  if (msg.type === "recReplay" && Array.isArray(msg.points)) { recReplay(msg.points); return; }
+  if (msg.type === "recPlanned" && Array.isArray(msg.points)) { recPlanned(msg.points); return; }
+  if (msg.type === "recClear") { recClearTrack(); return; }
+  if (msg.type === "recRecentre") { recRecentre(); return; }
+  if (msg.type === "recording") { setRecording(msg.on !== false); return; }
+
   if (msg.type === "layer") setLayer(msg.id);
   if (msg.type === "mode") setMode(msg.value === "3d" ? "3d" : "2d");
   if (msg.type === "flyover") flyover();
@@ -1052,6 +1065,9 @@ document.getElementById("gpx").onclick = function () {
 ${summitsUrl ? summitLayerScript(summitsUrl, parkingUrl) : ""}
 ${summitsUrl ? `map.on("moveend", scheduleSummits);` : ""}
 
+${recordingScript()}
+${recording ? `map.on("load", function () { setRecording(true); });` : ""}
+
 ${chrome === "full" ? mapControlsScript(Boolean(gpxUrl)) : ""}
 ${chrome === "full" ? "buildControls();" : ""}
 </script>
@@ -1070,10 +1086,13 @@ router.get("/route-map", (req, res) => {
   const gpxUrl = `${req.baseUrl}/route-gpx`;
   const summitsUrl = `${req.baseUrl}/summits`;
   const parkingUrl = `${req.baseUrl}/summits/parking`;
+  /* The recorder opens this page with ?recording=1 so the walking chrome is
+     there from the first paint — no flash of a search box being put away. */
+  const recording = req.query["recording"] === "1";
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // Vary on the query so a chromeless response is not served to a browser.
   res.setHeader("Cache-Control", "public, max-age=3600");
-  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl, summitsUrl, parkingUrl));
+  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl, summitsUrl, parkingUrl, recording));
 });
 
 export default router;
