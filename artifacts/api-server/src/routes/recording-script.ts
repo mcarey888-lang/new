@@ -159,6 +159,26 @@ function recAddPoint(lat, lng) {
   }
 }
 
+/**
+ * Where you are, before anything is being recorded.
+ *
+ * Kept out of the track: a point shown while waiting at the car park is not
+ * part of the walk, and adding it would draw a line from the car park to
+ * wherever the first real fix lands.
+ */
+function recLocate(lat, lng) {
+  ensureRecordingLayers();
+  if (recPts.length) return;
+  map.getSource("rec-pos").setData({
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature", geometry: { type: "Point", coordinates: [lng, lat] },
+      properties: { kind: "here" },
+    }],
+  });
+  if (recFollow.following) map.easeTo({ center: [lng, lat], zoom: FOLLOW_ZOOM, duration: 600 });
+}
+
 function recReplay(points) {
   ensureRecordingLayers();
   recPts = [];

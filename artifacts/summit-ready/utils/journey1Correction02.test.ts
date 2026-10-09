@@ -256,7 +256,18 @@ describe("Track screen", () => {
 
   it("keeps pause, resume and finish on the recording sheet", () => {
     expect(track).toContain("isPaused ? resumeTracking : pauseTracking");
-    expect(track).toContain("Finish Hike");
+    expect(track).toMatch(/Finish hike/i);
+  });
+
+  it("puts finishing behind a pause, and then behind a confirmation", () => {
+    /* Two deliberate steps. A Finish sitting beside Pause on a wet screen
+       ends the recording of a six-hour day by accident. */
+    const controls = track.slice(track.indexOf("<View style={s.controls}>"));
+    const finish = controls.indexOf("track-finish");
+    const guard = controls.indexOf("{isPaused ? (");
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(finish);
+    expect(track).toContain("setConfirmFinish(true)");
   });
 
   it("keeps the offline checkpoint and outbox paths", () => {

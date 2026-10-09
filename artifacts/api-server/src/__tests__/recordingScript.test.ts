@@ -22,7 +22,7 @@ describe("the recording overlay script", () => {
 
   it("defines everything the recorder sends messages to", () => {
     const body = script();
-    for (const fn of ["recAddPoint", "recReplay", "recPlanned", "recClearTrack", "setRecording", "recRecentre"]) {
+    for (const fn of ["recAddPoint", "recLocate", "recReplay", "recPlanned", "recClearTrack", "setRecording", "recRecentre"]) {
       expect(body).toMatch(new RegExp(`function ${fn}\\(`));
     }
   });
@@ -47,6 +47,15 @@ describe("the recording overlay script", () => {
     const body = script();
     expect(body).toMatch(/recPts\.push\(\[points\[i\]\[1\], points\[i\]\[0\]\]\)/);
     expect(body).toMatch(/coords\.push\(\[points\[i\]\[1\], points\[i\]\[0\]\]\)/);
+  });
+
+  it("keeps a pre-start position out of the recorded track", () => {
+    const body = script();
+    const locate = body.slice(body.indexOf("function recLocate("), body.indexOf("function recReplay("));
+    /* A point shown while waiting at the car park is not part of the walk.
+       Adding it draws a line from the car park to the first real fix. */
+    expect(locate).toMatch(/if \(recPts\.length\) return;/);
+    expect(locate).not.toMatch(/recPts\.push/);
   });
 
   it("can lift the attribution above whatever covers the map", () => {

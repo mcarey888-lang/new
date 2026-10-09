@@ -365,37 +365,18 @@ export function SharedTrackScreen() {
                 ))}
               </ScrollView>
             )}
-<<<<<<< HEAD
-          </Animated.View>
-        </View>
-      </ScrollView>
-=======
           </Pressable>
         </Pressable>
       </Modal>
->>>>>>> 1211a9c (Track is the map now, with a sheet instead of a landing page)
     </View>
   );
 }
 
-<<<<<<< HEAD
-const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: BASECAMP.ink },
-  backgroundImage: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
-  page: { paddingHorizontal: BASECAMP.gutter, paddingBottom: 26 },
-  header: { marginBottom: SP.lg },
-  eyebrowRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-  eyebrowMark: { width: 18, height: 2, backgroundColor: EXPLORE.accent, borderRadius: 2 },
-  eyebrow: { ...TYPE.eyebrow, color: BASECAMP.textMuted, fontSize: 10, letterSpacing: 1.7 },
-  pageTitle: {
-    ...TYPE.hero, fontSize: 33, lineHeight: 37, color: BASECAMP.text,
-=======
 const st = StyleSheet.create({
   screen: { flex: 1 },
   header: {
     position: "absolute", top: 0, left: 0, right: 0, zIndex: 4,
     flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingBottom: 8,
->>>>>>> 1211a9c (Track is the map now, with a sheet instead of a landing page)
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",

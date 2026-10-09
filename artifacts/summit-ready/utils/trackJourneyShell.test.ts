@@ -107,7 +107,10 @@ describe("the offline-first architecture is intact", () => {
   it("draws canonical geometry only after map and local handoff are both ready", () => {
     expect(TRACK_CODE).toMatch(/if \(!mapReady \|\| !canonicalRouteIntent \|\| !canonicalRouteContext\) return;/);
     expect(TRACK_CODE).toMatch(/canonicalRouteMapPoints\(canonicalRouteContext\.geometry\.coordinates\)/);
-    expect(TRACK_CODE).toMatch(/JSON\.stringify\(\{ type: "referenceRoute", points \}\)/);
+    /* The planned line the recorded track is compared against. Renamed when
+       recording moved onto the shared MapLibre map, whose own "route" and
+       "clear" already meant the drawn route. */
+    expect(TRACK_CODE).toMatch(/JSON\.stringify\(\{ type: "recPlanned", points \}\)/);
     expect(TRACK_CODE).toMatch(/target\.postMessage\(msg, "\*"\)/);
     expect(TRACK_CODE).toMatch(/webViewRef\.current\.postMessage\(msg\)/);
     expect(TRACK_CODE.match(/setMapReady\(true\)/g) ?? []).toHaveLength(2);
