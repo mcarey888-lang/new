@@ -27,6 +27,18 @@ Users should retain their own saved routes and be able to share created routes s
 
 **How to apply:** Keep private saved plans separate from public community copies. Publication must be an explicit route-sharing action, never an automatic consequence of recording a hike or saving a private plan. This choice does not relax the existing photo, activity or location-history privacy boundaries.
 
+Only the specific route actually completed is eligible for community sharing.
+Ask the walker to share each eligible route; do not publish automatically or
+unlock all their created routes after their first completed hike.
+
+**Why:** The user explicitly chose “Only the route actually completed” and
+“Ask the walker to share each route” when clarifying the completion requirement.
+
+**How to apply:** Check route-specific completion before offering publication.
+Declining leaves the route private. Publish immediately after explicit sharing
+confirmation, without an approval queue. Keep unwalked plans and other saved
+routes private.
+
 Saved hikes should have a dedicated space in You, not only an entry inside Track
 or the route planner.
 
