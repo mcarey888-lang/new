@@ -6,6 +6,20 @@ const root = join(__dirname, "..");
 const read = (file: string) => readFileSync(join(root, file), "utf8");
 
 describe("Track artwork and personal route access", () => {
+  it("makes the same real private route library available in You without changing Track", () => {
+    const profile = read("components/profile/PrimaryProfilePresentation.tsx");
+    const account = read("app/(tabs)/account.tsx");
+    const section = read("components/track/SavedRoutesSection.tsx");
+    expect(profile).toContain('{ value: "saved", label: "Saved hikes" }');
+    expect(account).toMatch(/tab === "saved" && !showSettings && \([\s\S]*?<SavedRoutesSection/);
+    expect(account).toContain('testID="you-saved-hikes"');
+    expect(account).toContain("Only you can see this library.");
+    expect(section).toContain('title = "Saved routes"');
+    expect(section).toContain('testID = "track-saved-routes"');
+    expect(section).toContain("listRoutes(() => tokenGetter.current())");
+    expect(section).toContain("result?.owner === userId");
+  });
+
   it("restores the original full-screen artwork without removing tracking controls", () => {
     const screen = read("components/SharedTrackScreen.tsx");
     expect(screen).toContain('require("@/assets/images/track-mountain-hiker.png")');

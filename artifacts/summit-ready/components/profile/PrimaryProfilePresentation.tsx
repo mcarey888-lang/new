@@ -9,10 +9,11 @@ import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import type { RankRequirementResult } from "@/utils/rankDomain";
 
-export type PrimaryProfileTab = "feed" | "profile" | "achievements" | "photos" | "stats";
+export type PrimaryProfileTab = "feed" | "saved" | "profile" | "achievements" | "photos" | "stats";
 
 export const PRIMARY_PROFILE_TABS: { value: PrimaryProfileTab; label: string }[] = [
   { value: "feed", label: "Feed" },
+  { value: "saved", label: "Saved hikes" },
   { value: "profile", label: "Profile" },
   { value: "achievements", label: "Achievements" },
   { value: "photos", label: "Photos" },

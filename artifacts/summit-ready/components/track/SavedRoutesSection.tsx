@@ -7,7 +7,12 @@ import { BASECAMP, TYPE } from "@/constants/tokens";
 import { describeRoute, listRoutes, type PlannedRoute } from "@/utils/plannedRouteApi";
 import { FollowRouteButton } from "./FollowRouteButton";
 
-export function SavedRoutesSection() {
+export function SavedRoutesSection({
+  title = "Saved routes",
+  kicker = "YOUR PERSONAL PLANS",
+  description,
+  testID = "track-saved-routes",
+}: { title?: string; kicker?: string; description?: string; testID?: string } = {}) {
   const { userId, isLoaded, getToken } = useAuth();
   const tokenGetter = useRef(getToken);
   tokenGetter.current = getToken;
@@ -40,15 +45,16 @@ export function SavedRoutesSection() {
   });
 
   return (
-    <View style={styles.section} testID="track-saved-routes">
-      <Text style={styles.kicker}>YOUR PERSONAL PLANS</Text>
+    <View style={styles.section} testID={testID}>
+      <Text style={styles.kicker}>{kicker}</Text>
       <View style={styles.heading}>
-        <Text style={styles.title}>Saved routes</Text>
+        <Text style={styles.title}>{title}</Text>
         <Pressable onPress={() => openPlanner()} accessibilityRole="button"
           accessibilityLabel="Plan a new route" style={styles.action}>
           <Text style={styles.actionText}>Plan a route</Text>
         </Pressable>
       </View>
+      {description ? <Text style={styles.message}>{description}</Text> : null}
       {!isLoaded || (userId && (!current || current.loading)) ? (
         <ActivityIndicator color={BASECAMP.accent} accessibilityLabel="Loading saved routes" />
       ) : !userId ? (

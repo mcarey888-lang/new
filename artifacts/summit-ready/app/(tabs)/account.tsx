@@ -74,6 +74,7 @@ import {
 } from "@/components/profile/PrimaryProfilePresentation";
 import { CommunityHub, type CommunityHubProps } from "@/components/profile/CommunityHub";
 import { DemoCommunityPreview } from "@/components/profile/DemoCommunityPreview";
+import { SavedRoutesSection } from "@/components/track/SavedRoutesSection";
 import { useCommunity } from "@/hooks/useCommunity";
 import { useSavedDemoYear } from "@/hooks/useSavedDemoYear";
 import { savedDemoYear } from "@/utils/savedDemoYear";
@@ -544,6 +545,17 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
               <DemoCommunityPreview />
             </View>
           )
+        )}
+
+        {tab === "saved" && !showSettings && (
+          <View style={styles.feedContent}>
+            <SavedRoutesSection
+              title="Saved hikes"
+              kicker="MY ROUTES"
+              description="Routes you’ve created and saved. Only you can see this library."
+              testID="you-saved-hikes"
+            />
+          </View>
         )}
 
         {tab === "achievements" && !showSettings && (
