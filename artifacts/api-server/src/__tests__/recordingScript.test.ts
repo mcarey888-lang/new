@@ -49,6 +49,24 @@ describe("the recording overlay script", () => {
     expect(body).toMatch(/coords\.push\(\[points\[i\]\[1\], points\[i\]\[0\]\]\)/);
   });
 
+  it("can lift the attribution above whatever covers the map", () => {
+    const body = script();
+    /* "Contains OS data (c) Crown copyright" is a condition of the OS
+       licence. A bottom sheet covering it is a licence problem, not a
+       cosmetic one. */
+    expect(body).toMatch(/function setBottomInset\(/);
+    expect(body).toContain("maplibregl-ctrl-bottom-right");
+    expect(body).toContain("maplibregl-ctrl-bottom-left");
+  });
+
+  it("will not let a host push the attribution off the screen", () => {
+    const body = script();
+    /* Clamped: a host that sends 100000 must not be able to hide the
+       attribution by shoving it past the top of the map. */
+    expect(body).toMatch(/Math\.min\(600,/);
+    expect(body).toMatch(/Math\.max\(0,/);
+  });
+
   it("guards every call into the page's own functions", () => {
     /* The overlay loads beside the planner, but a page built without search
        or drawing must not throw on the first setRecording. */
