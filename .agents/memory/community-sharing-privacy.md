@@ -26,3 +26,13 @@ Users should retain their own saved routes and be able to share created routes s
 **Why:** The user requested an AllTrails-like shared route library and selected immediate publication.
 
 **How to apply:** Keep private saved plans separate from public community copies. Publication must be an explicit route-sharing action, never an automatic consequence of recording a hike or saving a private plan. This choice does not relax the existing photo, activity or location-history privacy boundaries.
+
+Saved hikes should have a dedicated space in You, not only an entry inside Track
+or the route planner.
+
+**Why:** The user requested a clear personal home in You for saved hikes while
+discussing how other members should discover shared routes.
+
+**How to apply:** Make the user's saved library accessible from You. Do not
+interpret this navigation requirement as permission to expose private saved
+routes to other members.
