@@ -181,7 +181,11 @@ describe("Activity Complete tells the truth about consequences", () => {
   it("keeps every consequence row the owning systems supply", () => {
     for (const id of [
       "completion-elevation-bank", "completion-readiness", "completion-training",
-      "completion-expedition", "completion-challenge-achievement", "completion-offline",
+      "completion-expedition", "completion-challenge-achievement",
+      /* Was "completion-offline", which only appeared when offline. Where
+         the record is has three answers now — on the device, pending, or
+         confirmed synced — and the row states whichever is true. */
+      "completion-sync",
     ]) {
       expect(view).toContain(`testID="${id}"`);
     }

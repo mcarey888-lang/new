@@ -247,14 +247,32 @@ export function ActivityCompleteView({
               </SRPanel>
             </View>
     
-            {completionPresentation.sync === "saved_locally" && (
-              <SRSubPanel style={s.offlineRow} testID="completion-offline">
-                <WifiOff size={14} color={T.orange} />
-                <Text style={s.offlineText}>
-                  Saved on this device — consequences will sync when you are back online.
-                </Text>
-              </SRSubPanel>
-            )}
+            {/* Where the record is, stated as three different things because
+                they are three different things. */}
+            <SRSubPanel style={s.offlineRow} testID="completion-sync">
+              {completionPresentation.sync === "saved_locally" ? (
+                <>
+                  <WifiOff size={14} color={T.orange} />
+                  <Text style={s.offlineText}>
+                    Saved on device — it will sync when you are back online.
+                  </Text>
+                </>
+              ) : completionPresentation.sync === "synced" ? (
+                <>
+                  <Check size={14} color={T.green} strokeWidth={3} />
+                  <Text style={[s.offlineText, { color: T.green }]}>
+                    Synced.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <WifiOff size={14} color={T.textMuted} />
+                  <Text style={[s.offlineText, { color: T.textMuted }]}>
+                    Saved on device · sync pending.
+                  </Text>
+                </>
+              )}
+            </SRSubPanel>
     
             {trainingPlan && trainingPlan.length > 0 && (
               <SRSubPanel

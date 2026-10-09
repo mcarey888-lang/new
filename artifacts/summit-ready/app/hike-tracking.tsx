@@ -1833,6 +1833,15 @@ export default function HikeTrackingScreen() {
   const isIdle     = status === "idle";
   /* Shown only for an expedition stage that actually has a mountain behind
      it, and only once recording has begun. */
+  /* A session set in metres of ascent. Null when there is no target to
+     measure against, in which case nothing is shown rather than a bar
+     filling towards zero. */
+  const trainingTargetM = hillMeta.sessionKey
+    && typeof hillMeta.estimatedTotalGain === "number"
+    && Number.isFinite(hillMeta.estimatedTotalGain)
+    && hillMeta.estimatedTotalGain > 0
+      ? hillMeta.estimatedTotalGain
+      : null;
   const showProgressSwitch = !isIdle
     && hillMeta.trackingMode === "expedition-route"
     && !!trackedExpedition;
@@ -2000,6 +2009,29 @@ export default function HikeTrackingScreen() {
         </View>
       )}
 
+      {/* A training session's target, where the expedition mountain would be.
+             Ascent, because that is what a session is set in and what the
+             recorder measures against it. */}
+      {!isIdle && trainingTargetM ? (
+        <View style={[s.trainingTarget, { top: insets.top + 62 }]} pointerEvents="none">
+          <Text style={s.trainingTargetLabel} numberOfLines={1}>
+            {hillMeta.hillName ?? "Training session"}
+          </Text>
+          <View style={s.trainingBar}>
+            <View
+              style={[s.trainingFill, {
+                width: `${Math.min(100, Math.round((elevGainM / trainingTargetM) * 100))}%`,
+              }]}
+            />
+          </View>
+          <Text style={s.trainingTargetMeta}>
+            {elevGainM >= trainingTargetM
+              ? `${fmtM(elevGainM)} of ${fmtM(trainingTargetM)} target · reached`
+              : `${fmtM(elevGainM)} of ${fmtM(trainingTargetM)} target`}
+          </Text>
+        </View>
+      ) : null}
+
       {showProgressSwitch && panel === "progress" && (
         <View style={[s.progressSheet, { top: insets.top + 110 }]}>
           <TrackProgressPanel expedition={trackedExpedition} recordedGainM={elevGainM} />
@@ -2091,14 +2123,14 @@ export default function HikeTrackingScreen() {
             ) ? (
               <Text style={[s.readyAssurance, { color: T.orange }]}>
                 {canonicalRouteContextPending
-                  ? "Preparing the canonical route handoff on this device. Start is unavailable until it is ready."
-                  : "Canonical route context is unavailable or expired. Return to Mountain Detail and select the verified route again. This will not start an unassociated hike."}
+                  ? "Getting the route ready on this device. Start will be available in a moment."
+                  : "The route details could not be loaded, or have expired. Go back and choose the route again so this hike is recorded against it."}
               </Text>
             ) : null}
             {canonicalRouteIntent && !canonicalRouteContextPending &&
               (canonicalRouteContextInvalid || !canonicalContextFresh) ? (
               <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8}>
-                <Text style={[s.readyAssurance, { color: T.green }]}>Return to Mountain Detail</Text>
+                <Text style={[s.readyAssurance, { color: T.green }]}>Choose the route again</Text>
               </TouchableOpacity>
             ) : null}
 
@@ -2377,6 +2409,17 @@ export default function HikeTrackingScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  trainingTarget: {
+    position: "absolute", left: 12, right: 12, zIndex: 5,
+    backgroundColor: "rgba(11,20,24,0.92)", borderRadius: 12, borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)", paddingHorizontal: 14, paddingVertical: 10, gap: 6,
+  },
+  trainingTargetLabel: { color: T.text, fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  trainingBar: {
+    height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.12)", overflow: "hidden",
+  },
+  trainingFill: { height: 5, borderRadius: 3, backgroundColor: T.green },
+  trainingTargetMeta: { color: T.textMuted, fontSize: 11, fontFamily: "Inter_400Regular" },
   panelSwitch: { position: "absolute", left: 0, right: 0, alignItems: "center", zIndex: 6 },
   panelSwitchInner: {
     flexDirection: "row", backgroundColor: "rgba(11,20,24,0.92)",

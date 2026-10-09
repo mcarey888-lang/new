@@ -68,7 +68,16 @@ export type CompletionPresentation = {
         isComplete: boolean;
       }
     | { status: "not_linked" };
-  sync: "saved_locally" | "ready_to_sync";
+  /**
+   * Where this activity's record currently is.
+   *
+   * "synced" is claimed only on evidence — a credit for this activity id in
+   * the elevation bank. Without that the honest answer is that it is saved
+   * here and waiting, which is also true and does not promise a server has
+   * it. Saying "Synced" because a request was sent is how somebody wipes an
+   * app believing their hikes are safe.
+   */
+  sync: "saved_locally" | "sync_pending" | "synced";
   challengeAchievement: ChallengeAchievementPresentation;
 };
 
@@ -120,7 +129,7 @@ export function buildActivityCompletionPresentation(
           isComplete: input.expeditionProgress?.progress.isComplete ?? false,
         }
       : { status: "not_linked" },
-    sync: input.isOffline ? "saved_locally" : "ready_to_sync",
+    sync: input.isOffline ? "saved_locally" : credited ? "synced" : "sync_pending",
     challengeAchievement: input.challengeAchievement
       ? input.challengeAchievement.status === "confirmed"
         ? {
