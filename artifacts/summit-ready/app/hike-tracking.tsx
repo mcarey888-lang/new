@@ -65,6 +65,7 @@ import { T } from "@/constants/theme";
 import { BASECAMP, EXPLORE, TYPE } from "@/constants/tokens";
 import { useApp } from "@/context/AppContext";
 import { ActivityCompleteView } from "@/components/track/ActivityCompleteView";
+import { TrackProgressPanel } from "@/components/track/TrackProgressPanel";
 import type { PlanSession, SavedExpedition } from "@/context/AppContext";
 import type { TrailBenefit } from "@/constants/trailData";
 import {
@@ -381,6 +382,9 @@ export default function HikeTrackingScreen() {
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
   const [drawerOpen, setDrawerOpen]       = useState(true);
+  /* Expedition recordings get a second face: the mountain this ascent is
+     climbing. Map by default — the hike is the thing happening. */
+  const [panel, setPanel] = useState<"map" | "progress">("map");
   const [showExpeditionPrompt, setShowExpeditionPrompt] = useState(false);
   const [completionExpedition, setCompletionExpedition] = useState<SavedExpedition | null>(null);
   const [completionSaveStarted, setCompletionSaveStarted] = useState(false);
@@ -639,7 +643,7 @@ export default function HikeTrackingScreen() {
     const container = webMapContainerRef.current as unknown as HTMLElement;
     if (!container) return;
     const iframe = document.createElement("iframe");
-    iframe.src = `${API_BASE}/hike-map`;
+    iframe.src = `${API_BASE}/route-map?recording=1`;
     iframe.style.cssText = "width:100%;height:100%;border:none;display:block;";
     iframe.allow = "geolocation";
     iframe.onload = () => {
@@ -740,7 +744,7 @@ export default function HikeTrackingScreen() {
   }, []);
 
   const sendPointToMap = useCallback((lat: number, lng: number) => {
-    const msg = JSON.stringify({ type: "point", lat, lng });
+    const msg = JSON.stringify({ type: "recPoint", lat, lng });
     if (Platform.OS === "web") {
       try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
     } else {
@@ -750,7 +754,7 @@ export default function HikeTrackingScreen() {
 
   // ── Show current position on map without starting a track ────────────────
   const sendLocateToMap = useCallback((lat: number, lng: number) => {
-    const msg = JSON.stringify({ type: "locate", lat, lng });
+    const msg = JSON.stringify({ type: "recLocate", lat, lng });
     if (Platform.OS === "web") {
       try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
     } else {
@@ -762,7 +766,7 @@ export default function HikeTrackingScreen() {
   const replayTrackOnMap = useCallback(() => {
     const points = trackPoints.current.map(p => [p.lat, p.lon] as [number, number]);
     if (points.length === 0) return;
-    const msg = JSON.stringify({ type: "replay", points });
+    const msg = JSON.stringify({ type: "recReplay", points });
     if (Platform.OS === "web") {
       try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
     } else {
@@ -784,7 +788,7 @@ export default function HikeTrackingScreen() {
          Taking it from here rather than re-fetching means the line on screen
          and the line in the alert can never disagree. */
       followedRouteRef.current = pts.map(q => ({ latitude: q.lat, longitude: q.lon }));
-      const msg = JSON.stringify({ type: "referenceRoute", points });
+      const msg = JSON.stringify({ type: "recPlanned", points });
       if (Platform.OS === "web") {
         try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
       } else {
@@ -820,7 +824,7 @@ export default function HikeTrackingScreen() {
     /* Judged against the same line the map is drawing, for the same reason as
        the community overlay: the alert and the picture must agree. */
     followedRouteRef.current = points.map(([latitude, longitude]) => ({ latitude, longitude }));
-    const msg = JSON.stringify({ type: "referenceRoute", points });
+    const msg = JSON.stringify({ type: "recPlanned", points });
     try {
       if (Platform.OS === "web") {
         const target = iframeRef.current?.contentWindow;
@@ -1827,6 +1831,11 @@ export default function HikeTrackingScreen() {
   const isTracking = status === "tracking";
   const isPaused   = status === "paused";
   const isIdle     = status === "idle";
+  /* Shown only for an expedition stage that actually has a mountain behind
+     it, and only once recording has begun. */
+  const showProgressSwitch = !isIdle
+    && hillMeta.trackingMode === "expedition-route"
+    && !!trackedExpedition;
   const canonicalContextFresh = !!canonicalRouteContext &&
     isCanonicalRouteHandoffFresh(canonicalRouteContext.savedAt);
   const canStart = !canonicalRouteIntent ||
@@ -1843,7 +1852,7 @@ export default function HikeTrackingScreen() {
           ) : (
             <WebView
               ref={webViewRef}
-              source={{ uri: `${API_BASE}/hike-map` }}
+              source={{ uri: `${API_BASE}/route-map?recording=1` }}
               style={{ flex: 1 }}
               scrollEnabled={false}
               javaScriptEnabled
@@ -1964,6 +1973,37 @@ export default function HikeTrackingScreen() {
             </>
           ) : null}
         </Animated.View>
+      )}
+
+      {/* ── Map / Progress, for an expedition stage ──
+             Only where there is a mountain to show. A switch with one
+             meaningful side is a switch that teaches people to ignore it. */}
+      {showProgressSwitch && (
+        <View style={[s.panelSwitch, { top: insets.top + 62 }]} pointerEvents="box-none">
+          <View style={s.panelSwitchInner}>
+            {(["map", "progress"] as const).map(option => (
+              <TouchableOpacity
+                key={option}
+                onPress={() => setPanel(option)}
+                style={[s.panelTab, panel === option && s.panelTabOn]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: panel === option }}
+                accessibilityLabel={option === "map" ? "Show the map" : "Show expedition progress"}
+                testID={`track-panel-${option}`}
+              >
+                <Text style={[s.panelTabText, panel === option && s.panelTabTextOn]}>
+                  {option === "map" ? "Map" : "Progress"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {showProgressSwitch && panel === "progress" && (
+        <View style={[s.progressSheet, { top: insets.top + 110 }]}>
+          <TrackProgressPanel expedition={trackedExpedition} recordedGainM={elevGainM} />
+        </View>
       )}
 
       {/* ── Bottom sheet ── */}
@@ -2130,20 +2170,40 @@ export default function HikeTrackingScreen() {
               <Text style={s.trackOfflineNote}>{offlineNotice(isOffline, status)}</Text>
             ) : null}
 
-            {/* 4-stat row: distance · gained · altitude · descended */}
+            {/* The three that get read at arm's length, in gloves, in rain.
+                Everything else is below, where it can be looked for. */}
+            <View style={s.primaryStats}>
+              <View style={s.primaryCell}>
+                <Text style={s.primaryValue} accessibilityLabel={`Distance ${fmtKm(distanceKm)}`}>
+                  {fmtKm(distanceKm)}
+                </Text>
+                <Text style={s.primaryLabel}>Distance</Text>
+              </View>
+              <View style={[s.primaryCell, s.primaryCellBorder]}>
+                <Text
+                  style={[s.primaryValue, { color: T.green }]}
+                  accessibilityLabel={`Ascent ${fmtM(elevGainM)}`}
+                >
+                  {fmtM(elevGainM)}
+                </Text>
+                <Text style={s.primaryLabel}>Ascent</Text>
+              </View>
+              <View style={[s.primaryCell, s.primaryCellBorder]}>
+                <Text style={s.primaryValue} accessibilityLabel={`Time ${formatTime(elapsedSecs)}`}>
+                  {formatTime(elapsedSecs)}
+                </Text>
+                {/* "Time", not "Moving time": the clock runs whenever the
+                    recording is not paused, and pausing is something the
+                    person does by hand. Nothing here detects a stop, so
+                    standing still still counts, and "Moving" would be a
+                    claim this recorder does not make. */}
+                <Text style={s.primaryLabel}>Time</Text>
+              </View>
+            </View>
+
+            {/* The rest, for when there is a reason to look. */}
             <View style={s.statsRow}>
               <View style={s.statCell}>
-                <Text style={s.statValue}>{fmtKm(distanceKm)}</Text>
-                <Text style={s.statLabel}>Distance</Text>
-              </View>
-              <View style={[s.statCell, s.statCellBorder]}>
-                <View style={s.statValueRow}>
-                  <TrendingUp size={13} color={T.green} style={{ marginRight: 2 }} />
-                  <Text style={[s.statValue, { color: T.green }]}>{fmtM(elevGainM)}</Text>
-                </View>
-                <Text style={s.statLabel}>Gained</Text>
-              </View>
-              <View style={[s.statCell, s.statCellBorder]}>
                 <Text style={s.statValue}>{currentAltM != null ? fmtM(currentAltM) : "—"}</Text>
                 <Text style={s.statLabel}>Altitude</Text>
               </View>
@@ -2175,25 +2235,40 @@ export default function HikeTrackingScreen() {
               </View>
             </View>
 
-            {/* Pause / finish controls */}
+            {/* Finishing takes two deliberate steps: pause, then finish, then
+                confirm. A single Finish beside Pause on a wet screen in a
+                pocket ends the recording of a six-hour day. */}
             <View style={s.controls}>
               <TouchableOpacity
-                style={[s.controlBtn, isPaused ? s.controlBtnResume : s.controlBtnPause]}
+                style={[s.controlBtn, isPaused ? s.controlBtnResume : s.controlBtnPause,
+                        !isPaused && s.controlBtnWide]}
                 onPress={isPaused ? resumeTracking : pauseTracking}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={isPaused ? "Resume recording" : "Pause recording"}
+                testID={isPaused ? "track-resume" : "track-pause"}
               >
                 {isPaused
-                  ? <Play size={18} color={T.green} />
-                  : <Pause size={18} color={T.blue} />}
+                  ? <Play size={20} color={T.green} />
+                  : <Pause size={20} color={T.blue} />}
                 <Text style={[s.controlBtnText, isPaused && { color: T.green }]}>
                   {isPaused ? "Resume" : "Pause"}
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[s.controlBtn, s.controlBtnStop]} onPress={handleStopPress} activeOpacity={0.8}>
-                <Square size={14} color={T.red} fill={T.red} />
-                <Text style={[s.controlBtnText, { color: T.red }]}>Finish Hike</Text>
-              </TouchableOpacity>
+              {isPaused ? (
+                <TouchableOpacity
+                  style={[s.controlBtn, s.controlBtnStop]}
+                  onPress={handleStopPress}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Finish hike"
+                  testID="track-finish"
+                >
+                  <Square size={14} color={T.red} fill={T.red} />
+                  <Text style={[s.controlBtnText, { color: T.red }]}>Finish hike</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </Animated.View>
         )}
@@ -2302,6 +2377,40 @@ export default function HikeTrackingScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  panelSwitch: { position: "absolute", left: 0, right: 0, alignItems: "center", zIndex: 6 },
+  panelSwitchInner: {
+    flexDirection: "row", backgroundColor: "rgba(11,20,24,0.92)",
+    borderRadius: 11, borderWidth: 1, borderColor: "rgba(255,255,255,0.14)", padding: 3,
+  },
+  panelTab: {
+    paddingHorizontal: 20, paddingVertical: 9, borderRadius: 8, minHeight: 40,
+    alignItems: "center", justifyContent: "center",
+  },
+  panelTabOn: { backgroundColor: "rgba(255,255,255,0.11)" },
+  panelTabText: { color: T.textMuted, fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  panelTabTextOn: { color: T.text },
+  progressSheet: {
+    position: "absolute", left: 12, right: 12, zIndex: 5,
+    backgroundColor: T.card, borderRadius: 16, borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)", padding: 14,
+  },
+  primaryStats: {
+    flexDirection: "row", alignItems: "stretch",
+    paddingVertical: 6, marginBottom: 2,
+  },
+  primaryCell: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 4 },
+  primaryCellBorder: { borderLeftWidth: 1, borderLeftColor: "rgba(255,255,255,0.07)" },
+  /* Read at arm's length, so large and tabular: proportional digits make the
+     time jitter sideways every second. */
+  primaryValue: {
+    fontSize: 30, lineHeight: 36, color: T.text, fontFamily: "Inter_700Bold",
+    fontVariant: ["tabular-nums"],
+  },
+  primaryLabel: {
+    fontSize: 11, letterSpacing: 0.9, color: T.textMuted,
+    fontFamily: "Inter_500Medium", marginTop: 2,
+  },
+  controlBtnWide: { flex: 1 },
   offlineBanner: {
     position: "absolute",
     alignSelf: "center",

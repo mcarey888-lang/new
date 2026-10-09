@@ -916,6 +916,7 @@ function handleMsg(ev) {
   /* Recording. Namespaced, because the page already has a "clear" that means
      the drawn route and a "locate" that only moves the camera. */
   if (msg.type === "recPoint") { recAddPoint(msg.lat, msg.lng); return; }
+  if (msg.type === "recLocate") { recLocate(msg.lat, msg.lng); return; }
   if (msg.type === "recReplay" && Array.isArray(msg.points)) { recReplay(msg.points); return; }
   if (msg.type === "recPlanned" && Array.isArray(msg.points)) { recPlanned(msg.points); return; }
   if (msg.type === "recClear") { recClearTrack(); return; }

@@ -136,3 +136,83 @@ describe("touch targets and safe areas", () => {
     expect(TRACK_CODE).toMatch(/insets\.top \+ 8/);
   });
 });
+
+
+const REC = read("app/hike-tracking.tsx");
+const REC_CODE = code(REC);
+
+describe("the recording screen", () => {
+  it("records on the shared map, not a second one", () => {
+    /* Recording used to run on a Leaflet page with its own tiles and no
+       basemap switch, so the one thing people want on a hill — satellite to
+       read the ground — was the one thing recording could not do. */
+    expect(REC_CODE).toContain("/route-map?recording=1");
+    expect(REC_CODE).not.toContain("/hike-map");
+  });
+
+  it("shows the three metrics that get read at arm's length", () => {
+    const primary = REC.slice(REC.indexOf("<View style={s.primaryStats}>"));
+    const block = primary.slice(0, primary.indexOf("</View>\n\n"));
+    for (const label of ["Distance", "Ascent", "Time"]) {
+      expect(block).toContain(`>${label}</Text>`);
+    }
+  });
+
+  it("calls the clock Time, because that is what it measures", () => {
+    /* It is wall clock minus pauses the person took by hand. Nothing here
+       detects a stop, so standing still counts, and "Moving time" would be
+       a claim this recorder cannot make. */
+    expect(REC_CODE).not.toMatch(/Moving time|movingTime/i);
+    expect(REC_CODE).toMatch(/formatTime\(elapsedSecs\)[\s\S]{0,400}>Time<\/Text>/);
+  });
+
+  it("keeps the other metrics, below", () => {
+    const secondary = REC.slice(REC.indexOf("<View style={s.statsRow}>"));
+    expect(secondary.slice(0, 900)).toContain("Altitude");
+    expect(secondary.slice(0, 900)).toContain("Descended");
+  });
+
+  it("gives the clock digits that do not jitter", () => {
+    /* Proportional digits shift the time sideways every second, which on a
+       glanceable readout is the difference between reading it and watching
+       it move. */
+    expect(REC_CODE).toMatch(/fontVariant: \["tabular-nums"\]/);
+  });
+});
+
+
+describe("Map and Progress, for an expedition stage", () => {
+  it("offers the switch only where there is a mountain behind it", () => {
+    /* A switch with one meaningful side teaches people to ignore it. */
+    expect(REC_CODE).toMatch(/const showProgressSwitch = !isIdle\s*\n\s*&& hillMeta\.trackingMode === "expedition-route"\s*\n\s*&& !!trackedExpedition;/);
+  });
+
+  it("opens on the map, not on progress", () => {
+    /* The hike is the thing happening. */
+    expect(REC_CODE).toMatch(/useState<"map" \| "progress">\("map"\)/);
+  });
+
+  it("reuses the existing mountain rather than drawing another", () => {
+    const panel = read("components/track/TrackProgressPanel.tsx");
+    expect(panel).toMatch(/import MountainProgress from "@\/components\/MountainProgress"/);
+    expect(panel).toContain("selectExpeditionPresentation");
+    /* No second progress bar, no invented graphic. */
+    expect(panel).not.toMatch(/ProgressBar|<Svg|LinearGradient/);
+  });
+
+  it("feeds the mountain the ascent recorded so far, so the fill moves", () => {
+    expect(REC_CODE).toMatch(/<TrackProgressPanel expedition=\{trackedExpedition\} recordedGainM=\{elevGainM\} \/>/);
+  });
+
+  it("says what is banked and what is only recorded, separately", () => {
+    const panel = code(read("components/track/TrackProgressPanel.tsx"));
+    /* Ascent is credited when the hike is saved. A caption folding it into
+       the banked figure claims a ledger entry that does not exist yet. */
+    expect(panel).toContain("liveProgressCaption");
+  });
+
+  it("names an unreadable expedition instead of drawing an empty mountain", () => {
+    const panel = read("components/track/TrackProgressPanel.tsx");
+    expect(panel).toContain("Expedition progress is unavailable right now.");
+  });
+});
