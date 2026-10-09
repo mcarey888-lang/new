@@ -1,66 +1,52 @@
-
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Play, TrendingUp, Clock, Footprints,
-  ChevronRight, Mountain, Activity, MapPin, WifiOff,
-} from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { router, } from "expo-router";
-import { useAuth } from "@clerk/expo";
-
-import React, { useEffect, useMemo, useState, } from "react";
-import {
-  Platform, ScrollView, StyleSheet, Text,
+  ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from "react-native";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { router, useLocalSearchParams } from "expo-router";
+import { useAuth } from "@clerk/expo";
+import { ChevronLeft, ChevronRight, Map as MapIcon, Play, Route as RouteIcon, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { discardActiveHike, readActiveHike } from "@/utils/activeHikeSession";
-import { readPendingHikeSelection, type PendingHikeSelection } from "@/utils/pendingHikeSelection";
-import { englishPlaceName } from "@/utils/placeNames";
-import { isRouteCompleted } from "@/utils/stateReliability";
-import { useApp } from "@/context/AppContext";
-import { useScreenView } from "@/lib/analytics";
 
+import { TrackMap, type TrackMapHandle } from "@/components/track/TrackMap";
+import { useApp } from "@/context/AppContext";
+import { useGpsStatus } from "@/hooks/useGpsStatus";
+import { useScreenView } from "@/lib/analytics";
 import { T } from "@/constants/theme";
-import { BASECAMP, EXPLORE, RADIUS, SP, TYPE } from "@/constants/tokens";
+import { discardActiveHike, readActiveHike } from "@/utils/activeHikeSession";
+import { canStart, gpsDisplay } from "@/utils/gpsStatus";
+import {
+  clearPendingHikeSelection, readPendingHikeSelection, savePendingHikeSelection,
+} from "@/utils/pendingHikeSelection";
+import { describeRoute, listRoutes, type PlannedRoute } from "@/utils/plannedRouteApi";
 import { getCurrentWeek } from "@/utils/planGenerator";
 import {
-  buildExpeditionStageLaunchContext,
-  buildFreeHikeLaunchContext,
-  buildTrainingSessionLaunchContext,
-} from "@/utils/trackingLaunchContext";
+  contextDetail, contextLabel, FREE_HIKE, isUsableIn, launchParamsFor,
+  nextExpeditionStage, nextTrainingSession, resolveTrackContext, storedFromContext,
+  trainingContextFor, type TrackContext,
+} from "@/utils/trackContext";
 
+/** How long an abandoned session stays resumable before it is dropped. */
+const RESUME_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function useActiveHike() {
   const { isLoaded: authLoaded, userId } = useAuth();
-  const [activeHike, setActiveHike] = useState<{ routeName: string; trackStartMs: number; routeId: string } | null>(null);
+  const [activeHike, setActiveHike] = useState<{ routeName: string; routeId: string } | null>(null);
 
   useEffect(() => {
-    if (!authLoaded || !userId) {
-      setActiveHike(null);
-      return;
-    }
+    if (!authLoaded || !userId) { setActiveHike(null); return; }
     const ownerUserId = userId;
     let mounted = true;
     async function check() {
       try {
         const session = await readActiveHike<any>(ownerUserId);
         if (!mounted) return;
-        if (!session) {
-          setActiveHike(null);
-          return;
-        }
-        const ageMs = Date.now() - (session.savedAt ?? 0);
-        if (ageMs < 24 * 60 * 60 * 1000) {
-          if (mounted) setActiveHike(session);
-        } else {
-          await discardActiveHike(session);
-          if (mounted) setActiveHike(null);
-        }
-      } catch { /* ignore */ }
+        if (!session) { setActiveHike(null); return; }
+        if (Date.now() - (session.savedAt ?? 0) < RESUME_WINDOW_MS) setActiveHike(session);
+        else { await discardActiveHike(session); if (mounted) setActiveHike(null); }
+      } catch { /* a read failure is not a reason to hide the screen */ }
     }
-    check();
-    // Re-check each time the screen comes into focus
+    void check();
     const id = setInterval(check, 3000);
     return () => { mounted = false; clearInterval(id); };
   }, [authLoaded, userId]);
@@ -68,411 +54,400 @@ function useActiveHike() {
   return activeHike;
 }
 
-function usePendingHikeSelection() {
-  const { isLoaded: authLoaded, userId } = useAuth();
-  const [selection, setSelection] = useState<PendingHikeSelection | null>(null);
-
-  useEffect(() => {
-    if (!authLoaded || !userId) {
-      setSelection(null);
-      return;
-    }
-    let mounted = true;
-    async function check() {
-      const pending = await readPendingHikeSelection(userId!);
-      if (mounted) setSelection(pending);
-    }
-    void check();
-    const id = setInterval(check, 3000);
-    return () => {
-      mounted = false;
-      clearInterval(id);
-    };
-  }, [authLoaded, userId]);
-
-  return selection;
-}
-
-const PILL_OFFSET = 52;
-
-function fmtDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m.toString().padStart(2, "0")}m`;
-}
-
-function relativeDate(dateStr: string): string {
-  const diffDays = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7)  return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
 export function SharedTrackScreen() {
-  useScreenView("expedition_track");
+  useScreenView("track");
   const insets = useSafeAreaInsets();
-  const { sessions, exploreHikes, shellMode, activeExpedition, activeExpeditionId, trainingPlan, completedPlanSessions } = useApp();
+  const { userId, getToken } = useAuth();
+  const {
+    shellMode, activeExpedition, activeExpeditionId, trainingPlan, completedPlanSessions,
+  } = useApp();
+  const params = useLocalSearchParams<{ sessionKey?: string; stageName?: string; from?: string }>();
+
   const activeHike = useActiveHike();
-  const pendingHike = usePendingHikeSelection();
+  const { state: gps, accuracyM } = useGpsStatus(!activeHike);
+  const gpsText = gpsDisplay(gps, accuracyM);
 
-  const topInset = Platform.OS === "web" ? 20 : insets.top;
-
-  const recentSessions = useMemo(
-    () => {
-      const activities = [
-        ...exploreHikes.map(hike => ({
-            ...hike,
-            hillName: hike.name,
-            duration: hike.timeTaken,
-            dedupeKey: hike.activityId ?? `hike:${hike.id}`,
-            isExpedition: !!hike.expeditionId,
-          })),
-        ...sessions.map(session => ({
-            ...session,
-            dedupeKey: session.activityId ?? `session:${session.id}`,
-            isExpedition: !!session.expeditionId,
-          })),
-      ];
-      return activities
-        .filter((item, index) => activities.findIndex(other => other.dedupeKey === item.dedupeKey) === index)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(0, 5);
-    },
-    [sessions, exploreHikes],
-  );
-
-  const nextHill = activeExpedition?.virtualHills?.find(
-    hill => !isRouteCompleted(activeExpedition.completedRoutes, hill),
-  );
-
-  const currentWeek = getCurrentWeek(trainingPlan);
-  let nextSession = null;
-  let nextSessionIndex = -1;
-  if (currentWeek) {
-    const idx = currentWeek.sessions.findIndex((s, i) => !completedPlanSessions[s.id ?? `${currentWeek.weekNumber}-${i}`]);
-    if (idx !== -1) {
-      nextSession = currentWeek.sessions[idx];
-      nextSessionIndex = idx;
-    }
-  }
-
+  const [context, setContext] = useState<TrackContext>(FREE_HIKE);
+  const [hydrated, setHydrated] = useState(false);
+  const [route, setRoute] = useState<PlannedRoute | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [routesOpen, setRoutesOpen] = useState(false);
+  const [routes, setRoutes] = useState<PlannedRoute[] | null>(null);
   const [starting, setStarting] = useState(false);
-  const handleStart = (params: any) => {
-    if (starting) return;
+  const startedRef = useRef(false);
+  const mapRef = useRef<TrackMapHandle | null>(null);
+  const [sheetHeight, setSheetHeight] = useState(0);
+
+  /* The sheet covers the bottom of the map, where the attribution sits.
+     "Contains OS data (c) Crown copyright" is a licence condition, so the map
+     is told how much room is taken and lifts it clear. */
+  useEffect(() => {
+    if (!sheetHeight) return;
+    mapRef.current?.send({ type: "bottomInset", px: Math.round(sheetHeight) });
+  }, [sheetHeight]);
+
+  /* What this shell can offer besides a free hike. */
+  const currentWeek = getCurrentWeek(trainingPlan);
+  const nextSession = useMemo(
+    () => nextTrainingSession(currentWeek, completedPlanSessions),
+    [currentWeek, completedPlanSessions],
+  );
+  const nextStage = useMemo(
+    () => nextExpeditionStage(activeExpedition?.virtualHills, activeExpedition?.completedRoutes),
+    [activeExpedition],
+  );
+
+  /* The context asked for by whoever opened this screen. */
+  const requested = useMemo<TrackContext | null>(() => {
+    if (params.sessionKey && currentWeek) {
+      const index = currentWeek.sessions.findIndex(s => (s.id ?? "") === params.sessionKey);
+      if (index >= 0) return trainingContextFor(currentWeek.sessions[index]!, currentWeek.weekNumber, index);
+    }
+    if (params.stageName && activeExpeditionId && activeExpedition?.virtualHills) {
+      const stage = activeExpedition.virtualHills.find(h => h.name === params.stageName);
+      if (stage) return { kind: "expedition", expeditionId: activeExpeditionId, stage };
+    }
+    return null;
+  }, [params.sessionKey, params.stageName, currentWeek, activeExpedition, activeExpeditionId]);
+
+  /* Hydrate once from what was asked for, then from what survived a detour. */
+  useEffect(() => {
+    if (!userId || hydrated) return;
+    let cancelled = false;
+    (async () => {
+      const stored = await readPendingHikeSelection(userId).catch(() => null);
+      if (cancelled) return;
+      setContext(resolveTrackContext({ shellMode, stored, requested }));
+      setHydrated(true);
+    })();
+    return () => { cancelled = true; };
+  }, [userId, hydrated, shellMode, requested]);
+
+  /* A context belonging to the other shell cannot stay selected. Training and
+     expedition progress are separate, and a recording credited to the wrong
+     one cannot be moved afterwards. */
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!isUsableIn(context, shellMode)) {
+      setContext(FREE_HIKE);
+      if (userId) void clearPendingHikeSelection(userId);
+    }
+  }, [shellMode, context, hydrated, userId]);
+
+  /* Persisted on every change, so search or the route planner can be visited
+     and come back to the same selection. */
+  useEffect(() => {
+    if (!hydrated || !userId) return;
+    void savePendingHikeSelection(storedFromContext(context, userId));
+  }, [context, hydrated, userId]);
+
+  const openRoutes = useCallback(async () => {
+    setRoutesOpen(true);
+    setRoutes(null);
+    const result = await listRoutes(getToken);
+    setRoutes(result.ok ? result.value : []);
+  }, [getToken]);
+
+  const start = useCallback(() => {
+    /* Synchronous, before any await. Two taps a frame apart must not make two
+       activities, and the recorder's own guard cannot help until it mounts. */
+    if (startedRef.current) return;
+    startedRef.current = true;
     setStarting(true);
-    router.push({ pathname: "/hike-tracking", params } as any);
-    setTimeout(() => setStarting(false), 1000);
-  };
+    const launch = launchParamsFor(context, shellMode, activeExpeditionId);
+    router.push({
+      pathname: "/hike-tracking",
+      params: {
+        ...launch,
+        ...(route ? { referenceRouteId: route.id, referenceRouteName: route.name } : {}),
+      },
+    } as never);
+    setTimeout(() => { startedRef.current = false; setStarting(false); }, 1200);
+  }, [context, shellMode, activeExpeditionId, route]);
+
+  const resume = useCallback(() => {
+    if (startedRef.current || !activeHike) return;
+    startedRef.current = true;
+    router.push({ pathname: "/hike-tracking", params: { restore: "1", routeId: activeHike.routeId } } as never);
+    setTimeout(() => { startedRef.current = false; }, 1200);
+  }, [activeHike]);
+
+  const choices = useMemo(() => {
+    const list: Array<{ key: string; context: TrackContext }> = [{ key: "free", context: FREE_HIKE }];
+    if (shellMode === "training" && nextSession && currentWeek) {
+      list.push({
+        key: "training",
+        context: trainingContextFor(nextSession.session, currentWeek.weekNumber, nextSession.index),
+      });
+    }
+    if (shellMode === "expedition" && nextStage && activeExpeditionId) {
+      list.push({
+        key: "expedition",
+        context: { kind: "expedition", expeditionId: activeExpeditionId, stage: nextStage },
+      });
+    }
+    return list;
+  }, [shellMode, nextSession, currentWeek, nextStage, activeExpeditionId]);
+
+  const cameFromElsewhere = params.from === "push";
 
   return (
-    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }} testID="track-landing-screen">
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120 }}
+    <View style={[st.screen, { backgroundColor: T.bg }]} testID="track-landing-screen">
+      <TrackMap recording={false} mapRef={mapRef} />
+
+      <View style={[st.header, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+        {cameFromElsewhere ? (
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={st.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            hitSlop={10}
+          >
+            <ChevronLeft size={20} color={T.text} />
+          </TouchableOpacity>
+        ) : null}
+        <Text style={st.headerTitle}>Track</Text>
+      </View>
+
+      <View
+        style={[st.sheet, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}
+        accessibilityLabel="Start a hike"
+        onLayout={e => setSheetHeight(e.nativeEvent.layout.height)}
       >
-        <View style={[s.page, { paddingTop: topInset + PILL_OFFSET + 15 }]}>
-          <View style={s.header}>
-            <View style={s.eyebrowRow}>
-              <View style={s.eyebrowMark} />
-              <Text style={s.eyebrow}>TRACK YOUR JOURNEY</Text>
+        <View style={st.grabber} />
+
+        {activeHike ? (
+          <TouchableOpacity
+            onPress={resume}
+            style={st.resumeRow}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Resume ${activeHike.routeName || "hike in progress"}`}
+            testID="track-resume-activity"
+          >
+            <View style={st.liveDot} />
+            <View style={{ flex: 1 }}>
+              <Text style={st.resumeKicker}>RECORDING IN PROGRESS</Text>
+              <Text style={st.resumeName} numberOfLines={1}>
+                {activeHike.routeName || "Hike in progress"}
+              </Text>
             </View>
-            <Text style={s.pageTitle}>Every hike{"\n"}moves you higher.</Text>
-            <Text style={s.intro}>
-              Track a hike, build your elevation and add it to your training or expedition.
-            </Text>
-          </View>
-
-          <View style={s.statusRail} accessibilityLabel="Tracking availability">
-            <View style={s.statusItem}>
-              <MapPin size={15} color={EXPLORE.accent} />
-              <View style={s.statusCopy}>
-                <Text style={s.statusTitle}>GPS</Text>
-                <Text style={s.statusDetail}>Checked on start</Text>
+            <Text style={st.resumeAction}>Resume</Text>
+            <ChevronRight size={18} color={T.green} />
+          </TouchableOpacity>
+        ) : (
+          <>
+            <View style={st.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={st.rowLabel}>RECORDING</Text>
+                <Text style={st.rowValue} numberOfLines={1}>{contextLabel(context)}</Text>
+                {contextDetail(context) ? (
+                  <Text style={st.rowDetail} numberOfLines={1}>{contextDetail(context)}</Text>
+                ) : null}
               </View>
-            </View>
-            <View style={s.statusDivider} />
-            <View style={s.statusItem}>
-              <WifiOff size={15} color={BASECAMP.accent} />
-              <View style={s.statusCopy}>
-                <Text style={s.statusTitle}>OFFLINE READY</Text>
-                <Text style={s.statusDetail}>Saves on this device</Text>
-              </View>
-            </View>
-          </View>
-
-          <Animated.View entering={FadeInDown.delay(45).duration(350)} style={s.journeySection}>
-            <Text style={s.sectionKicker}>YOUR NEXT HIKE</Text>
-            <Text style={s.sectionTitle}>Ready when you are</Text>
-
-            {activeHike ? (
-              <TouchableOpacity
-                onPress={() => handleStart({ restore: "1", routeId: activeHike.routeId })}
-                style={[s.stateCard, s.activeCard]}
-                activeOpacity={0.88}
-                disabled={starting}
-                accessibilityRole="button"
-                accessibilityLabel={`Resume activity: ${activeHike.routeName || "Hike in progress"}`}
-                testID="track-resume-activity"
-              >
-                <View style={s.stateIconWrap}>
-                  <View style={s.liveDot} />
-                </View>
-                <View style={s.stateCopy}>
-                  <Text style={s.stateKicker}>ACTIVITY IN PROGRESS</Text>
-                  <Text style={s.stateTitle} numberOfLines={2}>{activeHike.routeName || "Hike in progress"}</Text>
-                  <Text style={s.stateAction}>Resume Activity</Text>
-                </View>
-                <ChevronRight size={19} color={BASECAMP.accent} />
-              </TouchableOpacity>
-            ) : pendingHike ? (
-              <TouchableOpacity
-                onPress={() => handleStart({
-                  hillName: pendingHike.routeName,
-                  trackingMode: pendingHike.trackingMode ?? "",
-                  expeditionId: pendingHike.expeditionId ?? "",
-                  routeIdentityKey: pendingHike.routeIdentityKey ?? "",
-                  summitIdentityKey: pendingHike.summitIdentityKey ?? "",
-                  objectiveType: pendingHike.objectiveType ?? "",
-                  stageSnapshot: pendingHike.stageSnapshot ? JSON.stringify(pendingHike.stageSnapshot) : "",
-              })}
-                style={[s.stateCard, s.pendingCard]}
-                activeOpacity={0.88}
-                disabled={starting}
-                accessibilityRole="button"
-                accessibilityLabel={`Start pending route: ${pendingHike.routeName}`}
-                testID="track-pending-route"
-              >
-                <View style={[s.stateIconWrap, s.pendingIconWrap]}>
-                  <Footprints size={19} color={EXPLORE.accent} />
-                </View>
-                <View style={s.stateCopy}>
-                  <Text style={[s.stateKicker, { color: EXPLORE.accent }]}>CANONICAL ROUTE READY</Text>
-                  <Text style={s.stateTitle} numberOfLines={2}>{pendingHike.routeName}</Text>
-                  <Text style={[s.stateAction, { color: EXPLORE.accent }]}>Continue to tracking</Text>
-                </View>
-                <ChevronRight size={19} color={EXPLORE.accent} />
-              </TouchableOpacity>
-            ) : (
-              <View style={s.readyNote}>
-                <View style={s.readyIcon}>
-                  <Footprints size={19} color={BASECAMP.textStrong} />
-                </View>
-                <View style={s.stateCopy}>
-                  <Text style={s.readyTitle}>Your next track starts here</Text>
-                  <Text style={s.readyBody}>Choose a planned stage or head out on a free hike.</Text>
-                </View>
-              </View>
-            )}
-          </Animated.View>
-
-          <Animated.View entering={FadeInDown.delay(110).duration(400)} style={s.actionsSection}>
-            {shellMode === "expedition" && nextHill && activeExpeditionId && (
-              <View style={s.actionGroup}>
-                <Text style={s.sectionKicker}>NEXT EXPEDITION STAGE</Text>
+              {choices.length > 1 ? (
                 <TouchableOpacity
-                  onPress={() => handleStart(buildExpeditionStageLaunchContext(nextHill, activeExpeditionId, activeExpedition?.virtualHikeProgress))}
-                  style={[s.actionButton, s.expeditionButton]}
-                  activeOpacity={0.88}
-                  disabled={starting}
+                  onPress={() => setPickerOpen(true)}
+                  style={st.changeBtn}
                   accessibilityRole="button"
-                  accessibilityLabel={`Start expedition stage: ${englishPlaceName(nextHill.name)}`}
-                  testID="track-expedition-stage"
+                  accessibilityLabel="Change what this hike counts towards"
+                  testID="track-change-context"
                 >
-                  <Play size={17} color={BASECAMP.text} fill={BASECAMP.text} />
-                  <Text style={s.actionButtonText} numberOfLines={2}>{englishPlaceName(nextHill.name)}</Text>
-                  <ChevronRight size={17} color={BASECAMP.text} />
+                  <Text style={st.changeText}>Change</Text>
                 </TouchableOpacity>
-              </View>
-            )}
+              ) : null}
+            </View>
 
-            {shellMode === "training" && nextSession && currentWeek && (
-              <View style={s.actionGroup}>
-                <Text style={s.sectionKicker}>UP NEXT · TRAINING</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (nextSession?.type === "hill" || nextSession?.type === "bigDay") {
-                      handleStart(buildTrainingSessionLaunchContext(nextSession, nextSessionIndex, currentWeek.weekNumber, currentWeek.hills?.[0]?.repeats ?? 2));
-                    } else if (nextSession) {
-                      router.push({
-                        pathname: "/session-detail",
-                        params: { weekNum: String(currentWeek.weekNumber), sessionIdx: String(nextSessionIndex) }
-                      } as any);
-                    }
-                  }}
-                  style={[s.actionButton, s.trainingButton]}
-                  activeOpacity={0.88}
-                  disabled={starting}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Start training session: ${nextSession?.label ?? "Start Mission"}`}
-                  testID="track-training-session"
-                >
-                  <Play size={17} color={BASECAMP.accentInk} fill={BASECAMP.accentInk} />
-                  <Text style={[s.actionButtonText, { color: BASECAMP.accentInk }]} numberOfLines={2}>
-                    {nextSession?.label ?? "Start Mission"}
-                  </Text>
-                  <ChevronRight size={17} color={BASECAMP.accentInk} />
-                </TouchableOpacity>
+            <TouchableOpacity
+              onPress={route ? () => setRoute(null) : openRoutes}
+              style={st.routeRow}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={route ? `Remove route ${route.name}` : "Add a route"}
+              testID="track-route-row"
+            >
+              <RouteIcon size={16} color={route ? T.green : T.textMuted} />
+              <View style={{ flex: 1 }}>
+                <Text style={st.routeName} numberOfLines={1}>{route ? route.name : "Add a route"}</Text>
+                {route ? <Text style={st.routeMeta}>{describeRoute(route)}</Text> : null}
               </View>
-            )}
+              {route ? <X size={16} color={T.textMuted} /> : <ChevronRight size={16} color={T.textMuted} />}
+            </TouchableOpacity>
 
-            <View style={s.actionGroup}>
-              <Text style={s.sectionKicker}>NO ROUTE NEEDED</Text>
+            <View style={st.gpsRow} accessibilityLabel={gpsText.label}>
+              <View style={[st.gpsDot, {
+                backgroundColor: gpsText.tone === "good" ? T.green
+                  : gpsText.tone === "bad" ? "#FF6B6B" : "#E9B949",
+              }]} />
+              <Text style={st.gpsText}>{gpsText.label}</Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={start}
+              disabled={starting || !canStart(gps)}
+              style={[st.start, starting && st.startBusy]}
+              activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel="Start hike"
+              testID="track-start-hike"
+            >
+              <Play size={18} color="#04140A" fill="#04140A" />
+              <Text style={st.startText}>Start hike</Text>
+            </TouchableOpacity>
+
+            <Text style={st.footnote}>Saved on your phone. Syncs when connected.</Text>
+          </>
+        )}
+      </View>
+
+      <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
+        <Pressable style={st.backdrop} onPress={() => setPickerOpen(false)}>
+          <Pressable style={[st.modal, { paddingBottom: Math.max(insets.bottom, 16) }]} onPress={e => e.stopPropagation()}>
+            <Text style={st.modalTitle}>What does this count towards?</Text>
+            {choices.map(choice => (
               <TouchableOpacity
-                onPress={() => handleStart(buildFreeHikeLaunchContext(shellMode, activeExpeditionId))}
-                style={s.freeHikeButton}
-                activeOpacity={0.88}
-                disabled={starting}
+                key={choice.key}
+                style={st.choice}
+                onPress={() => { setContext(choice.context); setPickerOpen(false); }}
                 accessibilityRole="button"
-                accessibilityLabel="Start a free hike"
-                testID="track-free-hike"
+                accessibilityLabel={contextLabel(choice.context)}
               >
-                <View style={s.freeHikeIcon}>
-                  <Footprints size={18} color={BASECAMP.textStrong} />
-                </View>
-                <View style={s.freeHikeCopy}>
-                  <Text style={s.freeHikeTitle}>Start a free hike</Text>
-                  <Text style={s.freeHikeSub}>Record your walk without a planned route</Text>
-                </View>
-                <ChevronRight size={17} color={BASECAMP.textDim} />
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-
-          <Animated.View entering={FadeInUp.delay(170).duration(400)} style={s.recentSection}>
-            <View style={s.recentHeading}>
-              <View>
-                <Text style={s.sectionKicker}>YOUR TRACKS</Text>
-                <Text style={s.recentTitle}>Recent activity</Text>
-              </View>
-              <Clock size={17} color={BASECAMP.textDim} />
-            </View>
-            {recentSessions.length === 0 ? (
-              <View style={s.emptyRecent}>
-                <Activity size={22} color={BASECAMP.textDim} />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.emptyTitle}>No tracks yet</Text>
-                  <Text style={s.emptyBody}>Your completed hikes will appear here.</Text>
+                  <Text style={st.choiceName}>{contextLabel(choice.context)}</Text>
+                  {contextDetail(choice.context) ? (
+                    <Text style={st.choiceDetail}>{contextDetail(choice.context)}</Text>
+                  ) : null}
                 </View>
-              </View>
+                {contextLabel(choice.context) === contextLabel(context) ? (
+                  <View style={st.tick} />
+                ) : null}
+              </TouchableOpacity>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={routesOpen} transparent animationType="slide" onRequestClose={() => setRoutesOpen(false)}>
+        <Pressable style={st.backdrop} onPress={() => setRoutesOpen(false)}>
+          <Pressable style={[st.modal, { paddingBottom: Math.max(insets.bottom, 16) }]} onPress={e => e.stopPropagation()}>
+            <Text style={st.modalTitle}>Your saved routes</Text>
+            {routes === null ? (
+              <ActivityIndicator color={T.green} style={{ marginVertical: 24 }} />
+            ) : routes.length === 0 ? (
+              <>
+                <Text style={st.empty}>No saved routes yet.</Text>
+                <TouchableOpacity
+                  style={st.planBtn}
+                  onPress={() => { setRoutesOpen(false); router.push("/route-planner" as never); }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Plan a route on the map"
+                >
+                  <MapIcon size={16} color={T.green} />
+                  <Text style={st.planText}>Plan a route</Text>
+                </TouchableOpacity>
+              </>
             ) : (
-              recentSessions.map((sess, i) => (
-                <View key={sess.id ?? i} style={[s.sessionRow, i === recentSessions.length - 1 && { borderBottomWidth: 0 }]}>
-                  <View style={[s.sessionIcon, { backgroundColor: sess.isExpedition ? EXPLORE.accentDim : BASECAMP.accentDim }]}>
-                    {sess.isExpedition ? <Mountain size={15} color={EXPLORE.accent} /> : <TrendingUp size={15} color={BASECAMP.accent} />}
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={s.sessionName} numberOfLines={1}>{sess.hillName ?? "Hike"}</Text>
-                    <Text style={s.sessionMeta} numberOfLines={1}>
-                      {relativeDate(sess.date)} · {sess.distance.toFixed(1)} km · {sess.elevationGain} m
-                    </Text>
-                  </View>
-                  <Text style={s.sessionTime}>{fmtDuration(sess.duration)}</Text>
-                </View>
-              ))
+              <ScrollView style={{ maxHeight: 320 }}>
+                {routes.map(item => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={st.choice}
+                    onPress={() => { setRoute(item); setRoutesOpen(false); }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.name}, ${describeRoute(item)}`}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={st.choiceName} numberOfLines={1}>{item.name}</Text>
+                      <Text style={st.choiceDetail}>{describeRoute(item)}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             )}
-          </Animated.View>
-        </View>
-      </ScrollView>
-    </LinearGradient>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
   );
 }
 
-const s = StyleSheet.create({
-  page: { paddingHorizontal: BASECAMP.gutter, paddingBottom: 26 },
-  header: { marginBottom: SP.lg },
-  eyebrowRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-  eyebrowMark: { width: 18, height: 2, backgroundColor: EXPLORE.accent, borderRadius: 2 },
-  eyebrow: { ...TYPE.eyebrow, color: BASECAMP.textMuted, fontSize: 10, letterSpacing: 1.7 },
-  pageTitle: {
-    ...TYPE.hero, fontSize: 33, lineHeight: 37, color: BASECAMP.text,
+const st = StyleSheet.create({
+  screen: { flex: 1 },
+  header: {
+    position: "absolute", top: 0, left: 0, right: 0, zIndex: 4,
+    flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingBottom: 8,
   },
-  intro: {
-    ...TYPE.body, color: BASECAMP.textMuted, maxWidth: 340, marginTop: 10,
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(11,20,24,0.88)", borderWidth: 1, borderColor: T.border,
   },
-  statusRail: {
-    minHeight: 63, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 25,
-    borderTopWidth: 1, borderBottomWidth: 1, borderColor: BASECAMP.hairline,
-    flexDirection: "row", alignItems: "center",
+  headerTitle: {
+    fontSize: 17, fontFamily: "Inter_700Bold", color: T.text,
+    backgroundColor: "rgba(11,20,24,0.88)", paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 16, overflow: "hidden",
   },
-  statusItem: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 9 },
-  statusCopy: { flex: 1, minWidth: 0 },
-  statusTitle: { ...TYPE.eyebrow, color: BASECAMP.textStrong, fontSize: 9, letterSpacing: 0.7 },
-  statusDetail: { ...TYPE.caption, color: BASECAMP.textDim, marginTop: 3 },
-  statusDivider: { width: 1, height: 29, backgroundColor: BASECAMP.hairline, marginHorizontal: 12 },
-  journeySection: { marginBottom: 27 },
-  sectionKicker: { ...TYPE.eyebrow, color: BASECAMP.textDim, marginBottom: 7 },
-  sectionTitle: { ...TYPE.title, color: BASECAMP.text, fontSize: 21, marginBottom: 13 },
-  stateCard: {
-    flexDirection: "row", alignItems: "center", gap: 12, minHeight: 100,
-    paddingHorizontal: 14, paddingVertical: 15, borderRadius: RADIUS.lg / 2,
-    backgroundColor: BASECAMP.panelSub, borderWidth: 1,
+  sheet: {
+    position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 5,
+    backgroundColor: T.card, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    borderTopWidth: 1, borderColor: T.border, paddingHorizontal: 18, paddingTop: 8, gap: 12,
   },
-  activeCard: { borderColor: BASECAMP.accentLine, backgroundColor: BASECAMP.accentDim },
-  pendingCard: { borderColor: EXPLORE.accentLine, backgroundColor: EXPLORE.accentDim },
-  stateIconWrap: {
-    width: 39, height: 39, borderRadius: 20, alignItems: "center", justifyContent: "center",
-    backgroundColor: BASECAMP.accentDim,
+  grabber: {
+    width: 36, height: 4, borderRadius: 2, alignSelf: "center",
+    backgroundColor: "rgba(255,255,255,0.18)", marginBottom: 4,
   },
-  pendingIconWrap: { backgroundColor: EXPLORE.accentDim },
-  liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: BASECAMP.accent },
-  stateCopy: { flex: 1, minWidth: 0 },
-  stateKicker: { ...TYPE.eyebrow, fontSize: 8.5, letterSpacing: 1.1, color: BASECAMP.accent, marginBottom: 4 },
-  stateTitle: { ...TYPE.bodyBold, fontSize: 15, lineHeight: 19, color: BASECAMP.text, flexShrink: 1 },
-  stateAction: { ...TYPE.smallBold, color: BASECAMP.accent, marginTop: 5 },
-  readyNote: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 81, paddingVertical: 11 },
-  readyIcon: {
-    width: 39, height: 39, borderRadius: 20, alignItems: "center", justifyContent: "center",
-    backgroundColor: BASECAMP.panelSub,
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  rowLabel: { fontSize: 10, letterSpacing: 1.1, color: T.textDim, fontFamily: "Inter_700Bold" },
+  rowValue: { fontSize: 19, color: T.text, fontFamily: "Inter_700Bold", marginTop: 2 },
+  rowDetail: { fontSize: 12, color: T.textMuted, marginTop: 2, fontFamily: "Inter_400Regular" },
+  changeBtn: {
+    paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10,
+    borderWidth: 1, borderColor: T.border, backgroundColor: "rgba(255,255,255,0.04)",
   },
-  readyTitle: { ...TYPE.bodyBold, color: BASECAMP.textStrong },
-  readyBody: { ...TYPE.small, color: BASECAMP.textDim, marginTop: 3 },
-  actionsSection: { gap: 17, marginBottom: 31 },
-  actionGroup: { gap: 7 },
-  actionButton: {
-    minHeight: 58, paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: RADIUS.md / 2, flexDirection: "row", alignItems: "center", gap: 11,
-    overflow: "hidden",
+  changeText: { color: T.text, fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  routeRow: {
+    flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, paddingHorizontal: 12,
+    borderRadius: 12, borderWidth: 1, borderColor: T.border, backgroundColor: "rgba(255,255,255,0.03)",
   },
-  expeditionButton: { backgroundColor: EXPLORE.accent },
-  trainingButton: { backgroundColor: BASECAMP.accent },
-  actionButtonText: { flex: 1, ...TYPE.bodyBold, color: BASECAMP.text, fontSize: 15 },
-  freeHikeButton: {
-    minHeight: 69, flexDirection: "row", alignItems: "center", gap: 11,
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderTopWidth: 1, borderBottomWidth: 1, borderColor: BASECAMP.hairline,
+  routeName: { color: T.text, fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  routeMeta: { color: T.textMuted, fontSize: 12, marginTop: 1, fontFamily: "Inter_400Regular" },
+  gpsRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  gpsDot: { width: 8, height: 8, borderRadius: 4 },
+  gpsText: { color: T.textMuted, fontSize: 13, fontFamily: "Inter_400Regular" },
+  start: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9,
+    backgroundColor: T.green, borderRadius: 14, paddingVertical: 17, minHeight: 56,
   },
-  freeHikeIcon: {
-    width: 39, height: 39, borderRadius: 20, alignItems: "center", justifyContent: "center",
-    backgroundColor: BASECAMP.panelSub,
+  startBusy: { opacity: 0.7 },
+  startText: { color: "#04140A", fontSize: 17, fontFamily: "Inter_700Bold" },
+  footnote: { color: T.textDim, fontSize: 12, textAlign: "center", fontFamily: "Inter_400Regular" },
+  resumeRow: {
+    flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 15, paddingHorizontal: 14,
+    borderRadius: 14, borderWidth: 1, borderColor: T.borderActive, backgroundColor: T.greenDim,
+    minHeight: 64,
   },
-  freeHikeCopy: { flex: 1, minWidth: 0 },
-  freeHikeTitle: { ...TYPE.bodyBold, color: BASECAMP.text },
-  freeHikeSub: { ...TYPE.caption, color: BASECAMP.textDim, marginTop: 3 },
-  recentSection: { marginTop: 2 },
-  recentHeading: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingBottom: 10, marginBottom: 1, borderBottomWidth: 1, borderColor: BASECAMP.hairline,
+  liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: T.green },
+  resumeKicker: { fontSize: 10, letterSpacing: 1, color: T.green, fontFamily: "Inter_700Bold" },
+  resumeName: { fontSize: 16, color: T.text, fontFamily: "Inter_600SemiBold", marginTop: 2 },
+  resumeAction: { color: T.green, fontSize: 14, fontFamily: "Inter_700Bold" },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" },
+  modal: {
+    backgroundColor: T.card, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    paddingHorizontal: 18, paddingTop: 18, gap: 6,
+    borderTopWidth: 1, borderColor: T.border,
   },
-  recentTitle: { ...TYPE.title, color: BASECAMP.text, fontSize: 20 },
-  emptyRecent: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 20 },
-  emptyTitle: { ...TYPE.bodyBold, color: BASECAMP.textStrong },
-  emptyBody: { ...TYPE.small, color: BASECAMP.textDim, marginTop: 3 },
-  sessionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: BASECAMP.hairline,
+  modalTitle: { color: T.text, fontSize: 17, fontFamily: "Inter_700Bold", marginBottom: 6 },
+  choice: {
+    flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: T.border, minHeight: 56,
   },
-  sessionIcon: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: "center", justifyContent: "center",
-    marginRight: 11,
+  choiceName: { color: T.text, fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  choiceDetail: { color: T.textMuted, fontSize: 12, marginTop: 2, fontFamily: "Inter_400Regular" },
+  tick: { width: 10, height: 10, borderRadius: 5, backgroundColor: T.green },
+  empty: { color: T.textMuted, fontSize: 14, paddingVertical: 14, fontFamily: "Inter_400Regular" },
+  planBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    borderRadius: 12, borderWidth: 1, borderColor: T.borderActive, paddingVertical: 14, marginBottom: 8,
   },
-  sessionName: { ...TYPE.bodyBold, color: BASECAMP.text, marginBottom: 3 },
-  sessionMeta: { ...TYPE.caption, color: BASECAMP.textDim },
-  sessionTime: { ...TYPE.smallBold, color: BASECAMP.textMuted, marginLeft: 8 },
+  planText: { color: T.green, fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });

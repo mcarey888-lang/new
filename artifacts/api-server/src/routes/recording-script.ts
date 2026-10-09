@@ -32,6 +32,26 @@ var recFollow = { following: true, offCentre: false };
 var recording = false;
 var recRecentreBtn = null;
 
+/**
+ * Lift the map's own furniture above whatever the app has put over it.
+ *
+ * The Track screen covers the bottom of the map with its sheet, and the
+ * attribution sits bottom-right. "Contains OS data © Crown copyright" is a
+ * condition of the OS licence, not a courtesy, so a sheet covering it is a
+ * licence problem rather than a cosmetic one. The host says how much room it
+ * is taking and the controls move up by that much.
+ */
+function setBottomInset(px) {
+  var inset = Math.max(0, Math.min(600, Number(px) || 0));
+  var nodes = document.querySelectorAll(
+    ".maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left"
+  );
+  for (var i = 0; i < nodes.length; i++) {
+    nodes[i].style.marginBottom = inset + "px";
+  }
+  if (recRecentreBtn) recRecentreBtn.style.bottom = (inset + 16) + "px";
+}
+
 function recEmpty() { return { type: "FeatureCollection", features: [] }; }
 
 function recLine(points) {
