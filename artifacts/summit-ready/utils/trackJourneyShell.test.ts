@@ -100,8 +100,13 @@ describe("the offline-first architecture is intact", () => {
   it("blocks only a canonical-intent Start until local identity and geometry validate", () => {
     expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent &&/);
     expect(TRACK_CODE).toMatch(/canonicalRouteContextInvalid \|\| !canonicalRouteContext/);
-    expect(TRACK_CODE).toMatch(/Canonical route context is unavailable or expired/);
-    expect(TRACK_CODE).toMatch(/Return to Mountain Detail/);
+    /* The person is told, and given the way out. The wording is plain now —
+       "canonical route context" is what this codebase calls it, not what
+       anybody on a hill would say — so what is checked is that both the
+       explanation and the escape are still there, not their old phrasing. */
+    expect(TRACK_CODE).toMatch(/The route details could not be loaded, or have expired/);
+    expect(TRACK_CODE).toMatch(/Choose the route again/);
+    expect(TRACK_CODE).not.toMatch(/Canonical route context|canonical route handoff/i);
   });
 
   it("draws canonical geometry only after map and local handoff are both ready", () => {

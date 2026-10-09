@@ -211,3 +211,34 @@ describe("activity completion presentation", () => {
     });
   });
 });
+
+describe("where the record actually is", () => {
+  it("says saved on device when there is no connection", () => {
+    expect(base({ isOffline: true }).sync).toBe("saved_locally");
+  });
+
+  it("will not claim synced merely because there is a connection", () => {
+    /* A request having been sent is not the server having the record.
+       Claiming otherwise is how somebody wipes an app believing their
+       hikes are safe. */
+    expect(base().sync).toBe("sync_pending");
+  });
+
+  it("claims synced only on a credit for this activity", () => {
+    expect(base({ elevationBank: availableBank }).sync).toBe("synced");
+  });
+
+  it("does not take another activity's credit as proof of this one", () => {
+    const someoneElses = {
+      ...availableBank,
+      recentCredits: [{ ...availableBank.recentCredits[0]!, activityId: "activity-2" }],
+    };
+    expect(base({ elevationBank: someoneElses }).sync).toBe("sync_pending");
+  });
+
+  it("stays saved-on-device offline, whatever the bank says", () => {
+    /* Offline is about this device's connection, not about what a cached
+       response happens to contain. */
+    expect(base({ isOffline: true, elevationBank: availableBank }).sync).toBe("saved_locally");
+  });
+});
