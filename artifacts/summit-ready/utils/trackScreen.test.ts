@@ -18,6 +18,25 @@ const code = (src: string) =>
 const TRACK = read("components/SharedTrackScreen.tsx");
 const TRACK_CODE = code(TRACK);
 
+describe("selected saved-route preview", () => {
+  it("waits for the map handshake and resends on route, sheet or map changes", () => {
+    expect(TRACK_CODE).toContain('message.type === "ready"');
+    expect(TRACK_CODE).toContain("if (!mapRevision) return");
+    expect(TRACK_CODE).toContain("[mapRevision, sheetHeight, route]");
+    expect(TRACK_CODE).toContain("onMessage={handleMapMessage}");
+    expect(TRACK_CODE).toContain('type: "recPlanned"');
+    expect(TRACK_CODE).toContain("(route?.geometry ?? []).map(point => [point.lat, point.lng])");
+    expect(TRACK_CODE.indexOf('type: "bottomInset"')).toBeLessThan(TRACK_CODE.indexOf('type: "recPlanned"'));
+  });
+
+  it("does not reload the web map when its message callback changes", () => {
+    const map = read("components/track/TrackMap.tsx");
+    expect(map).toContain("onMessageRef.current = onMessage");
+    expect(map).not.toContain("}, [onMessage])");
+    expect(map).toContain("event.source !== iframe.contentWindow");
+  });
+});
+
 describe("starting a hike never waits for anything", () => {
   it("does not disable Start on GPS", () => {
     /* canStart() always returns true and is tested separately. What matters

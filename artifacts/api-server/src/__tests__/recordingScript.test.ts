@@ -11,6 +11,39 @@ describe("the recording overlay script", () => {
     expect(() => new Function(script())).not.toThrow();
   });
 
+  it("frames selected geometry above the sheet without making recorded points", () => {
+    const sources = new Map<string, { data: unknown; setData: (data: unknown) => void }>();
+    const fits: unknown[] = [];
+    const document = { querySelectorAll: () => [] };
+    const map = {
+      getContainer: () => ({ clientHeight: 844 }),
+      getSource: (id: string) => sources.get(id),
+      addSource: (id: string, options: { data: unknown }) => {
+        sources.set(id, { data: options.data, setData(data) { this.data = data; } });
+      },
+      getLayer: () => undefined,
+      addLayer: () => {},
+      on: () => {},
+      fitBounds: (_bounds: unknown, options: unknown) => fits.push(options),
+    };
+    class Bounds { extend() { return this; } }
+    const run = new Function("map", "maplibregl", "document", `${script()}
+      setBottomInset(280);
+      recPlanned([[53.11, -4.0], [53.12, -3.99]]);
+      var preview = map.getSource("rec-planned").data;
+      recPlanned([[56.79, -5.0], [56.8, -4.99]]);
+      var replacement = map.getSource("rec-planned").data;
+      recPlanned([]);
+      return { preview, replacement, cleared: map.getSource("rec-planned").data, track: recPts };
+    `);
+    const result = run(map, { LngLatBounds: Bounds }, document);
+    expect(result.preview.features[0].geometry.coordinates).toEqual([[-4.0, 53.11], [-3.99, 53.12]]);
+    expect(result.replacement.features[0].geometry.coordinates).toEqual([[-5.0, 56.79], [-4.99, 56.8]]);
+    expect(result.cleared.features).toEqual([]);
+    expect(result.track).toEqual([]);
+    expect(fits[0]).toMatchObject({ padding: { top: 64, right: 64, bottom: 344, left: 64 } });
+  });
+
   it("carries the real decision functions, not copies of them", () => {
     const body = script();
     for (const fn of [chromeFor, isUserGesture, shouldRecentre]) {

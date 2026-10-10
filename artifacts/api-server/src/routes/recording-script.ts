@@ -41,8 +41,10 @@ var recRecentreBtn = null;
  * licence problem rather than a cosmetic one. The host says how much room it
  * is taking and the controls move up by that much.
  */
+var recBottomInset = 0;
 function setBottomInset(px) {
   var inset = Math.max(0, Math.min(600, Number(px) || 0));
+  recBottomInset = inset;
   var nodes = document.querySelectorAll(
     ".maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left"
   );
@@ -214,7 +216,15 @@ function recBounds(coords) {
 
 function recFitBounds(coords) {
   if (!coords.length) return;
-  map.fitBounds(recBounds(coords), { padding: 64, maxZoom: 16, duration: 0 });
+  /* Fit inside the usable map, not underneath the Track sheet. Reduce the
+     margins on short screens instead of centring the route under the sheet. */
+  var height = map.getContainer().clientHeight;
+  var bottom = Math.min(recBottomInset, Math.max(0, height - 32));
+  var margin = Math.min(64, Math.max(8, (height - bottom) / 4));
+  map.fitBounds(recBounds(coords), {
+    padding: { top: margin, right: 64, bottom: bottom + margin, left: 64 },
+    maxZoom: 16, duration: 0,
+  });
 }
 
 function recFitTrack() { recFitBounds(recPts); }

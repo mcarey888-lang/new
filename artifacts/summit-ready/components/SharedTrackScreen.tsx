@@ -77,14 +77,25 @@ export function SharedTrackScreen() {
   const startedRef = useRef(false);
   const mapRef = useRef<TrackMapHandle | null>(null);
   const [sheetHeight, setSheetHeight] = useState(0);
+  const [mapRevision, setMapRevision] = useState(0);
+  const handleMapMessage = useCallback((message: Record<string, unknown>) => {
+    if (message.type === "ready") setMapRevision(value => value + 1);
+  }, []);
 
   /* The sheet covers the bottom of the map, where the attribution sits.
      "Contains OS data (c) Crown copyright" is a licence condition, so the map
      is told how much room is taken and lifts it clear. */
   useEffect(() => {
-    if (!sheetHeight) return;
+    if (!mapRevision) return;
     mapRef.current?.send({ type: "bottomInset", px: Math.round(sheetHeight) });
-  }, [sheetHeight]);
+    /* The card is not the preview: send the selected geometry after the map
+       has its sources, and resend after a reload. An empty line removes the
+       previous selection without touching recorded GPS or the planner. */
+    mapRef.current?.send({
+      type: "recPlanned",
+      points: (route?.geometry ?? []).map(point => [point.lat, point.lng]),
+    });
+  }, [mapRevision, sheetHeight, route]);
 
   /* What this shell can offer besides a free hike. */
   const currentWeek = getCurrentWeek(trainingPlan);
@@ -193,7 +204,7 @@ export function SharedTrackScreen() {
 
   return (
     <View style={[st.screen, { backgroundColor: T.bg }]} testID="track-landing-screen">
-      <TrackMap recording={false} mapRef={mapRef} />
+      <TrackMap recording={false} mapRef={mapRef} onMessage={handleMapMessage} />
 
       <View style={[st.header, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
         {cameFromElsewhere ? (

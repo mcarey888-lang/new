@@ -31,6 +31,8 @@ export function TrackMap({ recording, onMessage, mapRef }: Props) {
   const webViewRef = useRef<WebView>(null);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const hostRef = useRef<View>(null);
+  const onMessageRef = useRef(onMessage);
+  onMessageRef.current = onMessage;
 
   /* Built once and kept: reloading the page on every state change would throw
      away the recorded track drawn on it. */
@@ -68,9 +70,10 @@ export function TrackMap({ recording, onMessage, mapRef }: Props) {
     host.appendChild(iframe);
 
     const listener = (event: MessageEvent) => {
+      if (event.source !== iframe.contentWindow) return;
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        if (data && typeof data === "object") onMessage?.(data as Record<string, unknown>);
+        if (data && typeof data === "object") onMessageRef.current?.(data as Record<string, unknown>);
       } catch { /* not ours */ }
     };
     window.addEventListener("message", listener);
@@ -79,7 +82,7 @@ export function TrackMap({ recording, onMessage, mapRef }: Props) {
       try { host.removeChild(iframe); } catch { /* already gone */ }
       frameRef.current = null;
     };
-  }, [onMessage]);
+  }, []);
 
   if (Platform.OS === "web") {
     return <View ref={hostRef} style={StyleSheet.absoluteFill} collapsable={false} />;
@@ -100,7 +103,7 @@ export function TrackMap({ recording, onMessage, mapRef }: Props) {
       onMessage={event => {
         try {
           const data = JSON.parse(event.nativeEvent.data);
-          if (data && typeof data === "object") onMessage?.(data);
+          if (data && typeof data === "object") onMessageRef.current?.(data);
         } catch { /* not ours */ }
       }}
     />
