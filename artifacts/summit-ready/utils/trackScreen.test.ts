@@ -161,6 +161,23 @@ const REC = read("app/hike-tracking.tsx");
 const REC_CODE = code(REC);
 
 describe("the recording screen", () => {
+  it("keeps the map controls below the measured host header and safe area", () => {
+    expect(REC_CODE).toContain("Math.max(insets.top + 54, headerHeight)");
+    expect(REC_CODE).toContain("setHeaderHeight(Math.ceil(event.nativeEvent.layout.height))");
+    expect(REC_CODE).toContain('testID="recording-map-viewport"');
+    expect(REC_CODE).toContain("style={[StyleSheet.absoluteFill, { top: mapTopInset }]}");
+  });
+
+  it("makes decorative header overlays explicitly touch transparent", () => {
+    const gradient = REC.slice(REC.indexOf("{/* ── Top gradient"));
+    expect(gradient.slice(0, gradient.indexOf("/>"))).toContain('pointerEvents="none"');
+    const header = REC.slice(REC.indexOf('testID="recording-header"'), REC.indexOf("{isOffline && !isIdle"));
+    expect(header).toContain('style={s.headerTitleContainer} pointerEvents="none"');
+    expect(header).toContain('gpsReady && s.gpsPillReady]} pointerEvents="none"');
+    expect(REC_CODE).toMatch(/pointerEvents="box-none"[\s\S]{0,180}testID="recording-header"/);
+    expect(header).toContain("router.back()");
+  });
+
   it("records on the shared map, not a second one", () => {
     /* Recording used to run on a Leaflet page with its own tiles and no
        basemap switch, so the one thing people want on a hill — satellite to

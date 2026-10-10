@@ -482,6 +482,8 @@ export default function HikeTrackingScreen() {
   const webViewRef        = useRef<WebView>(null);
   const webMapContainerRef = useRef<View>(null);
   const iframeRef          = useRef<any>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const mapTopInset = Math.max(insets.top + 54, headerHeight);
   const saveInFlightRef    = useRef(false);
   const routeIdRef         = useRef(
     Crypto.randomUUID(),
@@ -1879,8 +1881,12 @@ export default function HikeTrackingScreen() {
   return (
     <View style={s.root}>
 
-      {/* ── Full-screen map (always rendered behind everything) ── */}
-      <View style={StyleSheet.absoluteFill}>
+      {/* Keep the map controls below the host header and device safe area.
+          This changes layout, not the map URL or recording lifecycle. */}
+      <View
+        style={[StyleSheet.absoluteFill, { top: mapTopInset }]}
+        testID="recording-map-viewport"
+      >
         {Platform.OS !== "web" ? (
           restoreCheckpointPending ? (
             <View style={{ flex: 1, backgroundColor: "#08111f" }} />
@@ -1910,11 +1916,17 @@ export default function HikeTrackingScreen() {
       {/* ── Top gradient for header readability ── */}
       <LinearGradient
         colors={["rgba(5,13,26,0.90)", "rgba(5,13,26,0.0)"]}
-        style={[s.topGradient, { pointerEvents: "none" }]}
+        pointerEvents="none"
+        style={[s.topGradient, { height: mapTopInset }]}
       />
 
-      {/* ── Header (floats over map) ── */}
-      <View style={[s.header, { paddingTop: insets.top + 12 }]}>
+      {/* Only the back button takes touches; the title and GPS are labels. */}
+      <View
+        style={[s.header, { paddingTop: insets.top + 12 }]}
+        pointerEvents="box-none"
+        onLayout={event => setHeaderHeight(Math.ceil(event.nativeEvent.layout.height))}
+        testID="recording-header"
+      >
         <TouchableOpacity
           onPress={() => {
             if (isTracking || isPaused) {
@@ -1927,7 +1939,7 @@ export default function HikeTrackingScreen() {
           <ArrowLeft size={22} color={T.text} />
         </TouchableOpacity>
 
-        <View style={s.headerTitleContainer}>
+        <View style={s.headerTitleContainer} pointerEvents="none">
           <Text style={s.headerTitle} numberOfLines={1}>
             {nameLocked && routeName ? routeName : hillMeta.trackingMode === "freehike" ? "Start Free Hike" : "Start Hiking"}
           </Text>
@@ -1936,7 +1948,7 @@ export default function HikeTrackingScreen() {
           )}
         </View>
 
-        <View style={[s.gpsPill, gpsReady && s.gpsPillReady]}>
+        <View style={[s.gpsPill, gpsReady && s.gpsPillReady]} pointerEvents="none">
           <Animated.View style={[s.gpsDot, isTracking && pulseStyle]} />
           <Text style={[s.gpsText, gpsReady && s.gpsTextReady]}>
             {gpsReady ? "GPS" : "…"}
@@ -1945,7 +1957,7 @@ export default function HikeTrackingScreen() {
       </View>
 
       {isOffline && !isIdle && (
-        <View style={[s.offlineBanner, { top: insets.top + 68 }]}>
+        <View style={[s.offlineBanner, { top: insets.top + 68 }]} pointerEvents="none">
           <WifiOff size={13} color={T.orange} />
           <Text style={s.offlineBannerText}>Offline — activity saved on this device</Text>
         </View>
