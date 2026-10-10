@@ -73,7 +73,7 @@ describe("tracking integration invariants", () => {
   const tracker = read("app/hike-tracking.tsx");
   it("draws the planned line separately from actual GPS and preserves it in the checkpoint", () => {
     expect(tracker).toContain("personalRoute.context.route.geometry.map(point => [point.lat, point.lng])");
-    expect(tracker).toContain('type: "referenceRoute"');
+    expect(tracker).toContain('type: "recPlanned"');
     expect(tracker).toContain("personalRoute: personalRoute.context ?? undefined");
     expect(tracker).toContain("personalRoute.restore(session.personalRoute, ownerUserId)");
     expect(tracker).toContain("routeIdRef.current = session.routeId");

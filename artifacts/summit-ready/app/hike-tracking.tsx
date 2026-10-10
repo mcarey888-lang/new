@@ -777,6 +777,7 @@ export default function HikeTrackingScreen() {
     } catch { /* best-effort */ }
   }, [canonicalRouteIntent]);
 
+  const followedRouteRef = useRef<Array<{ latitude: number; longitude: number }>>([]);
   const referenceRouteSentRef = useRef(false);
   const sendReferenceRouteToMap = useCallback(async () => {
     if (canonicalRouteIntent) return;
@@ -790,7 +791,7 @@ export default function HikeTrackingScreen() {
   useEffect(() => {
     if (!mapReady || canonicalRouteIntent || !personalRoute.context) return;
     const msg = JSON.stringify({
-      type: "referenceRoute",
+      type: "recPlanned",
       points: personalRoute.context.route.geometry.map(point => [point.lat, point.lng]),
       endLabel: "Finish",
     });
@@ -798,7 +799,7 @@ export default function HikeTrackingScreen() {
     else webViewRef.current?.postMessage(msg);
     if (statusRef.current === "idle") setRouteName(personalRoute.context.route.name);
     return () => {
-      const clear = JSON.stringify({ type: "referenceRoute", points: [] });
+      const clear = JSON.stringify({ type: "recPlanned", points: [] });
       if (Platform.OS === "web") iframeRef.current?.contentWindow?.postMessage(clear, "*");
       else webViewRef.current?.postMessage(clear);
     };

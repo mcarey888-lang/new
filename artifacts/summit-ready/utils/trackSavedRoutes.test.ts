@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -6,7 +6,7 @@ const root = join(__dirname, "..");
 const read = (file: string) => readFileSync(join(root, file), "utf8");
 
 describe("Track artwork and personal route access", () => {
-  it("makes the same real private route library available in You without changing Track", () => {
+  it("keeps the real private route library available in You", () => {
     const profile = read("components/profile/PrimaryProfilePresentation.tsx");
     const account = read("app/(tabs)/account.tsx");
     const section = read("components/track/SavedRoutesSection.tsx");
@@ -20,15 +20,15 @@ describe("Track artwork and personal route access", () => {
     expect(section).toContain("result?.owner === userId");
   });
 
-  it("restores the original full-screen artwork without removing tracking controls", () => {
+  it("uses the shared map and retains saved-route selection and recording controls", () => {
     const screen = read("components/SharedTrackScreen.tsx");
-    expect(screen).toContain('require("@/assets/images/track-mountain-hiker.png")');
-    expect(existsSync(join(root, "assets/images/track-mountain-hiker.png"))).toBe(true);
-    expect(screen).toContain('width: "100%", height: "100%"');
-    for (const id of ["track-resume-activity", "track-pending-route", "track-expedition-stage", "track-training-session", "track-free-hike"]) {
+    expect(screen).toContain("<TrackMap recording={false}");
+    expect(screen).not.toContain('require("@/assets/images/track-mountain-hiker.png")');
+    for (const id of ["track-resume-activity", "track-route-row", "track-start-hike"]) {
       expect(screen).toContain(`testID="${id}"`);
     }
-    expect(screen).toContain("<SavedRoutesSection />");
+    expect(screen).toContain("listRoutes(getToken)");
+    expect(screen).toContain("Your saved routes");
   });
 
   it("loads real saved routes on focus and rejects stale account responses", () => {

@@ -37,3 +37,13 @@ that a summit itself has a route ascent; most catalogue records have none.
 **How to apply:** Do not equate absence on sampled cards with a universal guarantee.
 Report conflicting display conditionals to the author rather than patching their
 card implementation without permission.
+
+Keep the legacy recording-map endpoint available even when the recorder uses
+the shared map.
+
+**Why:** The author explicitly retained it as a fallback if the shared recording
+map misbehaves. Absence of callers is intentional, not permission to delete it.
+
+**How to apply:** Do not remove it during dead-code cleanup. Keep OS attribution
+clear of host overlays in both normal and recording modes; do not enable offline
+map downloads, publish or produce mobile builds as part of a branch-import check.

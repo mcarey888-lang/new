@@ -22,3 +22,12 @@ options still recorded `no-commit = true`.
 **How to apply:** Inspect history, remaining picks and staged changes before recovery.
 Preserve the resolved work and apply only patches that have not yet landed; do not
 abort and discard the resolved integration merely to clear sequencer state.
+
+Scan all conflicted files for remaining conflict markers before staging and
+continuing a cherry-pick.
+
+**Why:** Git can accept a file as resolved while it still contains marker text;
+resolving the first few conflicts in a large file is not sufficient.
+
+**How to apply:** Check the complete file, not just the inspected region, and
+verify the combined batch with type checks after completing the sequence.
