@@ -216,3 +216,34 @@ describe("Map and Progress, for an expedition stage", () => {
     expect(panel).toContain("Expedition progress is unavailable right now.");
   });
 });
+
+describe("the recorded line only contains fixes that passed the filter", () => {
+  it("guards every point sent to the map", () => {
+    /* Three watchers feed the map. Each must reject an implausible fix
+       before drawing it, or the line jumps to wherever the signal bounced. */
+    const sends = REC_CODE.split("sendPointToMap(").length - 1;
+    const guards = REC_CODE.split("isPlausiblePoint(").length - 1;
+    expect(sends).toBeGreaterThan(0);
+    /* One guard per send site, plus the definition and the batch drain. */
+    expect(guards).toBeGreaterThanOrEqual(sends);
+  });
+
+  it("does not draw the warm-up fix as part of the track", () => {
+    /* It is taken at Balanced accuracy to be fast, skips the plausibility
+       filter, and is never pushed into trackPoints. Drawn as a track point
+       it starts the line 50-100 m out and then jumps to the first real fix,
+       and the line on screen disagrees with the track that gets saved. */
+    const start = REC_CODE.indexOf("if (initialPosRef.current) {");
+    const block = REC_CODE.slice(start, start + 200);
+    expect(block).toContain("sendLocateToMap(");
+    expect(block).not.toContain("sendPointToMap(");
+  });
+
+  it("keeps both rejection rules", () => {
+    expect(REC_CODE).toMatch(/GPS_MAX_ACCURACY_M\s*=\s*25/);
+    expect(REC_CODE).toMatch(/GPS_MAX_SPEED_KMH\s*=\s*20/);
+    /* The background task applies the accuracy cap on its own, because its
+       points never pass through the foreground watchers. */
+    expect(REC_CODE).toMatch(/loc\.coords\.accuracy > GPS_MAX_ACCURACY_M\) continue;/);
+  });
+});

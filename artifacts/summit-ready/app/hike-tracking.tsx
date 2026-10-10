@@ -1288,9 +1288,15 @@ export default function HikeTrackingScreen() {
       setElapsedSecs(Math.max(0, elapsed));
     }, 1000);
 
-    // Send warmup position to map immediately so "Waiting for GPS…" clears at once
+    /* Show where we are straight away, without making it the track's first
+       point. This fix came from the warm-up, taken at Balanced accuracy to
+       be quick rather than exact, and it is the one position that never goes
+       through isPlausiblePoint. Drawn as a track point it put a 50–100 m
+       error at the start of the line and then jumped to the first real fix —
+       and because it is never pushed into trackPoints, the line on screen
+       disagreed with the track that gets saved. */
     if (initialPosRef.current) {
-      sendPointToMap(initialPosRef.current.lat, initialPosRef.current.lon);
+      sendLocateToMap(initialPosRef.current.lat, initialPosRef.current.lon);
     }
 
     if (Platform.OS === "web") {
