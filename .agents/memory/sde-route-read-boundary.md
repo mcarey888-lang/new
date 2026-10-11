@@ -5,6 +5,21 @@ description: Durable trust and activation rules for canonical route intelligence
 
 ## Production connectivity is a separate check
 
+Require a dedicated, database-enforced catalogue reader: explicit SELECT access
+to the engine catalogue only, no application-table reads and no write privileges.
+Retain the existing bounded pool and read-only session setting as additional
+protection, not as a substitute for database permissions.
+
+**Why:** The user treats the summit catalogue as irreplaceable and explicitly
+requires protection that survives an application mistake resetting a session
+setting.
+
+**How to apply:** Audit inherited and PUBLIC privileges as well as direct grants
+before asserting isolation. Verify reads and rejected writes using the actual
+restricted login, not just an administrator's permission inspection. Do not
+bypass production tool restrictions or add a provisioning/startup workaround;
+stop if supported administration or user-approved publishing is required.
+
 The dedicated engine variable and read-only pool are an ownership/code boundary,
 not proof of separate physical infrastructure. The documented shared-database
 import explicitly binds `ENGINE_DATABASE_URL` to `DATABASE_URL`; production also
