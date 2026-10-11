@@ -33,6 +33,7 @@ import { appendApprovedImageRevision, sessionImageSubject } from "@/utils/mounta
 import { assignSessionsToDays, DAY_FULL } from "@/utils/dayAssignment";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
+import { hillDetailNavigation } from "@/utils/hillDetailNavigation";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -52,15 +53,46 @@ function Stat({ value, label, tone }: { value: string; label: string; tone?: str
 
 /* A setup row: what is chosen, and the control that changes it. */
 function SetupRow({
-  icon, title, detail, action, onPress, muted = false,
+  icon, title, detail, action, onPress, onActionPress, muted = false,
 }: {
   icon: React.ReactNode;
   title: string;
   detail: string;
   action: string;
   onPress: () => void;
+  onActionPress?: () => void;
   muted?: boolean;
 }) {
+  if (onActionPress) {
+    return (
+      <SRSubPanel>
+        <View style={s.setupRow}>
+          <TouchableOpacity
+            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`View ${title} information, parking and directions`}
+            style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}
+          >
+            {icon}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={s.setupTitle} numberOfLines={1}>{title}</Text>
+              <Text style={s.setupDetail} numberOfLines={2}>{detail}</Text>
+              <Text style={s.setupAction}>View hill & parking directions</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onActionPress}
+            accessibilityRole="button"
+            accessibilityLabel={`${action} session hill`}
+            style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 48, paddingHorizontal: 8 }}
+          >
+            <Text style={s.setupAction}>{action}</Text>
+            <ChevronRight size={13} color={BASECAMP.textDim} />
+          </TouchableOpacity>
+        </View>
+      </SRSubPanel>
+    );
+  }
   return (
     <SRSubPanel onPress={onPress} accessibilityLabel={`${title}. ${action}.`}>
       <View style={s.setupRow}>
@@ -628,7 +660,14 @@ export default function SessionDetailScreen() {
                     : "Choose a training hill for this session"}
                   action={assignedHill ? "Change" : "Assign"}
                   muted={!assignedHill}
-                  onPress={() => setHillPickerOpen(true)}
+                  onPress={() => {
+                    if (assignedHill) {
+                      router.push(hillDetailNavigation(assignedHill, summitGoal?.location ?? ""));
+                    } else {
+                      setHillPickerOpen(true);
+                    }
+                  }}
+                  onActionPress={assignedHill ? () => setHillPickerOpen(true) : undefined}
                 />
               )}
               {session.type === "cardio" && !isStairRepeat && (

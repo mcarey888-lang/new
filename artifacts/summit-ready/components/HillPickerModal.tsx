@@ -196,15 +196,15 @@ export function HillPickerModal({
               <MapPin size={28} color={T.textDim} />
               <Text style={st.emptyText}>No nearby hills found</Text>
               <Text style={st.emptyHint}>
-                Visit the Hills tab to discover hills near your location, then come back to assign one here.
+                Visit Explore to discover hills near your location, then come back to assign one here.
                 {"\n\n"}You can also type any hill name in the search box above to find it directly.
               </Text>
               <TouchableOpacity
                 style={st.emptyBtn}
-                onPress={() => { onClose(); router.push("/(tabs)/hills"); }}
+                onPress={() => { handleClose(); router.push("/(tabs)/explore"); }}
                 activeOpacity={0.8}
               >
-                <Text style={st.emptyBtnText}>Go to Hills tab →</Text>
+                <Text style={st.emptyBtnText}>Find hills in Explore →</Text>
               </TouchableOpacity>
             </View>
           ) : filtered.length === 0 && query.trim() ? null : (
