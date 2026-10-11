@@ -85,3 +85,4 @@
 - [Summit map review boundary](summit-query-review-boundary.md) — verify author-owned summit logic; preserve globe integration and report failures rather than creating a second version.
 - [MapLibre browser WebGL](maplibre-browser-webgl.md) — disabled GL in managed runners can be an environment issue; local Chromium software rendering enabled real map verification.
 - [Free/Pro access policy](free-version-product-requirement.md) — Free exploration, recording and readiness snapshot; Pro preparation; core safety and personal-data access stays free.
+- [Store build source](store-build-source.md) — build the tested workspace snapshot through a separate release ref when shared development has advanced independently.
