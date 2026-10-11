@@ -61,6 +61,8 @@ import { ActivityCompleteView } from "@/components/track/ActivityCompleteView";
 import { usePersonalRouteTracking } from "@/hooks/usePersonalRouteTracking";
 import { describeRoute } from "@/utils/plannedRouteApi";
 import { TrackProgressPanel } from "@/components/track/TrackProgressPanel";
+import { LogHikeModal } from "@/components/LogHikeModal";
+import { recordingFailureNote } from "@/utils/recordingOutcome";
 import type { PlanSession, SavedExpedition } from "@/context/AppContext";
 import type { TrailBenefit } from "@/constants/trailData";
 import {
@@ -397,6 +399,7 @@ export default function HikeTrackingScreen() {
   /* Expedition recordings get a second face: the mountain this ascent is
      climbing. Map by default — the hike is the thing happening. */
   const [panel, setPanel] = useState<"map" | "progress">("map");
+  const [logByHandOpen, setLogByHandOpen] = useState(false);
   const [showExpeditionPrompt, setShowExpeditionPrompt] = useState(false);
   const [completionExpedition, setCompletionExpedition] = useState<SavedExpedition | null>(null);
   const [completionSaveStarted, setCompletionSaveStarted] = useState(false);
@@ -1720,7 +1723,49 @@ export default function HikeTrackingScreen() {
             onSave={handleSave}
             onDiscard={handleDiscard}
           />
+
+          {/* GPS fails quietly: the clock keeps running and the track does
+              not. Saving looks identical either way, so a hike that was not
+              captured has to say so here, where the person is looking, and
+              offer the way out with what it does know already filled in —
+              the elapsed time is reliable even when nothing else is. */}
+          {(() => {
+            const note = recordingFailureNote({
+              pointCount: trackPoints.current.length,
+              distanceKm,
+              elapsedSecs,
+            });
+            if (!note) return null;
+            return (
+              <View style={s.failedRecording} testID="recording-failed-note">
+                <Text style={s.failedRecordingText}>{note}</Text>
+                <TouchableOpacity
+                  onPress={() => setLogByHandOpen(true)}
+                  style={s.failedRecordingBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Enter this hike by hand"
+                  testID="recording-log-by-hand"
+                >
+                  <Text style={s.failedRecordingBtnText}>Enter it by hand</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })()}
         </ScrollView>
+
+        <LogHikeModal
+          visible={logByHandOpen}
+          onClose={() => setLogByHandOpen(false)}
+          prefillName={routeName || hillMeta.hillName || ""}
+          /* Only offered as a starting point where it is worth anything.
+             Zero distance prefilled as zero is a worse default than the
+             form's own. */
+          prefillDistance={distanceKm > 0 ? Number(distanceKm.toFixed(1)) : undefined}
+          prefillElevation={elevGainM > 0 ? Math.round(elevGainM) : undefined}
+          /* The clock does not depend on GPS, so this one is trustworthy. */
+          prefillTimeTaken={elapsedSecs > 0 ? Math.max(1, Math.round(elapsedSecs / 60)) : undefined}
+          reason="The recorded track looks incomplete. Check these against what you actually walked."
+        />
 
         {/* ── Expedition route completion prompt ─────────────────────────── */}
         {showExpeditionPrompt && !!trackedExpedition && (
@@ -2401,6 +2446,19 @@ export default function HikeTrackingScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  failedRecording: {
+    marginTop: 14, padding: 16, borderRadius: 12, gap: 10,
+    borderWidth: 1, borderColor: `${T.orange}44`, backgroundColor: `${T.orange}14`,
+  },
+  failedRecordingText: {
+    color: T.text, fontSize: 13, lineHeight: 19, fontFamily: "Inter_400Regular",
+  },
+  failedRecordingBtn: {
+    alignSelf: "flex-start", paddingHorizontal: 16, paddingVertical: 11, minHeight: 44,
+    justifyContent: "center", borderRadius: 10,
+    borderWidth: 1, borderColor: `${T.orange}66`,
+  },
+  failedRecordingBtnText: { color: T.orange, fontSize: 14, fontFamily: "Inter_600SemiBold" },
   trainingTarget: {
     position: "absolute", left: 12, right: 12, zIndex: 5,
     backgroundColor: "rgba(11,20,24,0.92)", borderRadius: 12, borderWidth: 1,

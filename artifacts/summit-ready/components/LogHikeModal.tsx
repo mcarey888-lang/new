@@ -35,17 +35,24 @@ interface Props {
   prefillName?: string;
   prefillDistance?: number;
   prefillElevation?: number;
+  /** Minutes. Carried over when a recording is being entered by hand, so
+   *  whatever the attempt did capture is not retyped from memory. */
+  prefillTimeTaken?: number;
+  /** Shown above the form when this is standing in for a failed recording. */
+  reason?: string;
   onClose: () => void;
 }
 
-export function LogHikeModal({ visible, prefillName, prefillDistance, prefillElevation, onClose }: Props) {
+export function LogHikeModal({
+  visible, prefillName, prefillDistance, prefillElevation, prefillTimeTaken, reason, onClose,
+}: Props) {
   const { logExploreHike, addSession, summitGoal, trainingPlan } = useApp();
   const today = new Date().toISOString().split("T")[0];
   const [name, setName] = useState(prefillName ?? "");
   const [date, setDate] = useState(today);
   const [distance, setDistance] = useState(prefillDistance ?? 5);
   const [elevationGain, setElevationGain] = useState(prefillElevation ?? 200);
-  const [timeTaken, setTimeTaken] = useState(90);
+  const [timeTaken, setTimeTaken] = useState(prefillTimeTaken ?? 90);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [addToSummit, setAddToSummit] = useState(true);
@@ -62,9 +69,10 @@ export function LogHikeModal({ visible, prefillName, prefillDistance, prefillEle
       setDate(today);
       setDistance(prefillDistance ?? 5);
       setElevationGain(prefillElevation ?? 200);
+      setTimeTaken(prefillTimeTaken ?? 90);
       setAddToSummit(true);
     }
-  }, [visible, prefillName, prefillDistance, prefillElevation]);
+  }, [visible, prefillName, prefillDistance, prefillElevation, prefillTimeTaken]);
 
   async function handleSave() {
     if (!name.trim()) return;
@@ -102,6 +110,10 @@ export function LogHikeModal({ visible, prefillName, prefillDistance, prefillEle
               <X size={18} color={T.textMuted} />
             </TouchableOpacity>
           </View>
+
+          {/* Says why this form is open, when it opened because something
+              went wrong rather than because the person chose it. */}
+          {reason ? <Text style={s.reason}>{reason}</Text> : null}
 
           <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
             <View style={s.field}>
@@ -172,6 +184,10 @@ export function LogHikeModal({ visible, prefillName, prefillDistance, prefillEle
 }
 
 const s = StyleSheet.create({
+  reason: {
+    fontSize: 13, lineHeight: 19, color: T.textMuted,
+    fontFamily: "Inter_400Regular", marginBottom: 4,
+  },
   container: { flex: 1, backgroundColor: T.bg },
   handle: { width: 36, height: 4, backgroundColor: T.surface, borderRadius: 2, alignSelf: "center", marginTop: 12 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 16 },
