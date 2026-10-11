@@ -82,6 +82,7 @@ import {
   writeActiveHike,
 } from "@/utils/activeHikeSession";
 import { requestBackgroundLocation } from "@/utils/backgroundLocationDisclosure";
+import { breakElevationContinuity, createRecordedElevation, recordElevation } from "@/utils/recordedElevation";
 import { enqueueSyncPending, retrySyncOutbox } from "@/utils/syncOutbox";
 import {
   clearPendingHikeSelection,
@@ -179,6 +180,7 @@ interface TrackPoint {
   ts: number;
   speed?: number | null;
   acc?: number | null;
+  altAcc?: number | null;
 }
 
 interface NearbyRoute {
@@ -192,7 +194,6 @@ interface NearbyRoute {
   contributionCount: number;
 }
 
-const ALTITUDE_NOISE_THRESHOLD = 1;
 const GPS_MAX_ACCURACY_M = 25;   // reject fixes noisier than 25 m horizontal accuracy
 const GPS_MAX_SPEED_KMH  = 20;   // ~12 mph — not achievable on foot / mountainside
 const LOCATION_UPDATES_CONFIG: Location.LocationTaskOptions = {
@@ -220,6 +221,7 @@ function isPlausiblePoint(
   if (accuracy != null && accuracy > GPS_MAX_ACCURACY_M) return false;
   if (prevPts.length === 0) return true;
   const prev = prevPts[prevPts.length - 1];
+  if (ts <= prev.ts) return false;
   const distKm = haversineKm(prev.lat, prev.lon, lat, lon);
   const dtSecs = Math.max(0, (ts - prev.ts) / 1000);
   if (dtSecs > 0 && distKm > 0) {
@@ -249,6 +251,7 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
         ts: loc.timestamp,
         speed: loc.coords.speed,
         acc: loc.coords.accuracy,
+        altAcc: loc.coords.altitudeAccuracy,
       });
     }
     if (points.length === 0) return;
@@ -267,7 +270,7 @@ export default function HikeTrackingScreen() {
   const insets = useSafeAreaInsets();
   const { getToken, userId } = useAuth();
   const { appMode, shellMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions,
-          summitGoal, patchExpedition, activeExpeditionId, expeditions } = useApp();
+          summitGoal, patchExpedition, activeExpeditionId, expeditions, exploreHikes } = useApp();
   const { lastConsequence: stage8LastConsequence } = useStage8();
   const elevationBankQuery = useGetElevationBank({
     query: {
@@ -475,6 +478,7 @@ export default function HikeTrackingScreen() {
 
   const trackPoints    = useRef<TrackPoint[]>([]);
   const lastAltRef     = useRef<number | null>(null);
+  const elevationFilterRef = useRef(createRecordedElevation());
   const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const statusRef      = useRef<TrackStatus>("idle");
@@ -539,6 +543,19 @@ export default function HikeTrackingScreen() {
   const elevGainRef = useRef(0);
   const elevLossRef = useRef(0);
   const currentAltRef = useRef<number | null>(null);
+  const consumeAltitude = useCallback((alt: number | null, ts: number, altAcc?: number | null) => {
+    const next = recordElevation(elevationFilterRef.current, { alt, ts, altAcc });
+    elevationFilterRef.current = next;
+    elevGainRef.current = next.gain;
+    elevLossRef.current = next.loss;
+    lastAltRef.current = next.last?.alt ?? null;
+    setElevGainM(next.gain);
+    setElevLossM(next.loss);
+    if (next.last?.ts === ts && alt != null && Number.isFinite(alt)) {
+      currentAltRef.current = alt;
+      setCurrentAltM(alt);
+    }
+  }, []);
   useEffect(() => { distanceRef.current = distanceKm; }, [distanceKm]);
   useEffect(() => { elevGainRef.current = elevGainM; }, [elevGainM]);
   useEffect(() => { elevLossRef.current = elevLossM; }, [elevLossM]);
@@ -873,26 +890,13 @@ export default function HikeTrackingScreen() {
       for (const p of fresh) {
         if (!isPlausiblePoint(p.lat, p.lon, p.ts, p.acc ?? null, pts)) continue;
         if (p.speed != null && p.speed >= 0) setCurrentSpeedKmh(p.speed * 3.6);
-        if (p.alt != null) {
-          currentAltRef.current = p.alt;
-          setCurrentAltM(p.alt);
-          if (lastAltRef.current !== null) {
-            const delta = p.alt - lastAltRef.current;
-            if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
-              if (delta > 0) setElevGainM(g => (elevGainRef.current = g + delta));
-              else           setElevLossM(l => (elevLossRef.current = l + Math.abs(delta)));
-              lastAltRef.current = p.alt;
-            }
-          } else {
-            lastAltRef.current = p.alt;
-          }
-        }
+        consumeAltitude(p.alt, p.ts, p.altAcc);
         if (pts.length > 0) {
           const prev = pts[pts.length - 1];
           const d = haversineKm(prev.lat, prev.lon, p.lat, p.lon);
           if (d > 0.003) setDistanceKm(km => (distanceRef.current = km + d));
         }
-        pts.push({ lat: p.lat, lon: p.lon, alt: p.alt, ts: p.ts });
+        pts.push({ ...p });
         addedAny = true;
       }
       // Replay the complete route on the map so any straight-line gap caused
@@ -943,6 +947,7 @@ export default function HikeTrackingScreen() {
         distanceKm: distanceRef.current,
         elevGainM: elevGainRef.current,
         elevLossM: elevLossRef.current,
+        elevationFilter: elevationFilterRef.current,
         lastAltM: lastAltRef.current,
         currentAltM: currentAltRef.current,
         trackStartMs: trackStartMsRef.current,
@@ -1041,6 +1046,8 @@ export default function HikeTrackingScreen() {
         distanceRef.current = session.distanceKm ?? 0;
         elevGainRef.current = session.elevGainM ?? 0;
         elevLossRef.current = session.elevLossM ?? 0;
+        elevationFilterRef.current = session.elevationFilter ??
+          createRecordedElevation(elevGainRef.current, elevLossRef.current);
         lastAltRef.current = session.lastAltM ?? null;
         currentAltRef.current = session.currentAltM ?? session.lastAltM ?? null;
         setDistanceKm(distanceRef.current);
@@ -1154,26 +1161,13 @@ export default function HikeTrackingScreen() {
                 const pts = trackPoints.current;
                 if (!isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts)) return;
                 if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
-                if (altitude != null) {
-                  currentAltRef.current = altitude;
-                  setCurrentAltM(altitude);
-                  if (lastAltRef.current !== null) {
-                    const delta = altitude - lastAltRef.current;
-                    if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
-                      if (delta > 0) setElevGainM(g => (elevGainRef.current = g + delta));
-                      else           setElevLossM(l => (elevLossRef.current = l + Math.abs(delta)));
-                      lastAltRef.current = altitude;
-                    }
-                  } else {
-                    lastAltRef.current = altitude;
-                  }
-                }
+                consumeAltitude(altitude, loc.timestamp, loc.coords.altitudeAccuracy);
                 if (pts.length > 0) {
                   const prev = pts[pts.length - 1];
                   const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
                   if (d > 0.003) setDistanceKm(km => (distanceRef.current = km + d));
                 }
-                pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
+                pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp, acc: accuracy, altAcc: loc.coords.altitudeAccuracy });
                 sendPointToMap(latitude, longitude);
               },
             );
@@ -1312,26 +1306,13 @@ export default function HikeTrackingScreen() {
           const pts = trackPoints.current;
           if (!isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts)) return;
           if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
-          if (altitude != null) {
-            currentAltRef.current = altitude;
-            setCurrentAltM(altitude);
-            if (lastAltRef.current !== null) {
-              const delta = altitude - lastAltRef.current;
-              if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
-                if (delta > 0) setElevGainM(g => (elevGainRef.current = g + delta));
-                else           setElevLossM(l => (elevLossRef.current = l + Math.abs(delta)));
-                lastAltRef.current = altitude;
-              }
-            } else {
-              lastAltRef.current = altitude;
-            }
-          }
+          consumeAltitude(altitude, loc.timestamp, loc.coords.altitudeAccuracy);
           if (pts.length > 0) {
             const prev = pts[pts.length - 1];
             const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
             if (d > 0.003) setDistanceKm(km => (distanceRef.current = km + d));
           }
-          pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
+          pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp, acc: accuracy, altAcc: loc.coords.altitudeAccuracy });
           sendPointToMap(latitude, longitude);
         },
       );
@@ -1394,6 +1375,7 @@ export default function HikeTrackingScreen() {
     // pause drain. Merge it before producers resume.
     await drainBgPoints();
 
+    elevationFilterRef.current = breakElevationContinuity(elevationFilterRef.current);
     timerRef.current = setInterval(() => {
       const elapsed = Math.floor(
         (Date.now() - trackStartMsRef.current - totalPausedMsRef.current) / 1000
@@ -1423,26 +1405,13 @@ export default function HikeTrackingScreen() {
           const pts = trackPoints.current;
           if (!isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts)) return;
           if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
-          if (altitude != null) {
-            currentAltRef.current = altitude;
-            setCurrentAltM(altitude);
-            if (lastAltRef.current !== null) {
-              const delta = altitude - lastAltRef.current;
-              if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
-                if (delta > 0) setElevGainM(g => (elevGainRef.current = g + delta));
-                else           setElevLossM(l => (elevLossRef.current = l + Math.abs(delta)));
-                lastAltRef.current = altitude;
-              }
-            } else {
-              lastAltRef.current = altitude;
-            }
-          }
+          consumeAltitude(altitude, loc.timestamp, loc.coords.altitudeAccuracy);
           if (pts.length > 0) {
             const prev = pts[pts.length - 1];
             const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
             if (d > 0.003) setDistanceKm(km => (distanceRef.current = km + d));
           }
-          pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
+          pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp, acc: accuracy, altAcc: loc.coords.altitudeAccuracy });
           sendPointToMap(latitude, longitude);
         },
       );
@@ -1689,6 +1658,7 @@ export default function HikeTrackingScreen() {
     } catch {
       saveInFlightRef.current = false;
       setSaving(false);
+      Alert.alert("Hike save needs attention", "Your recording has been kept. Something prevented saving or syncing from finishing. Please try Save again; it will not duplicate your hike.");
     }
   }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
        addSession, logExploreHike, activeExpeditionId, trackedExpedition, hillMeta, expeditions, patchExpedition, getToken, userId, selectedCanonical, isOffline, canonicalRouteContext]);
@@ -1773,6 +1743,7 @@ export default function HikeTrackingScreen() {
             addToPlan={addToPlan}
             setAddToPlan={setAddToPlan}
             saving={saving}
+            savedLocally={exploreHikes.some(hike => hike.activityId === routeIdRef.current)}
             discarding={discarding}
             discardError={discardError}
             onSave={handleSave}

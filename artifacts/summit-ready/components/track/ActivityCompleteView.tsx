@@ -47,6 +47,7 @@ export interface ActivityCompleteViewProps {
   addToPlan: boolean;
   setAddToPlan: (fn: (v: boolean) => boolean) => void;
   saving: boolean;
+  savedLocally?: boolean;
   discarding?: boolean;
   discardError?: string | null;
   onSave: () => void;
@@ -74,7 +75,7 @@ function RecordStat({ value, label }: { value: string | null; label: string }) {
 export function ActivityCompleteView({
   completionPresentation, elevGainM, elevLossM, distanceKm, elapsedSecs, currentAltM,
   fmtM, fmtKm, formatTime, trainingPlan, addToPlan, setAddToPlan, saving, onSave, onDiscard,
-  discarding = false, discardError,
+  discarding = false, discardError, savedLocally = false,
 }: ActivityCompleteViewProps) {
   return (
           <Animated.View entering={FadeInDown.duration(400)}>
@@ -253,7 +254,14 @@ export function ActivityCompleteView({
             {/* Where the record is, stated as three different things because
                 they are three different things. */}
             <SRSubPanel style={s.offlineRow} testID="completion-sync">
-              {completionPresentation.sync === "saved_locally" ? (
+              {!savedLocally ? (
+                <>
+                  <WifiOff size={14} color={T.textMuted} />
+                  <Text style={s.offlineText}>
+                    Recording kept on this device. Tap Save hike below to add it to your completed hikes.
+                  </Text>
+                </>
+              ) : completionPresentation.sync === "saved_locally" ? (
                 <>
                   <WifiOff size={14} color={T.orange} />
                   <Text style={s.offlineText}>
@@ -311,7 +319,7 @@ export function ActivityCompleteView({
             </View>
     
             <SRButton
-              label={saving ? "Saving\u2026" : ACTIVITY_DETAILS_COPY.cta}
+               label={saving ? "Saving\u2026" : savedLocally ? ACTIVITY_DETAILS_COPY.cta : "Save hike"}
               onPress={onSave}
               disabled={saving || discarding}
               style={{ marginTop: 14 }}

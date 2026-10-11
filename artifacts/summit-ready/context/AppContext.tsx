@@ -673,6 +673,8 @@ const DEMO_SESSIONS: Session[] = [
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { userId } = useAuth();
   const _uid = userId ?? "";
+  const hikeStorageOwnerRef = useRef(_uid);
+  hikeStorageOwnerRef.current = _uid;
   const GOAL_KEY             = _uid ? `summitready_goal_${_uid}`                    : _FLAT_GOAL_KEY;
   const TRAINING_GOAL_KEY    = _uid ? `summitready_training_goal_${_uid}`           : _FLAT_TRAINING_GOAL_KEY;
   const EXPEDITION_GOAL_KEY  = _uid ? `summitready_expedition_goal_${_uid}`         : _FLAT_EXPEDITION_GOAL_KEY;
@@ -1809,6 +1811,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [shellMode, trainingGoal, expeditionGoal, trainingPlan, sessions, sessionReps, assignedHills, completedGoals, exploreHikes, SHELL_MODE_KEY, GOAL_KEY]);
 
   const logExploreHike = useCallback(async (hike: Omit<ExploreHike, "id">) => {
+    if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed. Please reopen your recording.");
     const existing = hike.activityId
       ? exploreHikesRef.current.find(item => item.activityId === hike.activityId)
       : undefined;
@@ -1818,9 +1821,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const result = upsertByActivityId(exploreHikesRef.current, newHike);
     if (!result.inserted) return result.id;
     const updated = result.items;
+    await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
+    if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed while saving. The hike remains private to its original account.");
     exploreHikesRef.current = updated;
     setExploreHikes(updated);
-    await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
     const oldScore = readinessScore;
     let score = readinessScore;
     if (summitGoal) {
@@ -1836,7 +1840,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     checkAndNotifyAchievements(sessions, score, submittedPlanSessions, unlockedAchievements, updated);
     return id;
-  }, [sessions, readinessScore, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, submittedPlanSessions, unlockedAchievements, checkAndNotifyAchievements]);
+  }, [sessions, readinessScore, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, submittedPlanSessions, unlockedAchievements, checkAndNotifyAchievements, EXPLORE_HIKES_KEY, _uid]);
 
   const deleteExploreHike = useCallback(async (id: string) => {
     const updated = exploreHikes.filter(h => h.id !== id);

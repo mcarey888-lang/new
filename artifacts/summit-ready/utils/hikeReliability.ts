@@ -1,4 +1,5 @@
 import type { PersonalRouteHandoff } from "./personalRouteHandoff";
+import type { RecordedElevationState } from "./recordedElevation";
 
 export interface DurableTrackPoint {
   lat: number;
@@ -7,6 +8,7 @@ export interface DurableTrackPoint {
   ts: number;
   speed?: number | null;
   acc?: number | null;
+  altAcc?: number | null;
 }
 
 export interface PointBatch {
@@ -25,6 +27,7 @@ export interface HikeCheckpoint {
   distanceKm: number;
   elevGainM: number;
   elevLossM: number;
+  elevationFilter?: RecordedElevationState;
   lastAltM: number | null;
   currentAltM: number | null;
   trackStartMs: number;
