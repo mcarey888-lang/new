@@ -321,17 +321,6 @@ export default function ChallengesScreen() {
           </Animated.View>
         )}
 
-        {/* Coming soon */}
-        <Animated.View entering={FadeInDown.delay(200).duration(600)} style={s.comingSoon}>
-          <LinearGradient colors={[T.purpleDim, "transparent"]} style={StyleSheet.absoluteFill} />
-          <Text style={s.comingSoonTitle}>Custom Challenge Builder</Text>
-          <Text style={s.comingSoonBody}>
-            Set your own elevation target, deadline, and challenge name. Coming soon.
-          </Text>
-          <View style={s.comingSoonBadge}>
-            <Text style={s.comingSoonBadgeText}>Coming soon</Text>
-          </View>
-        </Animated.View>
       </ScrollView>
     </LinearGradient>
   );
@@ -387,12 +376,4 @@ const s = StyleSheet.create({
   },
   startBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.bg },
 
-  comingSoon: {
-    backgroundColor: "transparent", borderRadius: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
-    padding: 20, gap: 10, overflow: "hidden",
-  },
-  comingSoonTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text },
-  comingSoonBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 20 },
-  comingSoonBadge: { alignSelf: "flex-start", backgroundColor: T.purpleDim, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  comingSoonBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.purple },
 });

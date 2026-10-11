@@ -50,3 +50,24 @@ describe("the ready-for peak list", () => {
     expect(peaks.length).toBeGreaterThan(10);
   });
 });
+
+
+describe("the Challenges tab", () => {
+  const body = read("app/(tabs)/challenges.tsx");
+
+  it("advertises no feature that does not exist", () => {
+    /* A panel announcing a Custom Challenge Builder, with nothing behind
+       it. Non-interactive and honestly labelled, so a weaker case than a
+       dead button — but it cost a whole panel to offer nothing, and gave a
+       reviewer a reason to look harder under App Completeness. */
+    expect(body).not.toMatch(/coming soon/i);
+    expect(body).not.toMatch(/Custom Challenge Builder/);
+  });
+
+  it("still shows the challenges that do exist", () => {
+    /* Removing the advertisement must not take the feature with it. */
+    for (const section of ["In progress", "Available", "Completed"]) {
+      expect(body).toContain(section);
+    }
+  });
+});
