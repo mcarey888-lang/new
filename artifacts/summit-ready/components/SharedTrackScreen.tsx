@@ -15,6 +15,7 @@ import { useScreenView } from "@/lib/analytics";
 import { T } from "@/constants/theme";
 import { discardActiveHike, readActiveHike } from "@/utils/activeHikeSession";
 import { canStart, gpsDisplay } from "@/utils/gpsStatus";
+import { primaryTabBarHeight } from "@/utils/tabBarLayout";
 import {
   clearPendingHikeSelection, readPendingHikeSelection, savePendingHikeSelection,
 } from "@/utils/pendingHikeSelection";
@@ -57,6 +58,7 @@ function useActiveHike() {
 export function SharedTrackScreen() {
   useScreenView("track");
   const insets = useSafeAreaInsets();
+  const navigationHeight = primaryTabBarHeight(Platform.OS, insets.bottom);
   const { userId, getToken } = useAuth();
   const {
     shellMode, activeExpedition, activeExpeditionId, trainingPlan, completedPlanSessions,
@@ -87,7 +89,7 @@ export function SharedTrackScreen() {
      is told how much room is taken and lifts it clear. */
   useEffect(() => {
     if (!mapRevision) return;
-    mapRef.current?.send({ type: "bottomInset", px: Math.round(sheetHeight) });
+    mapRef.current?.send({ type: "bottomInset", px: Math.round(sheetHeight + navigationHeight) });
     /* The card is not the preview: send the selected geometry after the map
        has its sources, and resend after a reload. An empty line removes the
        previous selection without touching recorded GPS or the planner. */
@@ -95,7 +97,7 @@ export function SharedTrackScreen() {
       type: "recPlanned",
       points: (route?.geometry ?? []).map(point => [point.lat, point.lng]),
     });
-  }, [mapRevision, sheetHeight, route]);
+  }, [mapRevision, sheetHeight, navigationHeight, route]);
 
   /* What this shell can offer besides a free hike. */
   const currentWeek = getCurrentWeek(trainingPlan);
@@ -222,7 +224,7 @@ export function SharedTrackScreen() {
       </View>
 
       <View
-        style={[st.sheet, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}
+        style={[st.sheet, { bottom: navigationHeight, paddingBottom: 20 }]}
         accessibilityLabel="Start a hike"
         onLayout={e => setSheetHeight(e.nativeEvent.layout.height)}
       >

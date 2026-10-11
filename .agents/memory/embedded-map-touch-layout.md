@@ -15,3 +15,13 @@ Raising a button inside an iframe or WebView cannot fix a covering host overlay.
 standalone map page. Account for header measurement, large text and rotation.
 Do not hide or rewrite working map controls to work around host hit testing, and
 do not change recording, GPS, saving or pause/resume behavior for a layout fix.
+
+The Track landing sheet must sit above the full absolute-positioned primary
+navigation footprint, including its native safe area. Include both sheet and
+navigation height when lifting the map attribution.
+
+**Why:** Padding for the home indicator alone did not reserve the navigation
+bar; it covered the Start hike button despite that button being rendered.
+
+**How to apply:** Share the navigation height calculation rather than maintaining
+separate offsets. Do not add the native bottom safe area twice.

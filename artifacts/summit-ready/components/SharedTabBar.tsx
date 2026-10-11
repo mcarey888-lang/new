@@ -23,6 +23,7 @@ import { T } from "@/constants/theme";
 import { BASECAMP } from "@/constants/tokens";
 import { useApp } from "@/context/AppContext";
 import { activePrimaryTabForSegments, primaryTabTarget, type PrimaryTab } from "@/utils/navigationTargets";
+import { primaryTabBarHeight } from "@/utils/tabBarLayout";
 
 export function SharedTabBar() {
   const insets = useSafeAreaInsets();
@@ -31,7 +32,7 @@ export function SharedTabBar() {
 
   const activeTab = activePrimaryTabForSegments(segments);
 
-  const tabBarHeight = Platform.OS === "web" ? 80 : 62 + insets.bottom;
+  const tabBarHeight = primaryTabBarHeight(Platform.OS, insets.bottom);
   const isIOS = Platform.OS === "ios";
 
   const handlePress = (tab: PrimaryTab) => {
