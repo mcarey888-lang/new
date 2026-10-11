@@ -20,3 +20,9 @@ Explore and Change hill should use the same nearby-search behavior and results, 
 **Why:** The user could find hills for the same postcode in Explore while the session picker failed. They explicitly requested the Explore search for changing session hills.
 
 **How to apply:** Keep postcode normalization, search radius and successful-result reuse shared across both entry points. Preserve source identities and estimated-climb labels when assigning a result to a session.
+
+Named hill lookup should not depend solely on broad-area peak discovery. A mapped-name provider may still answer while the area provider is timing out. Accept only real peak features in the requested region; a street, suburb or same-named hill overseas is not a fallback.
+
+**Why:** Pendle Hill was present in OpenStreetMap, but a failing broad-area Overpass request made setup claim the hill could not be found. A direct mapped-peak lookup resolved the Lancashire summit while rejecting the Australian suburb.
+
+**How to apply:** Preserve provider lineage and mapped identity across lookup, assignment and map navigation. Distinguish service outages from empty results, and retain separate, source-backed climb calculations.

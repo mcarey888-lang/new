@@ -28,6 +28,18 @@ describe("shared Explore and session hill search", () => {
     expect(await searchTrainingHills("area", "bb44bh", "Haslingden")).toEqual([hill]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+  it("preserves the setup search radius rather than forcing the Explore default", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ hills: [hill] })));
+    vi.stubGlobal("fetch", fetchMock);
+    const { searchTrainingHills } = await import("./trainingHillSearch");
+    await searchTrainingHills("area", "bb44bh", "", undefined, 50);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ location: "BB4 4BH", radius: 50 });
+  });
+  it("reports a Pendle name-lookup outage as retryable, not a missing hill", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 502 })));
+    const { searchTrainingHills } = await import("./trainingHillSearch");
+    await expect(searchTrainingHills("name", "Pendle hill", "bb44bh")).rejects.toThrow("temporarily unavailable");
+  });
 
   it("shares an in-flight search without one screen cancelling the other's results", async () => {
     let finish!: (response: Response) => void;

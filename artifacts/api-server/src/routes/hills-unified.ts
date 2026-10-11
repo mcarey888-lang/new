@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { db, cachedHills } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { lookupNamedMappedPeaks } from "../services/namedMappedPeak.js";
 
 const router: IRouter = Router();
 
@@ -70,7 +71,7 @@ export const HillSchema = z.object({
   safetyWarning: z.string().optional(),
   hazardLevel: z.enum(["low", "moderate", "high", "severe"]).optional(),
   /** Additive provenance used by custom-expedition matching. */
-  dataSource: z.enum(["legacy_cache", "seeded_osm", "osm_overpass", "canonical_verified"]).optional(),
+  dataSource: z.enum(["legacy_cache", "seeded_osm", "osm_overpass", "osm_nominatim", "canonical_verified"]).optional(),
   routeDataStatus: z.enum([
     "unverified_cache",
     "seeded_estimate",
@@ -96,7 +97,7 @@ export function normalizedRouteIdentityName(name: string): string {
 
 /** Build a deterministic public identity from provenance and stable geography. */
 export function routeIdentityKeyFor(
-  source: "legacy_cache" | "seeded_osm" | "osm_overpass",
+  source: "legacy_cache" | "seeded_osm" | "osm_overpass" | "osm_nominatim",
   name: string,
   lat: number,
   lng: number,
@@ -585,6 +586,7 @@ export function validateAndCorrectHills(
 // ── OSM Overpass — global peak discovery ─────────────────────────────────────
 
 export interface OSMPeak {
+  source?: "osm_nominatim";
   id: number;
   lat: number;
   lng: number;
@@ -601,7 +603,20 @@ export async function fetchOSMPeaks(
   centerLng: number,
   radiusKm: number,
   strict = false,
+  hillName?: string,
 ): Promise<OSMPeak[]> {
+  if (hillName && isUKHillSearch({ lat: centerLat, lng: centerLng })) {
+    try {
+      const named = await lookupNamedMappedPeaks(
+        hillName, { lat: centerLat, lng: centerLng }, radiusKm, GEO_UA,
+      );
+      const exact = named.filter(p => normalizedHillSearchName(p.name) === normalizedHillSearchName(hillName));
+      if (exact.length) return exact;
+    } catch {
+      // A failed geocoder still gets the independent peak-provider attempt.
+      // The strict caller reports an outage if that also fails.
+    }
+  }
   const radiusM = Math.round(radiusKm * 1000);
   const query =
     `[out:json][timeout:20];` +
@@ -756,7 +771,7 @@ export async function osmPeaksToHills(
       summitName: englishPlaceName(peak.name),
       summitId: `osm:node:${peak.id}`,
       routeIdentityKey: routeIdentityKeyFor(
-        "osm_overpass",
+        peak.source ?? "osm_overpass",
         peak.name,
         peak.lat,
         peak.lng,
@@ -764,7 +779,7 @@ export async function osmPeaksToHills(
       ),
       routeName: "Terrain-estimated summit circuit",
       routeId: routeIdentityKeyFor(
-        "osm_overpass",
+        peak.source ?? "osm_overpass",
         peak.name,
         peak.lat,
         peak.lng,
@@ -788,7 +803,7 @@ export async function osmPeaksToHills(
       summitElevationASL: Math.round(summitElev),
       summitIdentityKey: `osm:node:${peak.id}`,
       entityType: "summit",
-      dataSource: "osm_overpass",
+      dataSource: peak.source ?? "osm_overpass",
       routeDataStatus: "terrain_calculated",
     });
   }
@@ -959,7 +974,7 @@ router.post("/hills-unified", async (req, res) => {
       }
       if (center && isUKHillSearch(center)) {
         const r = Math.min(100, Math.max(1, Number(radius) || 50));
-        const peaks = await fetchOSMPeaks(center.lat, center.lng, r, true);
+        const peaks = await fetchOSMPeaks(center.lat, center.lng, r, true, name);
         const matched = peaks.filter(p => normalizedHillSearchName(p.name) === normalizedHillSearchName(name));
         const hills = await osmPeaksToHills(matched, center.lat, center.lng, r, 0, true);
         if (!hills.length) {
@@ -968,7 +983,7 @@ router.post("/hills-unified", async (req, res) => {
         }
         const hill = hills.sort((a, b) => a.distance - b.distance)[0];
         void cacheHill(hill);
-        res.json({ hill, fromCache: false, source: "overpass" });
+        res.json({ hill, fromCache: false, source: hill.dataSource === "osm_nominatim" ? "nominatim" : "overpass" });
         return;
       }
     } catch (err) {

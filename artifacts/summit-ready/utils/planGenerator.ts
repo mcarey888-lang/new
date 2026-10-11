@@ -194,6 +194,7 @@ function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goa
   return {
     type: "hill",
     label: `Hill Repeats — ${hill.name}`,
+    hillName: hill.name,
     description: `${hill.name} (${hill.elevation}m per climb × ${targetReps} ${repWord} = ${totalGain}m) — ${pctOfSummit}% of your summit's ${goal.elevationGain}m elevation gain. ${hill.distance}km away. Walk or run up, walk down for recovery.${introNote}`,
     targetElevation: totalGain,
     duration: hillDur,
@@ -228,6 +229,7 @@ function createBigDaySession(targetElev: number, goal: SummitGoal, hills: Traini
   return {
     type: "bigDay",
     label: "Big Day Out",
+    hillName: hill?.name,
     description: `Full effort long session. Target: ${hillDetail} — ${pctOfSummit}% of your summit's ${goal.elevationGain}m elevation gain.${introNote}`,
     targetElevation: actualTarget,
     duration: isEasy ? "1–3 hours" : "2–5 hours",
@@ -268,6 +270,7 @@ function createTaperLightHillSession(targetElev: number, hills: TrainingWeek["hi
   return {
     type: "hill",
     label: `Light Hill Session — ${hill.name}`,
+    hillName: hill.name,
     description: `${reps} easy ${reps === 1 ? "rep" : "reps"} of ${hill.name} (${hill.elevation}m each = ${totalGain}m total). Walk the whole thing — up and down. No effort, just movement. Your last real hill session before the summit; the goal is staying sharp, not getting fitter.`,
     targetElevation: totalGain,
     duration: "40–55 min",
@@ -365,13 +368,7 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
   const diffMultiplier = getDifficultyMultiplier(goal.difficulty);
   const startElev = Math.round(targetElevation * startMultiplier * diffMultiplier);
   const hills = (goal.preferredHills && goal.preferredHills.length > 0)
-    ? goal.preferredHills.map(h => ({
-        name: h.name,
-        elevation: h.elevation,
-        distance: h.distance,
-        repeats: h.repeats,
-        totalElevation: h.totalElevation,
-      }))
+    ? goal.preferredHills.map(h => ({ ...h }))
     : getMockHills(goal.location, goal.maxRadius);
 
   // For the "is current week" check, we need to know if a week contains today

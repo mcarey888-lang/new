@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { executeEngineReadOnlyQuery } from "@workspace/db";
+import { summitReadFailure } from "../services/summits/summitReadFailure";
 import { buildSummitQuery } from "../services/summits/summitQuery";
 import { MAX_RESULTS, MIN_QUERY_LENGTH, searchResults } from "../services/summits/summitSearch";
 import { filterForZoom, padBBox, parseBBox, toPin, type MountainRow } from "../services/summits/summitPins";
@@ -87,10 +88,10 @@ router.get("/summits/search", async (req, res) => {
       query: raw,
       tooShort: false,
     });
-  } catch {
+  } catch (err) {
     /* Never the error object: a connection failure carries the database URL,
        and that URL carries a password. */
-    req.log?.warn("summit search failed");
+    req.log?.warn({ failure: summitReadFailure(err) }, "summit search failed");
     res.status(503).json({ error: "summit_catalogue_unavailable" });
   }
 });
@@ -152,7 +153,7 @@ router.get("/summits", async (req, res) => {
   } catch (err) {
     /* Never the error object: a connection error can carry the database URL,
        and that URL carries a password. */
-    req.log?.warn({ zoom }, "summit pin query failed");
+    req.log?.warn({ zoom, failure: summitReadFailure(err) }, "summit pin query failed");
     res.status(503).json({ error: "summit_catalogue_unavailable" });
   }
 });

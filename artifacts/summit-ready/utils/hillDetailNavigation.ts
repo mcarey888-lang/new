@@ -1,8 +1,37 @@
-import type { NearbyHill } from "../context/AppContext";
+import type { NearbyHill, PlanSession, TrainingWeek } from "../context/AppContext";
+
+/** Resolve the hill named by this session, never the first hill in the week. */
+export function resolveSessionHill(
+  session: PlanSession | undefined,
+  week: TrainingWeek | undefined,
+  assigned: NearbyHill | undefined,
+  available: readonly NearbyHill[] = [],
+): NearbyHill | null {
+  if (!session || session.type === "cardio") return null;
+  if (assigned) return assigned;
+  const normalise = (name: string) => name.toLowerCase().replace(/['’]/g, "").trim();
+  const candidates = week?.hills ?? [];
+  const name = session.hillName ??
+    candidates.find(h =>
+      session.label.endsWith(`— ${h.name}`) ||
+      session.label === `${h.name} Reps` ||
+      session.label === `${h.name} Big Day` ||
+      session.description.startsWith(`${h.name} (`) ||
+      session.description.includes(`Target: ${h.name}:`)
+    )?.name;
+  if (!name) return null;
+  const full = available.filter(h => normalise(h.name) === normalise(name));
+  const planned = candidates.filter(h => normalise(h.name) === normalise(name));
+  // Ambiguous duplicate names require an explicit assignment, not a guess.
+  if (full.length === 1) return full[0];
+  if (full.length > 1 || planned.length !== 1) return null;
+  return { ...planned[0], emoji: "⛰️", surface: "Mixed", grade: "Moderate" };
+}
 
 export function isMappedTrainingHill(hill: NearbyHill): boolean {
   return hill.dataSource === "canonical_verified" ||
     !!hill.routeIdentityKey?.startsWith("route:v1:osm_overpass:") ||
+    !!hill.routeIdentityKey?.startsWith("route:v1:osm_nominatim:") ||
     !!hill.routeIdentityKey?.startsWith("route:v1:seeded_osm:");
 }
 

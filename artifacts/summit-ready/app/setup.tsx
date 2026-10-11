@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react-native";
+import { searchTrainingHills } from "@/utils/trainingHillSearch";
 import { ArrowLeft, Zap, Search, AlertCircle, Check, Calendar, ChevronDown, CheckCircle, Clock, AlertTriangle, XCircle, SlidersHorizontal, Info, TrendingUp, Heart, Flag, ChevronLeft, ChevronRight, Activity, Link, MapPin, Wrench, Map, Navigation, Repeat } from "lucide-react-native";
 import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -374,14 +375,8 @@ export default function SetupScreen() {
     setSpecificSearching(true);
     setSpecificSearchErr(null);
     try {
-      const res = await fetch(`${API_BASE}/hills-unified`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hillName: query, location: loc.trim() }),
-      });
-      if (!res.ok) throw new Error("Search failed");
-      const data = await res.json() as { hill: NearbyHill };
-      const hill = data.hill;
+      const [hill] = await searchTrainingHills("name", query, loc);
+      if (!hill) throw new Error("No matching hill found. Try a different name or a wider search area.");
       // Add to setupHills if not already present
       setSetupHills(prev => {
         const exists = prev.some(h => h.name.toLowerCase() === hill.name.toLowerCase());
@@ -395,8 +390,8 @@ export default function SetupScreen() {
       // Move to results state so the list appears
       setHillSearchState("results");
       setSpecificSearch("");
-    } catch {
-      setSpecificSearchErr("Couldn't find that hill — try a different name.");
+    } catch (error) {
+      setSpecificSearchErr(error instanceof Error ? error.message : "Hill search is unavailable. Please retry.");
     } finally {
       setSpecificSearching(false);
     }
@@ -407,14 +402,8 @@ export default function SetupScreen() {
     if (location.length < 2) return;
     setHillSearchState("loading");
     try {
-      const res = await fetch(`${API_BASE}/hills-unified`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ location, radius: +radius || 25 }),
-      });
-      if (!res.ok) throw new Error("Hills lookup failed");
-      const data: { hills: NearbyHill[] } = await res.json();
-      setSetupHills(data.hills);
+      const hills = await searchTrainingHills("area", location, "", undefined, +radius || 25);
+      setSetupHills(hills);
       setHillSearchState("results");
     } catch {
       setHillSearchState("error");

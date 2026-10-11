@@ -1,5 +1,6 @@
 import type { SummitGoal, TrainingWeek, Session, NearbyHill, AlpineRequirement, AlpineExperienceRecords, CompletedGoal, ExploreHike } from "@/context/AppContext";
 import { mergeActivityKinds } from "./activityReliability";
+import { resolveSessionHill } from "./hillDetailNavigation";
 
 const DIFFICULTY_RANK: Record<string, number> = {
   Easy: 1, Moderate: 2, Hard: 3, Alpine: 4,
@@ -179,8 +180,8 @@ export function calculateReadiness(
       const session = week.sessions[sIdx];
       if (!session) continue;
       if (session.type === "hill" || session.type === "bigDay") {
-        const assignedHill = opts.assignedHills?.[key];
-        const elevPerRep = assignedHill?.elevation ?? week.hills[0]?.elevation ?? Math.max(50, Math.round(session.targetElevation / 4));
+        const assignedHill = resolveSessionHill(session, week, opts.assignedHills?.[key], goal.preferredHills ?? []);
+        const elevPerRep = assignedHill?.elevation ?? Math.max(50, Math.round(session.targetElevation / 4));
         const target = calcTargetReps(goal.elevationGain, elevPerRep);
         repEntries.push(Math.min(1, loggedReps / target));
       } else if (session.type === "cardio" && session.gymExercise === "treadmill") {

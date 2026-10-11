@@ -504,7 +504,8 @@ export default function HillDetailScreen() {
                 onPress={() => {
                   if (hasVerifiedMapCoordinates) {
                     openMapPin(detail!.summitLat!, detail!.summitLng!, name ?? "");
-                  } else if (routeIdentityKey?.startsWith("route:v1:osm_overpass:") &&
+                  } else if ((routeIdentityKey?.startsWith("route:v1:osm_overpass:") ||
+                    routeIdentityKey?.startsWith("route:v1:osm_nominatim:")) &&
                     hillLat !== null && hillLng !== null &&
                     Number.isFinite(hillLat) && Number.isFinite(hillLng) &&
                     Math.abs(hillLat) <= 90 && Math.abs(hillLng) <= 180) {

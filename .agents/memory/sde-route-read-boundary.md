@@ -26,3 +26,9 @@ The absence of `ENGINE_DATABASE_URL` does not prove that engine data is absent. 
 **Why:** A missing read-connection secret initially looked like a missing catalogue, but read-only inspection found the independently owned catalogue tables in both managed environments; most imported hills had not been verified for app display.
 
 **How to apply:** Inspect both environments' table presence and verification-status distribution read-only before proposing new databases, migration, or blanket promotion. Maintain a dedicated read-only connection and the existing verified-only lookup rule; never silently fall back to the app's general `DATABASE_URL`.
+
+A successful managed production-database query does not establish that the published server can use its dedicated engine connection. Check the live summit endpoint separately. A secret present in current workspace settings also does not establish that it was included in the last published environment snapshot.
+
+**Why:** The live summit API returned 503 while the development API returned real markers and a read-only production query successfully retrieved the same catalogue schema and spatial records. The published API's old logs deliberately hid connection details, so they did not establish the precise failure.
+
+**How to apply:** Keep missing-configuration, permissions, schema and connection failures distinguishable through fixed safe diagnostic categories, never raw database errors. Secret changes require republishing to enter the live environment snapshot; do not promise that republishing alone will fix an unclassified failure.

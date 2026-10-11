@@ -31,12 +31,13 @@ export function searchTrainingHills(
   query: string,
   location = "",
   signal?: AbortSignal,
+  radiusKm = NEARBY_HILL_RADIUS_KM,
 ): Promise<NearbyHill[]> {
   if (signal?.aborted) return Promise.reject(abortError());
   const term = normalizeUkPostcode(query) ?? query.trim();
   const area = normalizeUkPostcode(location) ?? location.trim();
   const body = kind === "area"
-    ? { location: term, radius: NEARBY_HILL_RADIUS_KM }
+    ? { location: term, radius: radiusKm }
     : { hillName: term, location: area };
   const key = JSON.stringify(body).toLowerCase();
   const cached = cache.get(key);

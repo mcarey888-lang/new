@@ -5,6 +5,7 @@ import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
 import { restoreTrainingPlan } from "@/utils/trainingPlanRestore";
 import { repairDurations } from "@/utils/hikeDurationMigration";
 import { calculateReadiness, diagnoseScoreStagnation, ScoreInsight } from "@/utils/readinessScore";
+import { resolveSessionHill } from "@/utils/hillDetailNavigation";
 import { computeUnlocked } from "@/utils/achievements";
 import { logTrainingPlanGenerated, logReadinessScoreImproved } from "@/lib/analytics";
 import type { Trail } from "@/constants/trailData";
@@ -261,6 +262,8 @@ export interface SavedExpedition {
 export interface PlanSession {
   /** Stable persistence key. Hydration adds this for legacy plans. */
   id?: string;
+  /** The selected hill's name, retained independently from presentation labels. */
+  hillName?: string;
   type: "cardio" | "hill" | "bigDay";
   label: string;
   description: string;
@@ -424,7 +427,7 @@ interface AppState {
   setSessionEffort: (key: string, effort: 1 | 2 | 3 | 4 | 5) => Promise<void>;
   setSessionDayOverride: (weekNum: number, sessionIdx: number, dow: number) => Promise<void>;
   clearSessionDayOverride: (weekNum: number, sessionIdx: number) => Promise<void>;
-  updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "type" | "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>) => Promise<void>;
+  updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "type" | "label" | "hillName" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>) => Promise<void>;
   markPlanViewed: () => Promise<void>;
   unlockedAchievements: string[];
   newlyUnlocked: string[];
@@ -1973,7 +1976,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // For gym cardio sessions use logged km/floors to derive elevation.
         let elevationGain = s.targetElevation;
         const loggedReps = sessionReps[key];
-        const hill = assignedHills[key] ?? week.hills[0] ?? null;
+        const hill = resolveSessionHill(s, week, assignedHills[key], summitGoal?.preferredHills ?? []);
         if (loggedReps !== undefined && (s.type === "hill" || s.type === "bigDay")) {
           const elevPerRep = hill ? hill.elevation : Math.max(50, Math.round(s.targetElevation / 4));
           elevationGain = loggedReps * elevPerRep;
@@ -2222,7 +2225,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updatePlanSession = useCallback(async (
     weekNum: number,
     sessionIdx: number,
-    updates: Partial<Pick<PlanSession, "type" | "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "targetFlights" | "inclinePct">>
+    updates: Partial<Pick<PlanSession, "type" | "label" | "hillName" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "targetFlights" | "inclinePct">>
   ) => {
     const updatedPlan = trainingPlan.map(week => {
       if (week.weekNumber !== weekNum) return week;

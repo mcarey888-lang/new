@@ -33,7 +33,7 @@ import { appendApprovedImageRevision, sessionImageSubject } from "@/utils/mounta
 import { assignSessionsToDays, DAY_FULL } from "@/utils/dayAssignment";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
-import { hillDetailNavigation, isMappedTrainingHill, sessionHillTitle } from "@/utils/hillDetailNavigation";
+import { hillDetailNavigation, isMappedTrainingHill, sessionHillTitle, resolveSessionHill } from "@/utils/hillDetailNavigation";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -300,11 +300,9 @@ export default function SessionDetailScreen() {
 
   const isDone      = !!completedPlanSessions[sessionKey];
   const isSubmitted = !!submittedPlanSessions[sessionKey];
-  // Fall back to the plan-generator's hill (week.hills[0]) when no explicit assignment exists
-  const planHill = (session?.type !== "cardio" && week?.hills[0])
-    ? { ...week.hills[0], emoji: "⛰️", surface: "Mixed", grade: "Moderate" } as NearbyHill
-    : null;
-  const assignedHill: NearbyHill | null = assignedHills[sessionKey] ?? planHill ?? null;
+  const assignedHill = resolveSessionHill(
+    session, week, assignedHills[sessionKey], summitGoal?.preferredHills ?? [],
+  );
   const mappedHill = assignedHill && isMappedTrainingHill(assignedHill) ? assignedHill : null;
 
   const [showManual, setShowManual] = useState(isDone && !isSubmitted);
@@ -331,6 +329,7 @@ export default function SessionDetailScreen() {
     await updatePlanSession(weekNum, sessionIdx, {
       targetElevation: sessionTarget, description,
       label: sessionHillTitle(session?.type ?? "hill", session?.label ?? "", hill.name),
+      hillName: hill.name,
     });
   }, [weekNum, sessionIdx, session?.targetElevation, session?.type, session?.label, assignHillToSession, updatePlanSession]);
 
