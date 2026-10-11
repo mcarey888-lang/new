@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { hillDetailNavigation } from "./hillDetailNavigation";
+import { hillDetailNavigation, isMappedTrainingHill, sessionHillTitle } from "./hillDetailNavigation";
 import type { NearbyHill } from "../context/AppContext";
 
 const hill: NearbyHill = {
@@ -10,11 +10,17 @@ const hill: NearbyHill = {
 };
 
 describe("session hill information and directions", () => {
+  it("uses the assigned hill even when a saved session still has its original title", () => {
+    expect(sessionHillTitle("hill", "Winter Hill Reps", "Pendle Hill")).toBe("Pendle Hill Reps");
+    expect(sessionHillTitle("bigDay", "Winter Hill Big Day", "Rivington Pike")).toBe("Rivington Pike Big Day");
+    expect(sessionHillTitle("cardio", "Incline Treadmill", "Winter Hill")).toBe("Incline Treadmill");
+    expect(sessionHillTitle("hill", "Hill session")).toBe("Hill session");
+  });
   it("opens the same detail page as Explore with local context for legacy hills", () => {
     expect(hillDetailNavigation(hill, "Haslingden")).toEqual({
       pathname: "/hill-detail",
       params: {
-        name: "Winter Hill", elevation: "456", distance: "2.8", location: "Haslingden",
+        name: "Winter Hill", elevation: "456", elevationEstimated: "false", distance: "2.8", location: "Haslingden",
         routeIdentityKey: "", summitIdentityKey: "", lat: "", lng: "",
         routeDistance: "", estimatedTime: "", routeType: "",
         grade: "Moderate", surface: "Mixed", emoji: "⛰️",
@@ -34,7 +40,7 @@ describe("session hill information and directions", () => {
   });
   it("keeps changing the hill separate from opening hill details", () => {
     const source = readFileSync(join(__dirname, "../app/session-detail.tsx"), "utf8");
-    expect(source).toContain("router.push(hillDetailNavigation(assignedHill, summitGoal?.location ?? \"\"))");
+    expect(source).toContain("router.push(hillDetailNavigation(mappedHill, summitGoal?.location ?? \"\"))");
     expect(source).toContain("onActionPress={assignedHill ? () => setHillPickerOpen(true) : undefined}");
     expect(source).toContain("View hill & parking directions");
   });
@@ -42,5 +48,24 @@ describe("session hill information and directions", () => {
     const source = readFileSync(join(__dirname, "../components/HillPickerModal.tsx"), "utf8");
     expect(source).toContain('router.push("/(tabs)/explore")');
     expect(source).not.toContain('router.push("/(tabs)/hills")');
+  });
+  it("refreshes the picker from the user's area and excludes old ungrounded suggestions", () => {
+    const source = readFileSync(join(__dirname, "../components/HillPickerModal.tsx"), "utf8");
+    expect(source).toContain('searchOnline("area", location)');
+    expect(source).toContain("hills.filter(isMappedTrainingHill)");
+  });
+  it("pins mapped summit coordinates rather than asking a map app to guess a street", () => {
+    const source = readFileSync(join(__dirname, "../app/hill-detail.tsx"), "utf8");
+    expect(source).toContain('routeIdentityKey?.startsWith("route:v1:osm_overpass:")');
+    expect(source).toContain('openMapPin(hillLat, hillLng, name ?? "")');
+    expect(source).not.toContain('openMapsForHill(null, null, name ?? "", false');
+  });
+  it("does not reuse old AI climb figures just because they have coordinates", () => {
+    expect(isMappedTrainingHill({ ...hill, lat: 53.8, lng: -2.3 })).toBe(false);
+    expect(isMappedTrainingHill({ ...hill, routeIdentityKey: "route:v1:legacy_cache:brooks-hill" })).toBe(false);
+    expect(isMappedTrainingHill({ ...hill, routeIdentityKey: "route:v1:osm_overpass:node:123" })).toBe(true);
+    const source = readFileSync(join(__dirname, "../app/session-detail.tsx"), "utf8");
+    expect(source).toContain("mappedHill?.elevation ?? 0");
+    expect(source).toContain("Refresh this hill's location and climb data");
   });
 });

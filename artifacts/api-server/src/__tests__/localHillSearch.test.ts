@@ -1,0 +1,116 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { ai, select } = vi.hoisted(() => ({ ai: vi.fn(), select: vi.fn() }));
+vi.mock("@workspace/integrations-openai-ai-server", () => ({
+  openai: { chat: { completions: { create: ai } } },
+}));
+vi.mock("@workspace/db", () => ({
+  cachedHills: { slug: "slug" },
+  db: {
+    select,
+    insert: () => ({ values: () => ({ onConflictDoUpdate: async () => {} }) }),
+  },
+}));
+
+import router, { normalizedHillSearchName, osmPeaksToHills } from "../routes/hills-unified.js";
+
+const handler = (router as any).stack.find((r: any) => r.route?.path === "/hills-unified").route.stack[0].handle;
+const peak = { id: 123, lat: 53.71, lon: -2.33, tags: { name: "Nearby Fell", ele: "400" } };
+let peaks: typeof peak[];
+let geocodeAvailable: boolean;
+let peaksAvailable: boolean;
+
+async function search(body: Record<string, unknown>) {
+  const res = {
+    statusCode: 200, body: null as any,
+    status(code: number) { this.statusCode = code; return this; },
+    json(value: unknown) { this.body = value; return this; },
+  };
+  await handler({ body, log: { info: vi.fn(), error: vi.fn() } }, res);
+  return res;
+}
+
+beforeEach(() => {
+  ai.mockReset();
+  select.mockReset();
+  peaks = [peak];
+  geocodeAvailable = true;
+  peaksAvailable = true;
+  vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+    const url = String(input);
+    if (url.includes("postcodes.io")) return { ok: true, json: async () => geocodeAvailable
+      ? { status: 200, result: { latitude: 53.7, longitude: -2.33 } }
+      : { status: 404 } };
+    if (url.includes("nominatim")) return { ok: true, json: async () => [] };
+    if (url.includes("overpass")) return {
+      ok: peaksAvailable, status: peaksAvailable ? 200 : 504,
+      json: async () => ({ elements: peaks }),
+    };
+    if (url.includes("opentopodata")) {
+      const locations = new URL(url).searchParams.get("locations")!.split("|");
+      return { ok: true, json: async () => ({
+        results: locations.map((_, index) => ({ elevation: index % 5 === 0 ? 400 : 200 })),
+      }) };
+    }
+    throw new Error(`Unexpected provider: ${url}`);
+  }));
+});
+afterEach(() => vi.unstubAllGlobals());
+
+describe("mapped local training hill searches", () => {
+  it("keeps even a single nearby peak instead of replacing it with AI results", async () => {
+    const res = await search({ location: "BB4 4BH", radius: 49.1 });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.hills).toHaveLength(1);
+    expect(res.body.hills[0]).toMatchObject({ name: "Nearby Fell", elevation: 200, surface: "Hill terrain" });
+    expect(ai).not.toHaveBeenCalled();
+  });
+  it("does not invent a named hill or reuse a plausible-looking old cache row", async () => {
+    const res = await search({ location: "BB4 4BH", hillName: "Brook's Hill" });
+    expect(res.statusCode).toBe(404);
+    expect(select).not.toHaveBeenCalled();
+    expect(ai).not.toHaveBeenCalled();
+  });
+  it("uses source coordinates for an actual name match", async () => {
+    peaks = [{ ...peak, tags: { name: "Brook’s Hill", ele: "400" } }];
+    const res = await search({ location: "BB4 4BH", hillName: "Brooks Hill" });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.hill).toMatchObject({ lat: 53.71, lng: -2.33, elevation: 200 });
+    expect(res.body.hill.routeIdentityKey).toBe("route:v1:osm_overpass:node:123");
+    expect(ai).not.toHaveBeenCalled();
+  });
+  it("fails explicitly if the postcode cannot be located", async () => {
+    geocodeAvailable = false;
+    const res = await search({ location: "BB4 4BH", radius: 49.2 });
+    expect(res.statusCode).toBe(502);
+    expect(ai).not.toHaveBeenCalled();
+  });
+  it("returns no hills rather than AI replacements when map discovery is empty", async () => {
+    peaks = [];
+    const res = await search({ location: "BB4 4BH", radius: 49.3 });
+    expect(res.body.hills).toEqual([]);
+    expect(ai).not.toHaveBeenCalled();
+  });
+  it("reports upstream failure rather than pretending an area has no hills", async () => {
+    peaksAvailable = false;
+    const res = await search({ location: "BB4 4BH", radius: 49.4 });
+    expect(res.statusCode).toBe(503);
+    expect(res.body.error).toContain("temporarily unavailable");
+    expect(res.body.hills).toBeUndefined();
+    expect(ai).not.toHaveBeenCalled();
+  });
+  it("prioritises the nearest peaks for training without changing expedition ordering by default", async () => {
+    const candidates = Array.from({ length: 25 }, (_, i) => ({
+      id: i + 1, lat: 53.71 + i * 0.005, lng: -2.33, name: `Fell ${i}`, ele: 400 + i * 10,
+    }));
+    const nearby = await osmPeaksToHills(candidates, 53.7, -2.33, 50, 0, true);
+    const expedition = await osmPeaksToHills(candidates, 53.7, -2.33, 50, 0);
+    expect(nearby.map(h => h.name)).toContain("Fell 0");
+    expect(nearby.map(h => h.name)).not.toContain("Fell 24");
+    expect(expedition.map(h => h.name)).toContain("Fell 24");
+  });
+  it("normalises punctuation without turning different hill names into matches", () => {
+    expect(normalizedHillSearchName("Brook’s Hill")).toBe(normalizedHillSearchName("Brooks Hill"));
+    expect(normalizedHillSearchName("Brook Street")).not.toBe(normalizedHillSearchName("Brooks Hill"));
+  });
+});

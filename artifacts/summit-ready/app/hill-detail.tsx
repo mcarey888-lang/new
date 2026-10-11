@@ -85,10 +85,11 @@ export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
   const { userId, getToken } = useAuth();
   const { activeExpedition } = useApp();
-  const { name, location, lat, lng, elevation, distance, routeDistance, estimatedTime, routeType, grade, surface, emoji, expeditionMode, expeditionId, routeIdentityKey, summitIdentityKey, objectiveType } =
+  const { name, location, lat, lng, elevation, elevationEstimated, distance, routeDistance, estimatedTime, routeType, grade, surface, emoji, expeditionMode, expeditionId, routeIdentityKey, summitIdentityKey, objectiveType } =
     useLocalSearchParams<{
       name: string;
       location: string;
+      elevationEstimated?: string;
       lat?: string;
       lng?: string;
       elevation?: string;
@@ -461,7 +462,7 @@ export default function HillDetailScreen() {
               {elevation ? (
                 <View style={styles.elevBadge}>
                   <TrendingUp size={11} color={EXPLORE.accent} />
-                  <Text style={styles.elevText}>{`${elevation} m per climb`}</Text>
+                  <Text style={styles.elevText}>{`${elevationEstimated === "true" ? "~" : ""}${elevation} m ${elevationEstimated === "true" ? "estimated climb" : "per climb"}`}</Text>
                 </View>
               ) : null}
               {distance ? (
@@ -503,8 +504,13 @@ export default function HillDetailScreen() {
                 onPress={() => {
                   if (hasVerifiedMapCoordinates) {
                     openMapPin(detail!.summitLat!, detail!.summitLng!, name ?? "");
+                  } else if (routeIdentityKey?.startsWith("route:v1:osm_overpass:") &&
+                    hillLat !== null && hillLng !== null &&
+                    Number.isFinite(hillLat) && Number.isFinite(hillLng) &&
+                    Math.abs(hillLat) <= 90 && Math.abs(hillLng) <= 180) {
+                    openMapPin(hillLat, hillLng, name ?? "");
                   } else {
-                    openMapsForHill(null, null, name ?? "", false, mapSearchContext);
+                    Alert.alert("Hill map location unavailable", "Search for this hill again to load its mapped summit location. We won't guess a street address from its name.");
                   }
                 }}
                 activeOpacity={0.8}

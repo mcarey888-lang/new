@@ -33,7 +33,7 @@ import { appendApprovedImageRevision, sessionImageSubject } from "@/utils/mounta
 import { assignSessionsToDays, DAY_FULL } from "@/utils/dayAssignment";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
-import { hillDetailNavigation } from "@/utils/hillDetailNavigation";
+import { hillDetailNavigation, isMappedTrainingHill, sessionHillTitle } from "@/utils/hillDetailNavigation";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -305,6 +305,7 @@ export default function SessionDetailScreen() {
     ? { ...week.hills[0], emoji: "⛰️", surface: "Mixed", grade: "Moderate" } as NearbyHill
     : null;
   const assignedHill: NearbyHill | null = assignedHills[sessionKey] ?? planHill ?? null;
+  const mappedHill = assignedHill && isMappedTrainingHill(assignedHill) ? assignedHill : null;
 
   const [showManual, setShowManual] = useState(isDone && !isSubmitted);
   const [saving, setSaving] = useState(false);
@@ -327,8 +328,11 @@ export default function SessionDetailScreen() {
       `Your target is ${sessionTarget}m of ascent. Complete ${adjustedReps} rep${adjustedReps !== 1 ? "s" : ""} for approximately ${adjustedHill.totalElevation}m gain. ` +
       `Focus on a steady pace on the ascent and controlled steps on the descent to build the leg strength you'll need on summit day.`;
     await assignHillToSession(weekNum, sessionIdx, adjustedHill);
-    await updatePlanSession(weekNum, sessionIdx, { targetElevation: sessionTarget, description });
-  }, [weekNum, sessionIdx, session?.targetElevation, assignHillToSession, updatePlanSession]);
+    await updatePlanSession(weekNum, sessionIdx, {
+      targetElevation: sessionTarget, description,
+      label: sessionHillTitle(session?.type ?? "hill", session?.label ?? "", hill.name),
+    });
+  }, [weekNum, sessionIdx, session?.targetElevation, session?.type, session?.label, assignHillToSession, updatePlanSession]);
 
   const EXERCISE_LABEL: Record<GymExercise, string> = {
     "treadmill":       "Incline Treadmill",
@@ -385,7 +389,7 @@ export default function SessionDetailScreen() {
 
   // Derived hill metadata (same logic as existing HillActionCard)
   const elevPerRep = assignedHill
-    ? assignedHill.elevation
+    ? mappedHill?.elevation ?? 0
     : (session?.targetElevation && session.type !== "cardio"
         ? Math.round(session.targetElevation / Math.max(1, week?.hills[0]?.repeats ?? 2))
         : 0);
@@ -569,7 +573,7 @@ export default function SessionDetailScreen() {
                 {isSubmitted ? <SRStatusPill label="Submitted" tone={BASECAMP.accent} /> : null}
               </View>
 
-              <Text style={s.title} numberOfLines={3}>{session.label}</Text>
+              <Text style={s.title} numberOfLines={3}>{sessionHillTitle(session.type, session.label, assignedHill?.name)}</Text>
 
               <View style={s.heroFacts}>
                 <Text style={s.heroFact} numberOfLines={1}>{session.duration}</Text>
@@ -599,7 +603,7 @@ export default function SessionDetailScreen() {
           {(() => {
             const purpose = sessionPurpose({
               type: session.type,
-              description: session.description,
+              description: assignedHill && !mappedHill ? "" : session.description,
               targetElevation: session.targetElevation,
               mountainName: summitGoal?.mountainName ?? null,
             });
@@ -634,7 +638,7 @@ export default function SessionDetailScreen() {
                   />
                 )}
                 {session.type !== "cardio" && elevPerRep > 0 && (
-                  <Stat value={String(targetReps)} label={`Reps × ${elevPerRep} m`} />
+                  <Stat value={String(targetReps)} label={`Reps × ${mappedHill?.routeDataStatus === "terrain_calculated" ? "~" : ""}${elevPerRep} m`} />
                 )}
                 {inferredGymExercise === "treadmill" && session.targetDistanceKm ? (
                   <Stat
@@ -656,13 +660,15 @@ export default function SessionDetailScreen() {
                   icon={<Mountain size={16} color={assignedHill ? BASECAMP.accent : BASECAMP.textDim} />}
                   title={assignedHill?.name ?? "No hill assigned"}
                   detail={assignedHill
-                    ? `${assignedHill.distance} km away · ${assignedHill.surface} · ${assignedHill.grade} grade`
+                    ? mappedHill
+                      ? `${mappedHill.distance} km away · ${mappedHill.surface} · ${mappedHill.grade} grade`
+                      : "Refresh this hill's location and climb data"
                     : "Choose a training hill for this session"}
                   action={assignedHill ? "Change" : "Assign"}
                   muted={!assignedHill}
                   onPress={() => {
-                    if (assignedHill) {
-                      router.push(hillDetailNavigation(assignedHill, summitGoal?.location ?? ""));
+                    if (mappedHill) {
+                      router.push(hillDetailNavigation(mappedHill, summitGoal?.location ?? ""));
                     } else {
                       setHillPickerOpen(true);
                     }
@@ -708,7 +714,7 @@ export default function SessionDetailScreen() {
           </View>
 
           {/* ── Coaching notes ───────────────────────────────────────── */}
-          {session.description ? (
+          {session.description && (!assignedHill || mappedHill) ? (
             <View style={s.section}>
               <SRSectionHeader title="Coaching notes" />
               <SRPanel radius={8} style={{ marginTop: 10 }}>

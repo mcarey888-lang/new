@@ -14,6 +14,7 @@ import { router } from "expo-router";
 
 import { NearbyHill } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import { isMappedTrainingHill } from "@/utils/hillDetailNavigation";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -38,6 +39,7 @@ export function HillPickerModal({
   const [searching, setSearching] = React.useState(false);
   const [searchResults, setSearchResults] = React.useState<NearbyHill[]>([]);
   const [resultKind, setResultKind] = React.useState<"area" | "name" | null>(null);
+  const [resultQuery, setResultQuery] = React.useState("");
   const [searchError, setSearchError] = React.useState<string | null>(null);
   const requestId = React.useRef(0);
 
@@ -50,13 +52,15 @@ export function HillPickerModal({
   }
 
   const filtered = React.useMemo(() => {
-    if (!query.trim()) return hills;
+    // Old saved AI suggestions must not be offered as mapped training hills.
+    const mapped = hills.filter(isMappedTrainingHill);
+    if (!query.trim()) return mapped;
     const q = query.toLowerCase();
-    return hills.filter(h => h.name.toLowerCase().includes(q));
+    return mapped.filter(h => h.name.toLowerCase().includes(q));
   }, [query, hills]);
 
-  async function searchOnline(kind: "area" | "name" = "area") {
-    const q = query.trim();
+  async function searchOnline(kind: "area" | "name" = "area", searchQuery = query) {
+    const q = searchQuery.trim();
     if (q.length < 2) return;
     const currentRequest = ++requestId.current;
     setSearching(true);
@@ -71,7 +75,13 @@ export function HillPickerModal({
           ? { location: q, radius: 50 }
           : { hillName: q, location }),
       });
-      if (!res.ok) throw new Error("Search failed");
+      if (!res.ok) {
+        if (res.status >= 500) {
+          if (currentRequest === requestId.current) setSearchError("Hill map data is temporarily unavailable. Please retry.");
+          return;
+        }
+        throw new Error("Search failed");
+      }
       const data = await res.json() as { hills?: NearbyHill[]; hill?: NearbyHill };
       if (currentRequest !== requestId.current) return;
       const results = kind === "area" ? data.hills : data.hill ? [data.hill] : null;
@@ -79,6 +89,7 @@ export function HillPickerModal({
       const usable = results.filter(hill => Number.isFinite(hill.elevation) && hill.elevation > 0);
       setSearchResults(usable);
       setResultKind(kind);
+      setResultQuery(q);
       if (usable.length === 0) setSearchError(kind === "area"
         ? `No hills found near "${q}". Try another area or search by hill name.`
         : `No hill found named "${q}". Try another name or search an area.`);
@@ -92,6 +103,11 @@ export function HillPickerModal({
       if (currentRequest === requestId.current) setSearching(false);
     }
   }
+
+  React.useEffect(() => {
+    if (visible && location.trim().length >= 2) void searchOnline("area", location);
+    return () => { requestId.current += 1; };
+  }, [visible, location]);
 
   function handleSelect(hill: NearbyHill) {
     if (searchResults.includes(hill)) {
@@ -142,7 +158,7 @@ export function HillPickerModal({
             <View style={st.searchResultCard}>
               <View style={st.searchResultHeader}>
                 <Globe size={12} color={T.blue} />
-                <Text style={st.searchResultLabel}>{resultKind === "area" ? `Hills near ${query.trim()}` : "Online hill"}</Text>
+                <Text style={st.searchResultLabel}>{resultKind === "area" ? `Hills near ${resultQuery}` : "Online hill"}</Text>
               </View>
               {searchResults.map((hill, index) => (
                 <TouchableOpacity
@@ -158,7 +174,7 @@ export function HillPickerModal({
                     <Text style={st.hillName}>{hill.name}</Text>
                     <Text style={st.hillSub}>{hill.surface} · {hill.grade} grade</Text>
                   </View>
-                  <Text style={st.hillElev}>{hill.elevation}m</Text>
+                  <Text style={st.hillElev}>{hill.routeDataStatus === "terrain_calculated" ? "~" : ""}{hill.elevation}m</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -191,7 +207,7 @@ export function HillPickerModal({
             </View>
           )}
 
-          {filtered.length === 0 && !query.trim() ? (
+          {filtered.length === 0 && !query.trim() && !searching && !searchError && searchResults.length === 0 ? (
             <View style={st.empty}>
               <MapPin size={28} color={T.textDim} />
               <Text style={st.emptyText}>No nearby hills found</Text>
@@ -224,7 +240,7 @@ export function HillPickerModal({
                     <Text style={st.hillName}>{hill.name}</Text>
                     <Text style={st.hillSub}>{hill.surface} · {hill.distance}km away</Text>
                   </View>
-                  <Text style={st.hillElev}>{hill.elevation}m</Text>
+                  <Text style={st.hillElev}>{hill.routeDataStatus === "terrain_calculated" ? "~" : ""}{hill.elevation}m</Text>
                 </TouchableOpacity>
               ))}
             </>

@@ -1,34 +1,16 @@
 ---
-name: Hills elevation pipeline
-description: How the hills-unified API computes elevation gain — Overpass-first with terrain sampling, KNOWN_GAINS override, and AI fallback.
+name: Local hill search trust
+description: UK training hill discovery must be source-grounded; preserve global fallback policy separately.
 ---
 
-## Architecture (hills-unified.ts area lookup)
+UK training searches must establish a mapped peak before offering its location or climb data. Do not pad a short result list with AI hills, and do not accept a nearby legacy cache row as proof that a named hill exists.
 
-1. **Geocode** user location (postcodes.io first for UK postcodes, otherwise Nominatim)
-2. **Overpass** (`natural=peak` + `name` within radius) → real summit lat/lng + OSM `ele` tag
-3. **OpenTopoData batch**: for each peak sample 4 terrain points at 1500m radius → `gain = summit_elev - min(base_samples)`
-4. **KNOWN_GAINS table** (35+ UK hills) overrides computed gain; ambiguous common names require a matching coordinate anchor
-5. If ≥ 5 usable hills → return them (source: "overpass")
-6. Else → **AI fallback** with LOOKUP_SYSTEM_PROMPT + terrain batch verification
+**Why:** A user received Brook's Hill with an unsupported 668 m climb and Alpine terrain; name-based map lookup led to a street. Public peak-provider failures were being treated as empty results, making AI substitution particularly misleading.
 
-## Capacity
+**How to apply:** Prefer nearby mapped candidates for training. Distinguish a genuinely empty search from a provider failure, and show a retryable error for the latter. Legacy assignments need fresh source-backed details before their climb figures are reused. Terrain sampling is an estimate, not a surveyed walking route; label it accordingly.
 
-- `SAMPLE_COUNT = 4`, `SAMPLE_RADIUS_M = 1500`, `MAX_PEAKS = 19`
-- 19 × (1 + 4) = 95 points per OpenTopoData call — within the 100-point limit
-- Overpass timeout: 20s; falls back to AI silently on failure
+Keep the existing non-UK/alpine fallback policy separate from this UK restriction. Known route-access gain calibrations remain stronger than generic radial terrain estimates; preserve their coordinate-scoped identity checks.
 
-## Known limitations
+**Why:** Radial sampling has insufficient coverage in some alpine regions, while established route-access calibrations correct misleading summit-to-valley differences.
 
-- Alpine areas (Chamonix etc.): 1500m sample radius is too small relative to massive peaks → Overpass path typically returns < 5 usable hills → AI fallback kicks in (acceptable)
-- Flat regions: Overpass returns few/no peaks → AI fallback (acceptable)
-
-## Why KNOWN_GAINS wins over terrain
-
-AI-provided trailhead coords are often misplaced (too high on the hill), making `summit - trailhead` too low. The KNOWN_GAINS table was researched from AllTrails + OS maps and is authoritative for the named hills it covers.
-
-## Cache
-
-- In-memory area cache: 30 min TTL, keyed by `loc|radius|minElev`
-- Per-hill DB cache (`cached_hills` table): 7-day TTL, keyed by slug; location-scoped reads must reject cached coordinates far from the requested area
-- Clear DB cache with `DELETE FROM cached_hills` if values need refreshing
+**How to apply:** Do not silently remove global fallback behavior when tightening UK training discovery, or promote a terrain estimate to verified route ascent.

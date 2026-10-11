@@ -1,4 +1,4 @@
-- [Hills elevation pipeline](hills-elevation-pipeline.md) — Overpass-first + terrain sampling + KNOWN_GAINS override; AI fallback for alpine/sparse areas.
+- [Local hill search trust](hills-elevation-pipeline.md) — UK training searches require mapped peaks; provider outages must not become invented hills; retain global fallback policy separately.
 - [Hill picker ascent targets](hill-picker-ascent-targets.md) — area searches list hills; picker shows climb ascent only, while the plan calculates reps without inflating its target.
 - [Ambiguous hill identity](ambiguous-hill-identity.md) — Common hill names require location/coordinates across caches, detail generation, directions, and gain overrides.
 - [Mountain profile ascent semantics](mountain-profile-ascent.md) — Target gain starts at the conventional route access point, never the valley floor or summit altitude.

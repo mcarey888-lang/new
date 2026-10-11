@@ -600,6 +600,7 @@ export async function fetchOSMPeaks(
   centerLat: number,
   centerLng: number,
   radiusKm: number,
+  strict = false,
 ): Promise<OSMPeak[]> {
   const radiusM = Math.round(radiusKm * 1000);
   const query =
@@ -612,7 +613,7 @@ export async function fetchOSMPeaks(
       headers: { "User-Agent": GEO_UA },
       signal: AbortSignal.timeout(20000),
     });
-    if (!res.ok) return [];
+    if (!res.ok) throw new Error(`Peak provider returned HTTP ${res.status}`);
     const data = await res.json() as {
       elements: Array<{ id: number; lat: number; lon: number; tags?: Record<string, string> }>;
     };
@@ -626,7 +627,8 @@ export async function fetchOSMPeaks(
         ele: e.tags?.ele ? parseFloat(e.tags.ele) : null,
       }))
       .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-  } catch {
+  } catch (err) {
+    if (strict) throw err;
     return [];
   }
 }
@@ -678,6 +680,7 @@ export async function osmPeaksToHills(
   userLng: number,
   radiusKm: number,
   minElevation: number,
+  nearestFirst = false,
 ): Promise<Hill[]> {
   if (!peaks.length) return [];
 
@@ -691,6 +694,7 @@ export async function osmPeaksToHills(
     .map(p => ({ ...p, distKm: haversineKm(userLat, userLng, p.lat, p.lng) }))
     .filter(p => p.distKm <= radiusKm * 1.4)
     .sort((a, b) =>
+      (nearestFirst ? a.distKm - b.distKm : 0) ||
       (Number.isFinite(b.ele) ? b.ele! : -1) - (Number.isFinite(a.ele) ? a.ele! : -1)
       || a.name.localeCompare(b.name, "en")
       || a.id - b.id)
@@ -770,7 +774,7 @@ export async function osmPeaksToHills(
       distance,
       repeats,
       totalElevation: Math.round(gain * repeats),
-      surface: surfaceFromElevation(summitElev),
+      surface: isUKHillSearch({ lat: peak.lat, lng: peak.lng }) ? "Hill terrain" : surfaceFromElevation(summitElev),
       grade,
       emoji: emojiFromGrade(grade),
       lat: peak.lat,
@@ -798,6 +802,15 @@ export async function osmPeaksToHills(
 // ── In-memory area lookup cache (keyed by "location|radius") ─────────────────
 const areaCache = new Map<string, { hills: Hill[]; ts: number }>();
 const AREA_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+export function isUKHillSearch(center: { lat: number; lng: number }): boolean {
+  return center.lat >= 49.8 && center.lat <= 61 && center.lng >= -8.3 && center.lng <= 2;
+}
+
+export function normalizedHillSearchName(name: string): string {
+  return englishPlaceName(name).normalize("NFKD").replace(/\p{Diacritic}/gu, "")
+    .toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
 
 export function parseAIJson(content: string): unknown {
   const cleaned = content
@@ -936,6 +949,34 @@ router.post("/hills-unified", async (req, res) => {
     const slug = slugify(name);
     const loc = location ? normalizeLocation(location.trim()) : "unknown location";
 
+    // UK training search must establish a real peak before offering a climb.
+    // Neither a nearby legacy cache row nor AI coordinates prove hill identity.
+    try {
+      const center = location ? await geocodeLocation(loc) : null;
+      if (!center) {
+        res.status(location ? 502 : 400).json({ error: "Couldn't locate the search area. Enter a valid town or postcode; no hills were guessed." });
+        return;
+      }
+      if (center && isUKHillSearch(center)) {
+        const r = Math.min(100, Math.max(1, Number(radius) || 50));
+        const peaks = await fetchOSMPeaks(center.lat, center.lng, r, true);
+        const matched = peaks.filter(p => normalizedHillSearchName(p.name) === normalizedHillSearchName(name));
+        const hills = await osmPeaksToHills(matched, center.lat, center.lng, r, 0, true);
+        if (!hills.length) {
+          res.status(404).json({ error: "No mapped hill with usable ascent data found nearby. Try an area search or a wider radius." });
+          return;
+        }
+        const hill = hills.sort((a, b) => a.distance - b.distance)[0];
+        void cacheHill(hill);
+        res.json({ hill, fromCache: false, source: "overpass" });
+        return;
+      }
+    } catch (err) {
+      req.log.error({ err }, "Mapped hill name search failed");
+      res.status(502).json({ error: "Hill map data is unavailable. Please try again." });
+      return;
+    }
+
     // 1. Check cache. A global name-only row is safe only when its coordinates
     // agree with the requested location; common names such as Bull Hill occur
     // in several countries.
@@ -1013,9 +1054,24 @@ router.post("/hills-unified", async (req, res) => {
   try {
     // ── Phase 1: geocode (required as Overpass centre), then Overpass ─────
     const userCoords = await geocodeLocation(loc);
+    if (!userCoords) {
+      res.status(502).json({ error: "Couldn't locate the search area. Enter a valid town or postcode; no hills were guessed." });
+      return;
+    }
     const osmPeaks = userCoords
-      ? await fetchOSMPeaks(userCoords.lat, userCoords.lng, r)
+      ? await fetchOSMPeaks(userCoords.lat, userCoords.lng, r, isUKHillSearch(userCoords))
       : [];
+
+    if (userCoords && isUKHillSearch(userCoords)) {
+      const hills = (await osmPeaksToHills(osmPeaks, userCoords.lat, userCoords.lng, r, minElev, true))
+        .filter(h => h.distance <= r)
+        .sort((a, b) => a.distance - b.distance);
+      // Do not pad sparse or failed UK searches with invented peaks.
+      if (hills.length) areaCache.set(cacheKey, { hills, ts: Date.now() });
+      void Promise.all(hills.map(h => cacheHill(h)));
+      res.json({ hills, source: "overpass" });
+      return;
+    }
 
     // ── Phase 2: try Overpass path ────────────────────────────────────────
     if (userCoords && osmPeaks.length >= 3) {
@@ -1071,8 +1127,7 @@ router.post("/hills-unified", async (req, res) => {
     res.json({ hills: corrected, source: "ai" });
   } catch (err) {
     req.log.error({ err }, "hills-unified area lookup failed");
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: `Hills lookup failed: ${msg}` });
+    res.status(503).json({ error: "Hill map data is temporarily unavailable. Please try again." });
   }
 });
 
