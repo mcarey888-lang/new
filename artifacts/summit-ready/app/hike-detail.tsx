@@ -1,6 +1,5 @@
 import {
   Clock, Gauge, HardDrive, Map, Route, TrendingUp,
-  CloudCheck,
 } from "lucide-react-native";
 import React, { useMemo } from "react";
 import {
@@ -19,6 +18,7 @@ import {
   SREmptyState, SRPanel, SRScreenHeader, SRSectionHeader, SRSubPanel,
 } from "@/components/ui";
 import { formatDuration, formatPace } from "@/utils/readinessEvidencePresentation";
+import { RecordedHikeRecoveryPanel } from "@/components/track/RecordedHikeRecoveryPanel";
 
 function buildMapHtml(points: Array<{ lat: number; lon: number }>): string {
   const coords = points.map(p => [p.lat, p.lon] as [number, number]);
@@ -131,7 +131,6 @@ export default function HikeDetail() {
 
   /* The recorder's own sync state, surfaced rather than assumed. A local-only
      activity is complete and counted; it simply has not left the device yet. */
-  const sync = hike.syncState ?? null;
 
   return (
     <View style={{ flex: 1, backgroundColor: BASECAMP.ink }}>
@@ -146,7 +145,7 @@ export default function HikeDetail() {
           <View style={{ paddingTop: Platform.OS === "web" ? 18 : insets.top + 8 }}>
             <SRScreenHeader
               title="Activity"
-              subtitle={sync === "local_only" ? "Saved on this device" : null}
+              subtitle="Saved on this device"
               onBack={() => router.back()}
             />
           </View>
@@ -214,18 +213,13 @@ export default function HikeDetail() {
             Nothing here changes either. */}
         <View style={s.section}>
           <SRSubPanel style={s.syncRow}>
-            {sync === "synced"
-              ? <CloudCheck size={14} color={BASECAMP.accent} />
-              : <HardDrive size={14} color={BASECAMP.textMuted} />}
+            <HardDrive size={14} color={BASECAMP.textMuted} />
             <Text style={s.syncText}>
-              {sync === "synced"
-                ? "Synced to your account."
-                : sync === "queued"
-                ? "Saved on this device and queued to sync."
-                : "Saved on this device. It will sync when you are back in signal."}
+              Saved on this device. See private backup status below.
             </Text>
           </SRSubPanel>
         </View>
+        <RecordedHikeRecoveryPanel hike={hike} />
       </ScrollView>
     </View>
   );

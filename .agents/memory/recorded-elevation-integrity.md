@@ -8,3 +8,17 @@ Never cap recorded ascent using a mountain's summit altitude, a planned ascent t
 **Why:** Real-phone reports exposed large, near-matching accumulated ascent and descent from GPS altitude noise. A plausible-looking replacement number would conceal the problem rather than establish what was actually climbed.
 
 **How to apply:** Preserve raw recorded fixes separately from filtered totals. Treat desktop simulations as regression evidence, not real-device GPS validation. Do not automatically rewrite previously saved hikes using assumed terrain or route figures; any correction requires usable recorded evidence and an explicit, understandable correction flow.
+
+Historical GPS reprocessing is a user-confirmed estimate, not verified ascent.
+Keep the original measurements and notes, retain the untouched fixes, and
+explain missing accuracy metadata or insufficient coverage before offering a
+correction. Do not change qualified server credits just because a local review
+was applied.
+
+**Why:** A completed route can survive on a phone while its displayed totals are
+wrong. Recovering those totals must not destroy the only remaining evidence or
+claim a certainty that the GPS readings do not support.
+
+**How to apply:** Use explicit preview and confirmation, with an original-value
+audit. Keep private device backups separate from the canonical activity/evidence
+ledger: a backup or retry must not create another credited activity.

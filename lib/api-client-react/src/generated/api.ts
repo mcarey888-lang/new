@@ -23,6 +23,7 @@ import type {
   ArtworkPrompt,
   ArtworkRejectResult,
   ArtworkStatusList,
+  BackupRecordedHike200,
   CanonicalHistoryResponse,
   CommunityPostCreate,
   CommunityPostVisibilityInput,
@@ -36,12 +37,14 @@ import type {
   GetCommunityPostsParams,
   GetMountainDiscoveryParams,
   HealthStatus,
+  ListRecordedHikeBackups200,
   MountainDiscoveryPage,
   MountainHeroGenerationInput,
   MountainHeroGenerationStarted,
   MountainHeroPrompt,
   MountainParkingLookupInput,
   MountainParkingLookupResult,
+  PrivateRecordedHikeBackupInput,
   ReportCommunityPost201,
   SearchVirtualExpedition200,
   UpdateCommunityPostVisibility200,
@@ -57,6 +60,256 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary List the signed-in walker's private recorded hike backups
+ */
+export const getListRecordedHikeBackupsUrl = () => {
+  return `/api/recorded-hikes`;
+};
+
+export const listRecordedHikeBackups = async (
+  options?: RequestInit,
+): Promise<ListRecordedHikeBackups200> => {
+  return customFetch<ListRecordedHikeBackups200>(
+    getListRecordedHikeBackupsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListRecordedHikeBackupsQueryKey = () => {
+  return [`/api/recorded-hikes`] as const;
+};
+
+export const getListRecordedHikeBackupsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listRecordedHikeBackups>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listRecordedHikeBackups>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListRecordedHikeBackupsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listRecordedHikeBackups>>
+  > = ({ signal }) => listRecordedHikeBackups({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listRecordedHikeBackups>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListRecordedHikeBackupsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listRecordedHikeBackups>>
+>;
+export type ListRecordedHikeBackupsQueryError = ErrorType<void>;
+
+/**
+ * @summary List the signed-in walker's private recorded hike backups
+ */
+
+export function useListRecordedHikeBackups<
+  TData = Awaited<ReturnType<typeof listRecordedHikeBackups>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listRecordedHikeBackups>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListRecordedHikeBackupsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Back up a recorded hike privately without awarding activity credits
+ */
+export const getBackupRecordedHikeUrl = () => {
+  return `/api/recorded-hikes`;
+};
+
+export const backupRecordedHike = async (
+  privateRecordedHikeBackupInput: PrivateRecordedHikeBackupInput,
+  options?: RequestInit,
+): Promise<BackupRecordedHike200> => {
+  return customFetch<BackupRecordedHike200>(getBackupRecordedHikeUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(privateRecordedHikeBackupInput),
+  });
+};
+
+export const getBackupRecordedHikeMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof backupRecordedHike>>,
+    TError,
+    { data: BodyType<PrivateRecordedHikeBackupInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof backupRecordedHike>>,
+  TError,
+  { data: BodyType<PrivateRecordedHikeBackupInput> },
+  TContext
+> => {
+  const mutationKey = ["backupRecordedHike"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof backupRecordedHike>>,
+    { data: BodyType<PrivateRecordedHikeBackupInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return backupRecordedHike(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BackupRecordedHikeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof backupRecordedHike>>
+>;
+export type BackupRecordedHikeMutationBody =
+  BodyType<PrivateRecordedHikeBackupInput>;
+export type BackupRecordedHikeMutationError = ErrorType<void>;
+
+/**
+ * @summary Back up a recorded hike privately without awarding activity credits
+ */
+export const useBackupRecordedHike = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof backupRecordedHike>>,
+    TError,
+    { data: BodyType<PrivateRecordedHikeBackupInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof backupRecordedHike>>,
+  TError,
+  { data: BodyType<PrivateRecordedHikeBackupInput> },
+  TContext
+> => {
+  return useMutation(getBackupRecordedHikeMutationOptions(options));
+};
+
+/**
+ * @summary Delete only the signed-in walker's backup
+ */
+export const getDeleteRecordedHikeBackupUrl = (id: string) => {
+  return `/api/recorded-hikes/${id}`;
+};
+
+export const deleteRecordedHikeBackup = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteRecordedHikeBackupUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteRecordedHikeBackupMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRecordedHikeBackup>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteRecordedHikeBackup>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteRecordedHikeBackup"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteRecordedHikeBackup>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteRecordedHikeBackup(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteRecordedHikeBackupMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteRecordedHikeBackup>>
+>;
+
+export type DeleteRecordedHikeBackupMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete only the signed-in walker's backup
+ */
+export const useDeleteRecordedHikeBackup = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRecordedHikeBackup>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteRecordedHikeBackup>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteRecordedHikeBackupMutationOptions(options));
+};
 
 /**
  * @summary Resolve an expedition target or build its local walking stages
@@ -1765,8 +2018,7 @@ export const uploadCommunityPostPhoto = async (
       ...options,
       method: "PUT",
       headers: { "Content-Type": "image/jpeg", ...options?.headers },
-      // Binary requests must send bytes, not JSON.stringify(Blob).
-      body: uploadCommunityPostPhotoBody,
+      body: JSON.stringify(uploadCommunityPostPhotoBody),
     },
   );
 };

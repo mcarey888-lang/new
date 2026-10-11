@@ -15,6 +15,67 @@ tags:
   - name: community
     description: Authenticated SummitReady member sharing
 paths:
+  /recorded-hikes:
+    get:
+      operationId: listRecordedHikeBackups
+      summary: List the signed-in walker's private recorded hike backups
+      responses:
+        "200":
+          description: Owner-private backups, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [backups]
+                properties:
+                  backups:
+                    type: array
+                    items:
+                      type: object
+                      required: [hikeId, revision, snapshot, updatedAt]
+                      properties:
+                        hikeId: { type: string }
+                        revision: { type: string, format: date-time }
+                        updatedAt: { type: string, format: date-time }
+                        snapshot:
+                          $ref: "#/components/schemas/PrivateRecordedHikeSnapshot"
+        "401": { description: Sign-in required; never a browser redirect }
+        "503": { description: Private backup storage unavailable }
+    put:
+      operationId: backupRecordedHike
+      summary: Back up a recorded hike privately without awarding activity credits
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrivateRecordedHikeBackupInput"
+      responses:
+        "200":
+          description: Backup durably accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, hikeId, revision]
+                properties:
+                  ok: { type: boolean }
+                  hikeId: { type: string }
+                  revision: { type: string, format: date-time }
+        "400": { description: Invalid snapshot }
+        "401": { description: Sign-in required }
+        "409": { description: A newer revision exists }
+        "503": { description: Private backup storage unavailable }
+  /recorded-hikes/{id}:
+    delete:
+      operationId: deleteRecordedHikeBackup
+      summary: Delete only the signed-in walker's backup
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Backup deleted }
+        "401": { description: Sign-in required }
+        "503": { description: Private backup storage unavailable }
   /virtual-expedition:
     post:
       operationId: searchVirtualExpedition
@@ -532,6 +593,42 @@ paths:
 
 components:
   schemas:
+    PrivateRecordedHikeBackupInput:
+      type: object
+      required: [hikeId, revision, snapshot]
+      properties:
+        hikeId: { type: string, maxLength: 256 }
+        revision: { type: string, format: date-time }
+        snapshot:
+          $ref: "#/components/schemas/PrivateRecordedHikeSnapshot"
+    PrivateRecordedHikeSnapshot:
+      type: object
+      additionalProperties: true
+      required: [id, name, date, distance, elevationGain, timeTaken, notes]
+      properties:
+        id: { type: string, maxLength: 256 }
+        name: { type: string, maxLength: 256 }
+        date:
+          type: string
+          description: ISO recording timestamp or legacy YYYY-MM-DD activity date
+        distance: { type: number, minimum: 0 }
+        elevationGain: { type: number, minimum: 0 }
+        timeTaken: { type: number, minimum: 0 }
+        notes: { type: string, maxLength: 20000 }
+        trackPoints:
+          type: array
+          maxItems: 100000
+          items:
+            type: object
+            additionalProperties: true
+            required: [lat, lon]
+            properties:
+              lat: { type: number, minimum: -90, maximum: 90 }
+              lon: { type: number, minimum: -180, maximum: 180 }
+              alt: { type: [number, "null"] }
+              ts: { type: number }
+              acc: { type: [number, "null"] }
+              altAcc: { type: [number, "null"] }
     CommunityPostCreate:
       type: object
       required: [kind]

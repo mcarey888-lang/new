@@ -218,6 +218,7 @@ app.use("/api/atlas/bulk",                   aiLimiter);
 app.use(clerkMiddleware());
 
 app.use("/api/atlas/upload", express.json({ limit: "50mb" }));
+app.use("/api/recorded-hikes", express.json({ limit: "12mb" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

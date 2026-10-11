@@ -1,13 +1,43 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { ChevronRight, Footprints } from "lucide-react-native";
-import { useApp } from "@/context/AppContext";
+import { useApp, type ExploreHike } from "@/context/AppContext";
+import { useAuth } from "@clerk/expo";
+import { listRecordedHikeBackups } from "@workspace/api-client-react";
+import { authenticatedJsonHeaders } from "@/utils/authRequest";
 import { BASECAMP, TYPE } from "@/constants/tokens";
 
 /** Local completed activities must remain accessible while server sync is down. */
 export function CompletedHikesSection() {
-  const { exploreHikes, isLoading } = useApp();
+  const { exploreHikes, isLoading, logExploreHike } = useApp();
+  const { userId, getToken } = useAuth();
+  const owner = useRef(userId);
+  owner.current = userId;
+  const [restoring, setRestoring] = useState(false);
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+  async function restoreBackups() {
+    if (!userId) { setRestoreMessage("Sign in to restore your private backups."); return; }
+    const originalOwner = userId;
+    setRestoring(true); setRestoreMessage(null);
+    try {
+      const result = await listRecordedHikeBackups({ headers: authenticatedJsonHeaders(await getToken({ skipCache: true })) });
+      let restored = 0;
+      for (const item of result.backups) {
+        if (owner.current !== originalOwner) return;
+        if (exploreHikes.some(h => h.id === item.hikeId)) continue;
+        const snapshot = item.snapshot as unknown as ExploreHike;
+        const { id, ...recording } = snapshot;
+        await logExploreHike({ ...recording, activityId: recording.activityId ?? id });
+        restored++;
+      }
+      if (owner.current === originalOwner) setRestoreMessage(restored
+        ? `${restored} private hike${restored === 1 ? "" : "s"} restored. Existing phone recordings were not replaced.`
+        : "No missing hikes among your recent private backups. Existing phone recordings are unchanged.");
+    } catch (error) {
+      if (owner.current === originalOwner) setRestoreMessage("Private backups could not be loaded. Check your sign-in and connection; your phone recordings are unchanged.");
+    } finally { if (owner.current === originalOwner) setRestoring(false); }
+  }
   const hikes = useMemo(() => [...exploreHikes].sort((a, b) =>
     b.date.localeCompare(a.date)), [exploreHikes]);
   return (
@@ -15,6 +45,11 @@ export function CompletedHikesSection() {
       <Text style={styles.kicker}>YOUR RECORDED ACTIVITIES</Text>
       <Text style={styles.title}>Completed hikes</Text>
       <Text style={styles.message}>Your saved recordings, including hikes waiting to sync. These are private.</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="Restore missing recorded hikes from private backups" disabled={restoring}
+        onPress={() => { void restoreBackups(); }} style={{ paddingVertical: 12 }}>
+        <Text style={{ ...TYPE.body, color: BASECAMP.accent }}>{restoring ? "Restoring…" : "Restore missing hikes from backup"}</Text>
+      </Pressable>
+      {restoreMessage && <Text accessibilityRole="alert" style={styles.message}>{restoreMessage}</Text>}
       {isLoading ? <ActivityIndicator color={BASECAMP.accent} accessibilityLabel="Loading completed hikes" />
         : hikes.length === 0 ? <Text style={styles.message}>Your completed hikes will appear here after you save them.</Text>
         : hikes.map(hike => (
@@ -26,8 +61,7 @@ export function CompletedHikesSection() {
             <View style={styles.copy}>
               <Text style={styles.name}>{hike.name}</Text>
               <Text style={styles.meta}>{new Date(hike.date).toLocaleDateString("en-GB")} · {hike.distance.toFixed(2)} km · {Math.round(hike.elevationGain)} m ascent · {hike.timeTaken} min</Text>
-              <Text style={styles.meta}>{hike.syncState === "synced" ? "Synced" :
-                hike.activityId ? "Saved on this device · Sync pending" : "Saved on this device"}</Text>
+              <Text style={styles.meta}>{hike.backupRevision && hike.backedUpRevision === hike.backupRevision ? "Private backup confirmed" : "Saved on this device"}</Text>
             </View>
             <ChevronRight size={18} color={BASECAMP.textMuted} />
           </Pressable>

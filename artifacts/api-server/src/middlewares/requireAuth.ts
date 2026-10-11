@@ -54,7 +54,10 @@ export function requireAuth(options: { json?: boolean } = {}): RequestHandler {
             // clerkMiddleware has already verified the JWT. Never trust a
             // user ID supplied in the request body or unverified token.
             if (getAuth(req).userId) { next(); return; }
-            req.log?.warn({ bearerPresent: /^Bearer\s+\S+/i.test(req.headers.authorization ?? "") },
+            req.log?.warn({
+              bearerPresent: /^Bearer\s+\S+/i.test(req.headers.authorization ?? ""),
+              authReason: res.getHeader("x-clerk-auth-reason") ?? "unknown",
+            },
               "route API authentication rejected");
             res.status(401).json({ error: "Your sign-in could not be verified. Please sign in again to save routes." });
           } catch {

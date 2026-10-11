@@ -1509,6 +1509,7 @@ export default function HikeTrackingScreen() {
         date: new Date().toISOString(),
         distance: distKm,
         elevationGain: elevGain,
+        elevationLoss: elevLoss,
         timeTaken: Math.round(elapsedSecs / 60),   // store in minutes
         notes: `GPS tracked hike. Elevation loss: ${elevLoss} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
         trackPoints: trackPoints.current,
@@ -1551,44 +1552,8 @@ export default function HikeTrackingScreen() {
         });
       }
 
-      // 3 ── Sync the user's *recorded GPS trace* as before. A canonical
-      // planned route is never copied into community data or used as its ID.
-      const routeSyncId = `community-route:${routeId}:${selectedCanonical?.id ?? "new"}`;
-      const routeUrl = selectedCanonical
-        ? `${API_BASE}/tracked-routes/${selectedCanonical.id}/contribute`
-        : `${API_BASE}/tracked-routes`;
-      const routeBody = selectedCanonical
-        ? {
-            contributionId: routeId,
-            trackPoints: trackPoints.current,
-            distanceKm: distKm,
-            elevationGain: elevGain,
-            elevationLoss: elevLoss,
-            durationSecs: elapsedSecs,
-          }
-        : {
-            id: routeId,
-            name,
-            location: "GPS Tracked Route",
-            distanceKm: distKm,
-            elevationGain: elevGain,
-            elevationLoss: elevLoss,
-            durationSecs: elapsedSecs,
-            difficulty: computeDifficulty(distKm, elevGain),
-            startLat: firstPt?.lat ?? null,
-            startLng: firstPt?.lon ?? null,
-            trackPoints: trackPoints.current,
-            notes: `Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "0"} km/h.`,
-          };
-      if (userId) {
-        await enqueueSyncPending(userId, {
-          id: routeSyncId,
-          kind: "community-route",
-          url: routeUrl,
-          method: "POST",
-          body: routeBody,
-        });
-      }
+      // 3 ── logExploreHike queued an owner-private snapshot of the actual
+      // recording. Saving a hike is not consent to publish a community route.
 
       // 4 ── If this was launched from a hill training session, save hill session data
       if (hillMeta.hillName) {
@@ -1626,7 +1591,7 @@ export default function HikeTrackingScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         "Activity saved",
-        "Activity saved. It will sync automatically when you’re online.",
+        "Your activity is saved on this phone. Open its details in You → Saved hikes to check or retry the private backup.",
       );
       // Free Hike: direct expedition credit without checking off stages
       if (hillMeta.trackingMode === "freehike" && hillMeta.expeditionId) {

@@ -1,4 +1,7 @@
 import { useAuth } from "@clerk/expo";
+import { privateRecordedHikeBackup } from "../utils/recordedHikeRecovery";
+import { enqueueSyncPending, retrySyncOutbox } from "../utils/syncOutbox";
+import { serializeRecordedHikeWrite } from "../utils/recordedHikeWrites";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
@@ -373,7 +376,11 @@ export interface ExploreHike {
   elevationGain: number;
   timeTaken: number;
   notes: string;
-  trackPoints?: Array<{ lat: number; lon: number }>;
+  trackPoints?: import("../utils/recordedHikeRecovery").RecordedHikePoint[];
+  elevationLoss?: number;
+  elevationCorrection?: import("../utils/recordedHikeRecovery").ElevationCorrection;
+  backupRevision?: string;
+  backedUpRevision?: string;
   activityId?: string;
   expeditionId?: string;
   /** Canonical SDE route identity is independent of local activity and community IDs. */
@@ -437,6 +444,7 @@ interface AppState {
   exploreHikes: ExploreHike[];
   setAppMode: (mode: "summit" | "explore") => Promise<void>;
   logExploreHike: (hike: Omit<ExploreHike, "id">) => Promise<string>;
+  updateExploreHike: (id: string, patch: Partial<Pick<ExploreHike, "elevationGain" | "elevationLoss" | "notes" | "elevationCorrection" | "backupRevision" | "backedUpRevision" | "syncState">>) => Promise<void>;
   deleteExploreHike: (id: string) => Promise<void>;
   savedTrailIds: string[];
   completedTrailIds: string[];
@@ -527,6 +535,7 @@ const AppContext = createContext<AppState>({
   exploreHikes: [],
   setAppMode: async () => {},
   logExploreHike: async () => "",
+  updateExploreHike: async () => {},
   deleteExploreHike: async () => {},
   savedTrailIds: [],
   completedTrailIds: [],
@@ -671,7 +680,7 @@ const DEMO_SESSIONS: Session[] = [
 ];
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth();
   const _uid = userId ?? "";
   const hikeStorageOwnerRef = useRef(_uid);
   hikeStorageOwnerRef.current = _uid;
@@ -1810,14 +1819,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [shellMode, trainingGoal, expeditionGoal, trainingPlan, sessions, sessionReps, assignedHills, completedGoals, exploreHikes, SHELL_MODE_KEY, GOAL_KEY]);
 
-  const logExploreHike = useCallback(async (hike: Omit<ExploreHike, "id">) => {
+  const logExploreHike = useCallback(async (hike: Omit<ExploreHike, "id">) => serializeRecordedHikeWrite(EXPLORE_HIKES_KEY, async () => {
     if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed. Please reopen your recording.");
     const existing = hike.activityId
       ? exploreHikesRef.current.find(item => item.activityId === hike.activityId)
       : undefined;
     if (existing) return existing.id;
     const id = hike.activityId ?? Date.now().toString() + Math.random().toString(36).slice(2, 8);
-    const newHike: ExploreHike = { ...hike, id };
+    const newHike: ExploreHike = { ...hike, id, backupRevision: new Date().toISOString(), syncState: userId ? "queued" : "local_only" };
     const result = upsertByActivityId(exploreHikesRef.current, newHike);
     if (!result.inserted) return result.id;
     const updated = result.items;
@@ -1825,6 +1834,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed while saving. The hike remains private to its original account.");
     exploreHikesRef.current = updated;
     setExploreHikes(updated);
+    if (userId) {
+      await enqueueSyncPending(userId, {
+        id: `private-hike:${id}`, kind: "private-hike", method: "PUT",
+        url: `${API_BASE}/recorded-hikes`, body: privateRecordedHikeBackup(newHike),
+      });
+      void retrySyncOutbox(userId, () => getToken({ skipCache: true })).catch(() => {});
+    }
     const oldScore = readinessScore;
     let score = readinessScore;
     if (summitGoal) {
@@ -1840,14 +1856,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     checkAndNotifyAchievements(sessions, score, submittedPlanSessions, unlockedAchievements, updated);
     return id;
-  }, [sessions, readinessScore, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, submittedPlanSessions, unlockedAchievements, checkAndNotifyAchievements, EXPLORE_HIKES_KEY, _uid]);
+  }), [sessions, readinessScore, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, submittedPlanSessions, unlockedAchievements, checkAndNotifyAchievements, EXPLORE_HIKES_KEY, _uid, userId, getToken]);
 
-  const deleteExploreHike = useCallback(async (id: string) => {
-    const updated = exploreHikes.filter(h => h.id !== id);
+  const deleteExploreHike = useCallback(async (id: string) => serializeRecordedHikeWrite(EXPLORE_HIKES_KEY, async () => {
+    if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed. Reopen your recording.");
+    if (userId) {
+      await enqueueSyncPending(userId, {
+        id: `private-hike:${id}`, kind: "private-hike-delete", method: "DELETE",
+        url: `${API_BASE}/recorded-hikes/${encodeURIComponent(id)}`, body: { hikeId: id },
+      });
+    }
+    const updated = exploreHikesRef.current.filter(h => h.id !== id);
+    await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
+    if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed while deleting.");
     exploreHikesRef.current = updated;
     setExploreHikes(updated);
+    if (userId) void retrySyncOutbox(userId, () => getToken({ skipCache: true })).catch(() => {});
+  }), [_uid, userId, getToken, EXPLORE_HIKES_KEY]);
+
+  const updateExploreHike = useCallback(async (id: string, patch: Partial<Pick<ExploreHike, "elevationGain" | "elevationLoss" | "notes" | "elevationCorrection" | "backupRevision" | "backedUpRevision" | "syncState">>) => serializeRecordedHikeWrite(EXPLORE_HIKES_KEY, async () => {
+    if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed. Reopen the hike in its original account.");
+    if (!exploreHikesRef.current.some(h => h.id === id)) throw new Error("This recording is no longer available.");
+    const updated = exploreHikesRef.current.map(h => h.id === id ? { ...h, ...patch } : h);
     await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
-  }, [exploreHikes]);
+    if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed while saving. Your recording remains in its original account.");
+    exploreHikesRef.current = updated;
+    setExploreHikes(updated);
+    if (summitGoal) setReadinessScore(calculateReadiness(summitGoal, trainingPlan, sessions, { sessionReps, assignedHills, completedGoals, exploreHikes: updated }));
+  }), [_uid, EXPLORE_HIKES_KEY, summitGoal, trainingPlan, sessions, sessionReps, assignedHills, completedGoals]);
 
   const saveTrail = useCallback(async (id: string) => {
     const updated = savedTrailIds.includes(id) ? savedTrailIds : [...savedTrailIds, id];
@@ -2321,7 +2357,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitWeekSessions, hillsInPlan, addHillToPlan, myHills, addToMyHills, removeFromMyHills, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, sessionDayOverrides, setSessionDayOverride, clearSessionDayOverride, updatePlanSession,
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,
       completedGoals,
-      appMode, exploreHikes, setAppMode, logExploreHike, deleteExploreHike,
+      appMode, exploreHikes, setAppMode, logExploreHike, updateExploreHike, deleteExploreHike,
       savedTrailIds, completedTrailIds, customRoutes,
       saveTrail, unsaveTrail, completeTrail, uncompleteTrail, addCustomRoute, deleteCustomRoute,
       reloadApp,

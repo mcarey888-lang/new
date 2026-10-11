@@ -11,7 +11,8 @@ describe("completed hike library and recording integration", () => {
     expect(section).toContain("exploreHikes");
     expect(section).toContain('pathname: "/hike-detail"');
     expect(section).toContain("params: { id: hike.id }");
-    expect(section).toContain("Sync pending");
+    expect(section).toContain("Private backup confirmed");
+    expect(section).toContain("hike.backedUpRevision === hike.backupRevision");
     expect(section).not.toMatch(/listRoutes|fetch\(/);
   });
   it("uses the same elevation filter for all three foreground watchers and background replay", () => {

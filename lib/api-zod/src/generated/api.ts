@@ -8,6 +8,170 @@
 import * as zod from "zod";
 
 /**
+ * @summary List the signed-in walker's private recorded hike backups
+ */
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotIdMax = 256;
+
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotNameMax = 256;
+
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotDistanceMin = 0;
+
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotElevationGainMin = 0;
+
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotTimeTakenMin = 0;
+
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotNotesMax = 20000;
+
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLatMin =
+  -90;
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLatMax = 90;
+
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLonMin =
+  -180;
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLonMax = 180;
+
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsMax = 100000;
+
+export const ListRecordedHikeBackupsResponse = zod.object({
+  backups: zod.array(
+    zod.object({
+      hikeId: zod.string(),
+      revision: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+      snapshot: zod.object({
+        id: zod
+          .string()
+          .max(listRecordedHikeBackupsResponseBackupsItemSnapshotIdMax),
+        name: zod
+          .string()
+          .max(listRecordedHikeBackupsResponseBackupsItemSnapshotNameMax),
+        date: zod
+          .string()
+          .describe(
+            "ISO recording timestamp or legacy YYYY-MM-DD activity date",
+          ),
+        distance: zod
+          .number()
+          .min(listRecordedHikeBackupsResponseBackupsItemSnapshotDistanceMin),
+        elevationGain: zod
+          .number()
+          .min(
+            listRecordedHikeBackupsResponseBackupsItemSnapshotElevationGainMin,
+          ),
+        timeTaken: zod
+          .number()
+          .min(listRecordedHikeBackupsResponseBackupsItemSnapshotTimeTakenMin),
+        notes: zod
+          .string()
+          .max(listRecordedHikeBackupsResponseBackupsItemSnapshotNotesMax),
+        trackPoints: zod
+          .array(
+            zod.object({
+              lat: zod
+                .number()
+                .min(
+                  listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLatMin,
+                )
+                .max(
+                  listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLatMax,
+                ),
+              lon: zod
+                .number()
+                .min(
+                  listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLonMin,
+                )
+                .max(
+                  listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLonMax,
+                ),
+              alt: zod.number().nullish(),
+              ts: zod.number().optional(),
+              acc: zod.number().nullish(),
+              altAcc: zod.number().nullish(),
+            }),
+          )
+          .max(listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsMax)
+          .optional(),
+      }),
+    }),
+  ),
+});
+
+/**
+ * @summary Back up a recorded hike privately without awarding activity credits
+ */
+export const backupRecordedHikeBodyHikeIdMax = 256;
+
+export const backupRecordedHikeBodySnapshotIdMax = 256;
+
+export const backupRecordedHikeBodySnapshotNameMax = 256;
+
+export const backupRecordedHikeBodySnapshotDistanceMin = 0;
+
+export const backupRecordedHikeBodySnapshotElevationGainMin = 0;
+
+export const backupRecordedHikeBodySnapshotTimeTakenMin = 0;
+
+export const backupRecordedHikeBodySnapshotNotesMax = 20000;
+
+export const backupRecordedHikeBodySnapshotTrackPointsItemLatMin = -90;
+export const backupRecordedHikeBodySnapshotTrackPointsItemLatMax = 90;
+
+export const backupRecordedHikeBodySnapshotTrackPointsItemLonMin = -180;
+export const backupRecordedHikeBodySnapshotTrackPointsItemLonMax = 180;
+
+export const backupRecordedHikeBodySnapshotTrackPointsMax = 100000;
+
+export const BackupRecordedHikeBody = zod.object({
+  hikeId: zod.string().max(backupRecordedHikeBodyHikeIdMax),
+  revision: zod.coerce.date(),
+  snapshot: zod.object({
+    id: zod.string().max(backupRecordedHikeBodySnapshotIdMax),
+    name: zod.string().max(backupRecordedHikeBodySnapshotNameMax),
+    date: zod
+      .string()
+      .describe("ISO recording timestamp or legacy YYYY-MM-DD activity date"),
+    distance: zod.number().min(backupRecordedHikeBodySnapshotDistanceMin),
+    elevationGain: zod
+      .number()
+      .min(backupRecordedHikeBodySnapshotElevationGainMin),
+    timeTaken: zod.number().min(backupRecordedHikeBodySnapshotTimeTakenMin),
+    notes: zod.string().max(backupRecordedHikeBodySnapshotNotesMax),
+    trackPoints: zod
+      .array(
+        zod.object({
+          lat: zod
+            .number()
+            .min(backupRecordedHikeBodySnapshotTrackPointsItemLatMin)
+            .max(backupRecordedHikeBodySnapshotTrackPointsItemLatMax),
+          lon: zod
+            .number()
+            .min(backupRecordedHikeBodySnapshotTrackPointsItemLonMin)
+            .max(backupRecordedHikeBodySnapshotTrackPointsItemLonMax),
+          alt: zod.number().nullish(),
+          ts: zod.number().optional(),
+          acc: zod.number().nullish(),
+          altAcc: zod.number().nullish(),
+        }),
+      )
+      .max(backupRecordedHikeBodySnapshotTrackPointsMax)
+      .optional(),
+  }),
+});
+
+export const BackupRecordedHikeResponse = zod.object({
+  ok: zod.boolean(),
+  hikeId: zod.string(),
+  revision: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete only the signed-in walker's backup
+ */
+export const DeleteRecordedHikeBackupParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
  * @summary Resolve an expedition target or build its local walking stages
  */
 export const searchVirtualExpeditionBodyTargetMountainMin = 2;

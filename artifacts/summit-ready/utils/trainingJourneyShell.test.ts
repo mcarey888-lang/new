@@ -267,7 +267,9 @@ describe("Activity Details shows only what was recorded", () => {
     expect(src).toContain('testID="activity-not-found"');
   });
 
-  it("surfaces the recorder's own sync state rather than assuming it", () => {
-    expect(src).toMatch(/hike\.syncState/);
+  it("delegates backup status to the receipt-checking recovery panel rather than assuming success", () => {
+    expect(src).toMatch(/RecordedHikeRecoveryPanel hike=\{hike\}/);
+    expect(src).toMatch(/See private backup status below/);
+    expect(src).not.toMatch(/It will sync when you are back in signal/);
   });
 });

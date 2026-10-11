@@ -9,13 +9,16 @@ export function syncOutboxKey(userId: string): string {
   return `${LEGACY_SYNC_OUTBOX_KEY}_${userId}`;
 }
 
-export type SyncOutboxKind = "hill-session" | "community-route";
+export type SyncOutboxKind = "hill-session" | "community-route" | "private-hike" | "private-hike-delete";
 export interface SyncOutboxItem {
   ownerUserId: string;
   id: string;
   kind: SyncOutboxKind;
   url: string;
-  method: "POST";
+  method: "POST" | "PUT" | "DELETE";
+  shareConsent?: boolean;
+  lastError?: string;
+  generation?: string;
   body: unknown;
   state: "pending" | "failed";
   attempts: number;
@@ -25,6 +28,16 @@ export interface SyncOutboxItem {
 async function readOutbox(userId: string): Promise<SyncOutboxItem[]> {
   const raw = await AsyncStorage.getItem(syncOutboxKey(userId));
   return raw ? JSON.parse(raw) as SyncOutboxItem[] : [];
+}
+
+const receiptKey = (userId: string) => `summitready_private_hike_receipts_v1_${userId}`;
+export async function privateHikeBackupStatus(userId: string, hikeId: string, revision: string) {
+  const receipts = JSON.parse(await AsyncStorage.getItem(receiptKey(userId)) ?? "{}") as Record<string, string>;
+  if (receipts[hikeId] === revision) return { state: "synced" as const };
+  const item = (await readOutbox(userId)).find(entry =>
+    entry.kind === "private-hike" && (entry.body as { hikeId?: string; revision?: string }).hikeId === hikeId &&
+    (entry.body as { revision?: string }).revision === revision);
+  return { state: item?.state ?? "not_queued", error: item?.lastError };
 }
 
 export function serializeOutboxMutation<T>(userId: string, operation: () => Promise<T>): Promise<T> {
@@ -49,6 +62,7 @@ export async function enqueueSyncFailure(
     state: "failed",
     attempts: (existing?.attempts ?? 0) + 1,
     updatedAt: Date.now(),
+      generation: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
   };
   await AsyncStorage.setItem(
     syncOutboxKey(userId),
@@ -103,9 +117,14 @@ export async function retrySyncOutbox(
     });
     if (current.length === 0) return;
 
-    const outcomes = new Map<string, { updatedAt: number; succeeded: boolean }>();
+    const outcomes = new Map<string, { updatedAt: number; generation?: string; succeeded: boolean; error?: string; deletedHikeId?: string; receipt?: { hikeId: string; revision: string } }>();
     for (const item of current) {
+      // Legacy auto-publication is not permission to share a private GPS trace.
+      if (item.kind === "community-route" && !item.shareConsent) continue;
       let succeeded = false;
+      let error: string | undefined;
+      let receipt: { hikeId: string; revision: string } | undefined;
+      let deletedHikeId: string | undefined;
       try {
         const token = await getToken();
         if (!token) throw new Error("Authentication required");
@@ -123,32 +142,65 @@ export async function retrySyncOutbox(
             },
             body: JSON.stringify(item.body),
             signal: controller.signal,
+            redirect: "error",
           });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({})) as { error?: string };
+            throw new Error(res.status === 401
+              ? "Your sign-in could not be verified. Sign in again, then retry."
+              : body.error ?? `Backup failed (HTTP ${res.status})`);
+          }
+          const acknowledgement = res.status === 204 ? null : await res.json();
+          if (item.kind === "private-hike-delete") {
+            if (res.status !== 204) throw new Error("Private backup deletion was not acknowledged");
+            deletedHikeId = (item.body as { hikeId: string }).hikeId;
+          } else
+          if (item.kind === "private-hike") {
+            const body = item.body as { hikeId: string; revision: string };
+            if (acknowledgement?.ok !== true || acknowledgement.hikeId !== body.hikeId ||
+                acknowledgement.revision !== body.revision) throw new Error("Private backup was not acknowledged");
+            receipt = { hikeId: body.hikeId, revision: body.revision };
+          } else if (acknowledgement?.ok !== true && !acknowledgement?.id &&
+                     !acknowledgement?.activityId && !acknowledgement?.session) {
+            throw new Error("The server did not acknowledge the recording");
+          }
           succeeded = true;
         } finally {
           clearTimeout(timeout);
         }
-      } catch {
+      } catch (caught) {
         succeeded = false;
+        error = caught instanceof Error ? caught.message : "Backup failed. Your phone copy is unchanged.";
       }
-      outcomes.set(item.id, { updatedAt: item.updatedAt, succeeded });
+      outcomes.set(item.id, { updatedAt: item.updatedAt, generation: item.generation, succeeded, error, receipt, deletedHikeId });
     }
 
     // Reconcile under the lock. Never remove an item that was replaced with a
     // newer payload while its previous version was in flight.
     await serializeOutboxMutation(userId, async () => {
       const latest = await readOutbox(userId);
+      const receipts = JSON.parse(await AsyncStorage.getItem(receiptKey(userId)) ?? "{}") as Record<string, string>;
+      for (const item of latest) {
+        const outcome = outcomes.get(item.id);
+        if (outcome?.succeeded && outcome.updatedAt === item.updatedAt && outcome.generation === item.generation && outcome.receipt) {
+          receipts[outcome.receipt.hikeId] = outcome.receipt.revision;
+        }
+        if (outcome?.succeeded && outcome.updatedAt === item.updatedAt && outcome.generation === item.generation && outcome.deletedHikeId) {
+          delete receipts[outcome.deletedHikeId];
+        }
+      }
+      await AsyncStorage.setItem(receiptKey(userId), JSON.stringify(receipts));
       const next = latest.flatMap(item => {
         if (item.ownerUserId !== userId) return [item];
         const outcome = outcomes.get(item.id);
-        if (!outcome || outcome.updatedAt !== item.updatedAt) return [item];
+        if (!outcome || outcome.updatedAt !== item.updatedAt || outcome.generation !== item.generation) return [item];
         if (outcome.succeeded) return [];
         return [{
           ...item,
           state: "failed" as const,
           attempts: item.attempts + 1,
           updatedAt: Date.now(),
+          lastError: outcome.error,
         }];
       });
       await AsyncStorage.setItem(syncOutboxKey(userId), JSON.stringify(next));

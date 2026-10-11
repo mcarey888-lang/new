@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { recordedHikeBackups } from "@workspace/db/schema";
 import { getAuth, clerkClient } from "@clerk/express";
 import { canonicalActivities, communityPosts, communityReports, db, trackedRoutes, userDemoProfiles } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
@@ -23,7 +24,7 @@ function respondToDemoProfileError(req: Request, res: Response, err: unknown): v
   res.status(500).json({ error: msg });
 }
 
-router.get("/user/demo-profile", requireAuth(), async (req, res) => {
+router.get("/user/demo-profile", requireAuth({ json: true }), async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -43,7 +44,7 @@ router.get("/user/demo-profile", requireAuth(), async (req, res) => {
   }
 });
 
-router.put("/user/demo-profile", requireAuth(), async (req, res) => {
+router.put("/user/demo-profile", requireAuth({ json: true }), async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -66,7 +67,7 @@ router.put("/user/demo-profile", requireAuth(), async (req, res) => {
   }
 });
 
-router.delete("/user/demo-profile", requireAuth(), async (req, res) => {
+router.delete("/user/demo-profile", requireAuth({ json: true }), async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -80,13 +81,14 @@ router.delete("/user/demo-profile", requireAuth(), async (req, res) => {
   }
 });
 
-router.delete("/user/me", requireAuth(), async (req, res) => {
+router.delete("/user/me", requireAuth({ json: true }), async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
   try {
+    await db.delete(recordedHikeBackups).where(eq(recordedHikeBackups.ownerUserId, userId));
     const ownedPosts = await db.select({ photoPath: communityPosts.photoPath })
       .from(communityPosts).where(eq(communityPosts.ownerUserId, userId));
     await db.delete(communityReports).where(or(

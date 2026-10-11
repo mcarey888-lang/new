@@ -5,6 +5,54 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type PrivateRecordedHikeSnapshotTrackPointsItem = {
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  lat: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  lon: number;
+  /** @nullable */
+  alt?: number | null;
+  ts?: number;
+  /** @nullable */
+  acc?: number | null;
+  /** @nullable */
+  altAcc?: number | null;
+  [key: string]: unknown;
+};
+
+export interface PrivateRecordedHikeSnapshot {
+  /** @maxLength 256 */
+  id: string;
+  /** @maxLength 256 */
+  name: string;
+  /** ISO recording timestamp or legacy YYYY-MM-DD activity date */
+  date: string;
+  /** @minimum 0 */
+  distance: number;
+  /** @minimum 0 */
+  elevationGain: number;
+  /** @minimum 0 */
+  timeTaken: number;
+  /** @maxLength 20000 */
+  notes: string;
+  /** @maxItems 100000 */
+  trackPoints?: PrivateRecordedHikeSnapshotTrackPointsItem[];
+  [key: string]: unknown;
+}
+
+export interface PrivateRecordedHikeBackupInput {
+  /** @maxLength 256 */
+  hikeId: string;
+  revision: string;
+  snapshot: PrivateRecordedHikeSnapshot;
+}
+
 export type CommunityPostCreateKind =
   (typeof CommunityPostCreateKind)[keyof typeof CommunityPostCreateKind];
 
@@ -445,6 +493,23 @@ export interface CanonicalHistoryResponse {
   reason: string | null;
   items: CanonicalHistoryItem[];
 }
+
+export type ListRecordedHikeBackups200BackupsItem = {
+  hikeId: string;
+  revision: string;
+  updatedAt: string;
+  snapshot: PrivateRecordedHikeSnapshot;
+};
+
+export type ListRecordedHikeBackups200 = {
+  backups: ListRecordedHikeBackups200BackupsItem[];
+};
+
+export type BackupRecordedHike200 = {
+  ok: boolean;
+  hikeId: string;
+  revision: string;
+};
 
 export type SearchVirtualExpedition200 = { [key: string]: unknown };
 

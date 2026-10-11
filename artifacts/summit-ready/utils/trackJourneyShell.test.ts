@@ -135,13 +135,10 @@ describe("the offline-first architecture is intact", () => {
     expect(TRACK_CODE).toMatch(/\{!canonicalRouteIntent \? \([\s\S]*?Pick a nearby route/);
     expect(TRACK_CODE).toMatch(/visible=\{nearbyPickerOpen && !canonicalRouteIntent\}/);
     expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent\) return;[\s\S]*?const rid = params\.referenceRouteId/);
-    const communitySync = TRACK_CODE.slice(
-      TRACK_CODE.indexOf("const routeSyncId"),
-      TRACK_CODE.indexOf("const hillSyncId"),
-    );
-    expect(communitySync).toMatch(/trackPoints: trackPoints\.current/);
-    expect(communitySync).toMatch(/enqueueSyncPending\(userId/);
-    expect(communitySync).not.toMatch(/canonicalRouteContext\?\.geometry/);
+    // Recorded GPS belongs in the private library; recording must not silently
+    // publish a community copy or copy planned geometry into actual evidence.
+    expect(TRACK_CODE).toMatch(/await logExploreHike\(\{[\s\S]*?trackPoints: trackPoints\.current/);
+    expect(TRACK_CODE).not.toMatch(/kind: "community-route"/);
   });
 
   it("resolves restored canonical identity before mounting the map", () => {

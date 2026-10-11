@@ -77,7 +77,7 @@ function mergeCanonical(canonical: LatLon[], newTrack: LatLon[], existingContrib
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
-router.post("/tracked-routes", requireAuth(), async (req, res) => {
+router.post("/tracked-routes", requireAuth({ json: true }), async (req, res) => {
   const parsed = submitSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid payload", issues: parsed.error.issues });
@@ -216,7 +216,7 @@ const contributeSchema = z.object({
   durationSecs:  z.number().int().min(0),
 });
 
-router.post("/tracked-routes/:id/contribute", requireAuth(), async (req, res) => {
+router.post("/tracked-routes/:id/contribute", requireAuth({ json: true }), async (req, res) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   if (!id) {
     res.status(400).json({ error: "Missing route id" });
@@ -303,7 +303,7 @@ router.post("/tracked-routes/:id/contribute", requireAuth(), async (req, res) =>
 });
 
 // DELETE requires auth; also verifies the caller owns the route.
-router.delete("/tracked-routes/:id", requireAuth(), async (req, res) => {
+router.delete("/tracked-routes/:id", requireAuth({ json: true }), async (req, res) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   if (!id) {
     res.status(400).json({ error: "Missing route id" });

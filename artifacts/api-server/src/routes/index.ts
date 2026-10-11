@@ -22,6 +22,7 @@ import plannedRoutesRouter from "./planned-routes";
 import summitsRouter from "./summits";
 import seededTrailsRouter from "./seeded-trails";
 import trackedRoutesRouter from "./tracked-routes";
+import recordedHikesRouter from "./recorded-hikes";
 import demoLoadRouter from "./demo-load";
 import mountainVerificationRouter from "./mountain-verification";
 import hillSessionRouter from "./hill-session";
@@ -84,6 +85,7 @@ router.use(communityRouter);
 // trackedRoutesRouter handles its own per-method auth (DELETE requires auth +
 // ownership; GET/POST are public). Auth is enforced inside the router.
 router.use(trackedRoutesRouter);
+router.use(recordedHikesRouter);
 
 // Hill sessions and tracking data belong to a user — require auth.
 // The mobile app (only caller) provides a Clerk JWT in the Authorization header.
@@ -91,21 +93,25 @@ router.use(trackedRoutesRouter);
 // middleware to these paths so it cannot intercept unrelated router requests.
 router.use("/planned-routes", requireAuth({ json: true }));
 router.use(plannedRoutesRouter);
-router.use("/hill-session", requireAuth(), hillSessionRouter);
-router.use(requireAuth(), activitiesRouter);
-router.use("/explore-hike", requireAuth(), exploreHikeCanonicalRouter);
+router.use("/hill-session", requireAuth({ json: true }), hillSessionRouter);
+router.use("/activities", requireAuth({ json: true }));
+router.use(activitiesRouter);
+router.use("/explore-hike", requireAuth({ json: true }), exploreHikeCanonicalRouter);
 // Keep the boundary dark in production until explicitly activated; this does
 // not publish or migrate any SDE data.
 if (canonicalRouteRecordsEnabled()) {
   router.use("/canonical-routes", canonicalRouteRecordsRouter);
 }
-router.use(requireAuth(), elevationBankRouter);
-router.use(requireAuth(), canonicalHistoryRouter);
+router.use("/elevation-bank", requireAuth({ json: true }));
+router.use(elevationBankRouter);
+router.use("/canonical-history", requireAuth({ json: true }));
+router.use(canonicalHistoryRouter);
 // This router performs an explicit getAuth(req).userId check in every handler;
 // requireAuth middleware is a development no-op and is not relied upon here.
 
 // User account management — requires auth.
-router.use(requireAuth(), userRouter);
+router.use("/user", requireAuth({ json: true }));
+router.use(userRouter);
 
 // Mountain verification and admin pages are called from the landing site which
 // has no Clerk session. They are protected by rate limiting + CORS + a
