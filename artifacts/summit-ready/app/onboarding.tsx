@@ -102,12 +102,12 @@ export default function OnboardingScreen() {
     reducedMotion ? undefined : FadeInDown.delay(delay).duration(380);
 
   return (
-    <View style={styles.screen}>
+    <View style={styles.screen} testID="onboarding-screen">
       {/* A full-bleed backdrop rather than a hero frame: it sits behind the
           whole flow, and the scrim is heavy enough that the headline and the
           controls never fight the photograph. */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Image source={HERO} style={StyleSheet.absoluteFill} resizeMode="cover" accessible={false} />
+      <View style={styles.backdrop} pointerEvents="none" testID="onboarding-backdrop">
+        <Image source={HERO} style={styles.backdropImage} resizeMode="cover" accessible={false} />
         <LinearGradient
           colors={["rgba(5,9,11,0.58)", "rgba(5,9,11,0.86)", BASECAMP.ink]}
           locations={[0, 0.46, 0.92]}
@@ -340,7 +340,15 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: BASECAMP.ink },
+  screen: {
+    flex: 1, width: "100%", minWidth: 0, minHeight: 0,
+    overflow: "hidden", backgroundColor: BASECAMP.ink,
+  },
+  backdrop: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  // Absolute edges alone do not override RN Web Image's intrinsic asset size.
+  backdropImage: {
+    position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+  },
   progress: {
     flexDirection: "row", gap: 5,
     paddingHorizontal: BASECAMP.gutter, paddingBottom: SP.md,

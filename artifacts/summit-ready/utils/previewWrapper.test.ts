@@ -16,6 +16,12 @@ function entryFor(search: string): string {
 }
 
 describe("mobile preview entry", () => {
+  it("keeps the preview root within the dynamic phone viewport without disabling zoom", () => {
+    expect(source).toContain("height: 100dvh");
+    expect(source).toContain("margin: 0; width: 100%");
+    expect(source).toContain("min-width: 0; min-height: 0");
+    expect(source).not.toMatch(/user-scalable=no|maximum-scale=1/);
+  });
   it("renders the actual onboarding and bypasses saved-session redirects only in development web preview", () => {
     const landing = readFileSync(join(__dirname, "../app/index.tsx"), "utf8");
     expect(landing).toContain('const previewOnboarding = __DEV__ && Platform.OS === "web"');

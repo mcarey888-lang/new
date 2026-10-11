@@ -19,6 +19,15 @@ const code = (src: string) =>
   src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
 describe("the flow is six screens", () => {
+  it("bounds the original background artwork instead of using its intrinsic width", () => {
+    const body = code(read("app/onboarding.tsx"));
+    expect(body).toContain('testID="onboarding-screen"');
+    expect(body).toContain('testID="onboarding-backdrop"');
+    expect(body).toContain('source={HERO} style={styles.backdropImage} resizeMode="cover"');
+    expect(body).toContain('backdrop: { ...StyleSheet.absoluteFillObject, overflow: "hidden" }');
+    expect(body).toContain('position: "absolute", top: 0, left: 0, width: "100%", height: "100%"');
+    expect(body).not.toContain('source={HERO} style={StyleSheet.absoluteFill}');
+  });
   it("has exactly six, in the approved order", () => {
     expect(ONBOARDING_STEPS).toHaveLength(6);
     expect(ONBOARDING_STEPS.map(s => s.id)).toEqual([
