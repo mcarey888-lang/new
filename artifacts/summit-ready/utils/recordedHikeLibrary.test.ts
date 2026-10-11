@@ -24,6 +24,21 @@ describe("completed hike library and recording integration", () => {
     expect(recorder).toContain("if (ts <= prev.ts) return false");
     expect(recorder).toContain("breakElevationContinuity(elevationFilterRef.current)");
   });
+  it("opens recent recorded activity with its actual local hike ID, without requiring sync", () => {
+    const account = read("app/(tabs)/account.tsx");
+    const recent = account.slice(account.indexOf("const recentActivity ="), account.indexOf("// Lifetime stats"));
+    expect(recent).toContain("hikeId: h.id");
+    expect(recent).toContain("hikeId: null");
+    const rows = account.slice(account.indexOf("{recentActivity.length ?"), account.indexOf('title="No activity yet"'));
+    expect(rows).toContain("<TouchableOpacity");
+    expect(rows).toContain("disabled={!activity.hikeId}");
+    expect(rows).toContain('pathname: "/hike-detail", params: { id: activity.hikeId }');
+    expect(rows).toContain("accessibilityLabel=");
+    expect(rows).not.toMatch(/syncState|fetch\(|getToken/);
+    const detail = read("app/hike-detail.tsx");
+    expect(detail).toContain("exploreHikes.find(h => h.id === id)");
+    expect(detail).toContain("buildMapHtml(hike.trackPoints!)");
+  });
   it("does not advertise a successful local save before the storage write succeeds", () => {
     const context = read("context/AppContext.tsx");
     const save = context.slice(context.indexOf("const logExploreHike ="), context.indexOf("const deleteExploreHike ="));

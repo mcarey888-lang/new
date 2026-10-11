@@ -263,10 +263,12 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
     ...sessions.filter(s => s.completed).map(s => ({
       id: `session:${s.id}`, title: s.hillName ?? (s.type === "bigDay" ? "Big day" : s.type === "hill" ? "Hill session" : "Cardio session"),
       date: s.date, distance: s.distance, elevation: s.elevationGain, kind: "Session",
+      hikeId: null,
       imageSubject: s.hillName ?? null,
     })),
     ...exploreHikes.map(h => ({
       id: `hike:${h.id}`, title: h.name, date: h.date, distance: h.distance, elevation: h.elevationGain, kind: "Hike",
+      hikeId: h.id,
       imageSubject: h.canonicalRouteIdentityKey || h.canonicalMountainId ? h.name : null,
     })),
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12), [sessions, exploreHikes]);
@@ -936,14 +938,29 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         <Animated.View entering={FadeInDown.duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>RECENT ACTIVITY</Text>
           {recentActivity.length ? recentActivity.map(activity => (
-            <View key={activity.id} style={styles.activityRow}>
+            <TouchableOpacity
+              key={activity.id}
+              style={styles.activityRow}
+              testID={`recent-activity-${activity.id}`}
+              disabled={!activity.hikeId}
+              activeOpacity={0.75}
+              accessibilityRole={activity.hikeId ? "button" : undefined}
+              accessibilityLabel={activity.hikeId ? `Open completed hike: ${activity.title}` : undefined}
+              accessibilityHint={activity.hikeId ? "Shows your saved recording and route map when available" : undefined}
+              onPress={() => {
+                if (activity.hikeId) {
+                  router.push({ pathname: "/hike-detail", params: { id: activity.hikeId } });
+                }
+              }}
+            >
               <ActivityThumbnail subject={activity.imageSubject} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.activityTitle} numberOfLines={1}>{activity.title}</Text>
                 <Text style={styles.activityMeta}>{activity.kind} · {activity.date}</Text>
                 <Text style={styles.activityMeta}>{activity.distance} km · {activity.elevation} m ascent</Text>
               </View>
-            </View>
+              {activity.hikeId && <ChevronRight size={18} color={BASECAMP.textDim} />}
+            </TouchableOpacity>
           )) : <SREmptyState icon={<Activity size={20} color={BASECAMP.textDim} />} title="No activity yet" body="Your completed sessions and recorded hikes will appear here." />}
           <TouchableOpacity onPress={() => router.push("/sessions")} style={styles.activityLink} accessibilityRole="button" accessibilityLabel="View all sessions"><Text style={styles.activityLinkText}>View all sessions</Text><ChevronRight size={16} color={BASECAMP.accent} /></TouchableOpacity>
         </Animated.View>
