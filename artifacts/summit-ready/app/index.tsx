@@ -12,6 +12,7 @@ import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { BASECAMP, TYPE } from "@/constants/tokens";
 import { DevToolsModal } from "@/components/DevToolsModal";
+import OnboardingScreen from "./onboarding";
 import { DEV_PROFILES, loadDevProfile } from "@/utils/devProfiles";
 import { discardActiveHike, readActiveHike } from "@/utils/activeHikeSession";
 import {
@@ -28,6 +29,9 @@ export default function LandingScreen() {
   const insets = useSafeAreaInsets();
   const { isLoading, reloadApp, shellMode, activeExpeditionId, setShellMode } = useApp();
   const { isSignedIn, isLoaded: authLoaded, userId } = useAuth();
+  const previewOnboarding = __DEV__ && Platform.OS === "web" &&
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("preview") === "onboarding";
 
   const [devModalVisible, setDevModalVisible] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
@@ -40,6 +44,7 @@ export default function LandingScreen() {
     if (!__DEV__) return;
     if (Platform.OS !== "web") return;
     const params = new URLSearchParams(window.location.search);
+    if (previewOnboarding) return;
     const demoId = params.get("demo");
     if (!demoId) return;
     const profile = DEV_PROFILES.find((p) => p.id === demoId);
@@ -76,6 +81,7 @@ export default function LandingScreen() {
     )) {
       landingRedirectStarted.current = false;
     }
+    if (previewOnboarding) return;
     if (!shouldStartSignedInLandingRedirect(
       authLoaded, isSignedIn, isLoading, landingRedirectStarted.current,
     )) return;
@@ -133,6 +139,8 @@ export default function LandingScreen() {
       router.replace("/(tabs)/dashboard");
     })();
   }, [authLoaded, isSignedIn, isLoading, shellMode, activeExpeditionId, userId, setShellMode]);
+
+  if (previewOnboarding) return <OnboardingScreen />;
 
   if (isLoading || demoLoading) {
     return (
