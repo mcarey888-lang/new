@@ -5,9 +5,12 @@ import {
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@clerk/expo";
-import { ChevronLeft, ChevronRight, Map as MapIcon, Play, Route as RouteIcon, X } from "lucide-react-native";
+import {
+  ChevronLeft, ChevronRight, Map as MapIcon, PencilLine, Play, Route as RouteIcon, X,
+} from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { LogHikeModal } from "@/components/LogHikeModal";
 import { TrackMap, type TrackMapHandle } from "@/components/track/TrackMap";
 import { useApp } from "@/context/AppContext";
 import { useGpsStatus } from "@/hooks/useGpsStatus";
@@ -73,6 +76,7 @@ export function SharedTrackScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [routesOpen, setRoutesOpen] = useState(false);
   const [routes, setRoutes] = useState<PlannedRoute[] | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
   const [starting, setStarting] = useState(false);
   const startedRef = useRef(false);
   const mapRef = useRef<TrackMapHandle | null>(null);
@@ -297,9 +301,30 @@ export function SharedTrackScreen() {
             </TouchableOpacity>
 
             <Text style={st.footnote}>Saved on your phone. Syncs when connected.</Text>
+
+            {/* The way out when GPS will not play. Somebody standing at a
+                trailhead with no fix, or back home having found the track
+                was nonsense, needs this offered where they already are —
+                not buried in another tab they would have to know about. */}
+            <TouchableOpacity
+              onPress={() => setLogOpen(true)}
+              style={st.manualBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Add a hike by hand"
+              testID="track-log-manually"
+            >
+              <PencilLine size={14} color={T.textMuted} />
+              <Text style={st.manualText}>Add a hike by hand</Text>
+            </TouchableOpacity>
           </>
         )}
       </View>
+
+      <LogHikeModal
+        visible={logOpen}
+        onClose={() => setLogOpen(false)}
+        reason="For a walk the GPS missed, or one you did not record at the time."
+      />
 
       <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={st.backdrop} onPress={() => setPickerOpen(false)}>
@@ -421,6 +446,11 @@ const st = StyleSheet.create({
   startBusy: { opacity: 0.7 },
   startText: { color: "#04140A", fontSize: 17, fontFamily: "Inter_700Bold" },
   footnote: { color: T.textDim, fontSize: 12, textAlign: "center", fontFamily: "Inter_400Regular" },
+  manualBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    paddingVertical: 12, minHeight: 44,
+  },
+  manualText: { color: T.textMuted, fontSize: 13, fontFamily: "Inter_500Medium" },
   resumeRow: {
     flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 15, paddingHorizontal: 14,
     borderRadius: 14, borderWidth: 1, borderColor: T.borderActive, backgroundColor: T.greenDim,

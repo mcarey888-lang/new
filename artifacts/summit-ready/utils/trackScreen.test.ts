@@ -247,3 +247,38 @@ describe("the recorded line only contains fixes that passed the filter", () => {
     expect(REC_CODE).toMatch(/loc\.coords\.accuracy > GPS_MAX_ACCURACY_M\) continue;/);
   });
 });
+
+
+describe("a way through when GPS fails", () => {
+  it("offers manual entry on the Track sheet", () => {
+    /* Buried in another tab, it is no use to somebody standing at a
+       trailhead with no fix who does not already know it exists. */
+    expect(TRACK_CODE).toContain("track-log-manually");
+    expect(TRACK_CODE).toMatch(/<LogHikeModal/);
+  });
+
+  it("offers it again where a recording turned out empty", () => {
+    expect(REC_CODE).toContain("recording-log-by-hand");
+    expect(REC_CODE).toMatch(/recordingFailureNote\(/);
+  });
+
+  it("says so only when the recording actually looks wrong", () => {
+    /* Offered after every hike it becomes noise, and people stop reading
+       it before the one time it matters. */
+    expect(REC_CODE).toMatch(/if \(!note\) return null;/);
+  });
+
+  it("carries over the one figure GPS cannot have spoiled", () => {
+    /* The clock runs off the system time, so elapsed is trustworthy even
+       when the track is nonsense. Retyping it from memory is how a
+       six-hour day becomes "about four". */
+    expect(REC_CODE).toMatch(/prefillTimeTaken=\{elapsedSecs > 0/);
+  });
+
+  it("does not prefill a figure of zero as if it were measured", () => {
+    /* Zero distance offered as a starting point is worse than the form's
+       own default, and reads as a measurement. */
+    expect(REC_CODE).toMatch(/prefillDistance=\{distanceKm > 0 \?/);
+    expect(REC_CODE).toMatch(/prefillElevation=\{elevGainM > 0 \?/);
+  });
+});
