@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import * as Location from "expo-location";
-import { gpsState, type GpsState } from "@/utils/gpsStatus";
+import { gpsState, watchBrowserGpsStatus, type GpsState } from "@/utils/gpsStatus";
 
 /**
  * Watch the GPS well enough to say something true about it.
@@ -13,17 +13,25 @@ import { gpsState, type GpsState } from "@/utils/gpsStatus";
 export function useGpsStatus(active = true): { state: GpsState; accuracyM: number | null } {
   const [state, setState] = useState<GpsState>("checking");
   const [accuracyM, setAccuracyM] = useState<number | null>(null);
-  const subRef = useRef<Location.LocationSubscription | null>(null);
 
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
+    let subscription: Location.LocationSubscription | null = null;
+    setState("checking");
+    setAccuracyM(null);
+
+    if (Platform.OS === "web") {
+      return watchBrowserGpsStatus(
+        typeof navigator !== "undefined" ? navigator.geolocation ?? null : null,
+        (nextState, accuracy) => {
+          setState(nextState);
+          setAccuracyM(accuracy);
+        },
+      );
+    }
 
     (async () => {
-      if (Platform.OS === "web" && typeof navigator !== "undefined" && !navigator.geolocation) {
-        if (!cancelled) setState("unavailable");
-        return;
-      }
       const services = await Location.hasServicesEnabledAsync().catch(() => true);
       if (cancelled) return;
       if (!services) { setState("unavailable"); return; }
@@ -39,7 +47,7 @@ export function useGpsStatus(active = true): { state: GpsState; accuracyM: numbe
       }
       setState(gpsState({ permission: "granted", accuracyM: null }));
 
-      subRef.current = await Location.watchPositionAsync(
+      const watch = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 5, timeInterval: 4000 },
         loc => {
           if (cancelled) return;
@@ -48,12 +56,18 @@ export function useGpsStatus(active = true): { state: GpsState; accuracyM: numbe
           setState(gpsState({ permission: "granted", accuracyM: acc }));
         },
       ).catch(() => null);
+      // A permission dialog or watch startup can outlive this effect.
+      if (cancelled) watch?.remove();
+      else {
+        subscription = watch;
+        if (!watch) setState("unavailable");
+      }
     })();
 
     return () => {
       cancelled = true;
-      subRef.current?.remove();
-      subRef.current = null;
+      subscription?.remove();
+      subscription = null;
     };
   }, [active]);
 

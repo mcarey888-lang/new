@@ -70,3 +70,43 @@ export function gpsDisplay(state: GpsState, accuracyM: number | null): GpsDispla
 export function canStart(_state: GpsState): boolean {
   return true;
 }
+
+/**
+ * Browser GPS uses its own watch lifecycle. Expo Location's web subscriber in
+ * SDK 54 calls a missing removeSubscription method when its last watch ends.
+ * This watcher is only for the passive pre-recording status, not hike recording.
+ */
+export function watchBrowserGpsStatus(
+  geolocation: Pick<Geolocation, "watchPosition" | "clearWatch"> | null,
+  onReading: (state: GpsState, accuracyM: number | null) => void,
+): () => void {
+  let closed = false;
+  let watchId: number | null = null;
+  if (!geolocation) {
+    onReading("unavailable", null);
+  } else {
+    onReading("searching", null);
+    try {
+      watchId = geolocation.watchPosition(
+        position => {
+          if (closed) return;
+          const raw = position.coords.accuracy;
+          const accuracy = Number.isFinite(raw) && raw >= 0 ? raw : null;
+          onReading(gpsState({ permission: "granted", accuracyM: accuracy }), accuracy);
+        },
+        error => {
+          if (closed) return;
+          onReading(error.code === 1 ? "denied" : error.code === 3 ? "searching" : "unavailable", null);
+        },
+        { enableHighAccuracy: false, maximumAge: 4000, timeout: 15000 },
+      );
+    } catch {
+      onReading("unavailable", null);
+    }
+  }
+  return () => {
+    if (closed) return;
+    closed = true;
+    if (watchId !== null) geolocation?.clearWatch(watchId);
+  };
+}
