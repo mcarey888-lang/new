@@ -313,8 +313,8 @@ function buildSummitSearch() {
   if (searchBox) return;
   searchBox = document.createElement("div");
   searchBox.style.cssText = [
-    "position:absolute", "left:12px", "top:64px", "z-index:6",
-    "width:min(340px, calc(100% - 80px))",
+    "position:absolute", "left:12px", "top:12px", "z-index:6",
+    "width:min(340px, calc(100% - 80px))", "box-sizing:border-box",
   ].join(";");
 
   var field = document.createElement("div");
@@ -351,6 +351,14 @@ function buildSummitSearch() {
   ].join(";");
   searchBox.appendChild(searchList);
   document.body.appendChild(searchBox);
+  // The map can finish loading after drawing or recording was activated.
+  // Honour the visibility state already requested by those controls.
+  applySearchVisibility();
+  if (typeof ResizeObserver === "function") {
+    new ResizeObserver(function () {
+      if (typeof placeMapNavigation === "function") placeMapNavigation();
+    }).observe(searchBox);
+  }
 }
 
 function scheduleSearch() {
@@ -433,9 +441,28 @@ function goToSummit(summit) {
   post({ type: "summitSearched", id: summit.id, name: summit.name });
 }
 
-function setSearchVisible(on) {
+var searchWanted = true;      // the page's own request (recording hides it)
+var searchYielded = false;    // drawing or the layers panel has the space
+
+function applySearchVisibility() {
+  var on = searchWanted && !searchYielded;
   if (searchBox) searchBox.style.display = on ? "block" : "none";
   if (!on && searchList) searchList.style.display = "none";
+  if (typeof placeMapNavigation === "function") placeMapNavigation();
+}
+
+function setSearchVisible(on) {
+  searchWanted = !!on;
+  applySearchVisibility();
+}
+
+/* Hidden, not reset: the typed query survives. Results shown before are
+   stale on return, so they stay closed until the next search. */
+function setSearchControlHidden(hidden) {
+  if (searchYielded === !!hidden) return;
+  searchYielded = !!hidden;
+  searchToken++;
+  applySearchVisibility();
 }
 
 /* ── Where to park ──────────────────────────────────────────────────────── */

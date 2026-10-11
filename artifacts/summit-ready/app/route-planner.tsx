@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +15,7 @@ import {
 import { WebView } from "react-native-webview";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@clerk/expo";
+import { randomUUID } from "expo-crypto";
 import { ChevronLeft, Trash2 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FollowRouteButton } from "@/components/track/FollowRouteButton";
@@ -89,6 +92,10 @@ export default function RoutePlannerScreen() {
   const [draft, setDraft] = useState<DraftFromPage | null>(null);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const savingRef = useRef(false);
+  const draftSaveId = useRef<string | null>(null);
+  const [headerH, setHeaderH] = useState(0);
   const [listOpen, setListOpen] = useState(false);
   const [routes, setRoutes] = useState<PlannedRoute[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -116,8 +123,12 @@ export default function RoutePlannerScreen() {
       loadingSavedRoute.current = null;
     }
     if (msg.type === "saveRequested" && msg.route) {
+      // A retry after an interrupted response must update the same owned
+      // route, not create a second copy.
+      draftSaveId.current = randomUUID();
       setDraft(msg.route);
       setName("");
+      setSaveError(null);
       return;
     }
 
@@ -209,12 +220,23 @@ export default function RoutePlannerScreen() {
   }, [mapReady, plannedRouteId, canonicalPackageRouteId, canonicalPackageMountainId, canonicalPackageVersion, userId, toPage]);
 
   const doSave = useCallback(async () => {
-    if (!draft) return;
+    if (!draft || savingRef.current) return;
     const trimmed = name.trim();
     if (!trimmed) return;
+    savingRef.current = true;
+    const owner = currentOwner.current;
+    setSaveError(null);
     setSaving(true);
-    const result = await saveRoute({ ...draft, name: trimmed }, getToken);
+    let result: Awaited<ReturnType<typeof saveRoute>>;
+    try {
+      result = await saveRoute({ ...draft, id: draftSaveId.current ?? undefined, name: trimmed }, () => getToken({ skipCache: true }));
+    } catch {
+      result = { ok: false, reason: "Could not save this route. Check your connection and try again." } as Awaited<ReturnType<typeof saveRoute>>;
+    }
+    savingRef.current = false;
     setSaving(false);
+    if (currentOwner.current !== owner) { setDraft(null); return; }
+    if (!result.ok) setSaveError(result.reason);
     /* The page is told either way, so the readout stops saying "Saving…"
        whatever happened. A spinner that never resolves is worse than a
        failure. */
@@ -222,6 +244,7 @@ export default function RoutePlannerScreen() {
     if (result.ok) {
       if (userId) setSelectedSavedRoute({ owner: userId, route: result.value });
       setDraft(null);
+      setSaveError(null);
       setRoutes(null); // the list is stale now
     }
   }, [draft, name, getToken, toPage, userId]);
@@ -269,71 +292,73 @@ export default function RoutePlannerScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {routeLoadError && (
-        <Pressable onPress={() => setRouteLoadAttempt(value => value + 1)}
-          accessibilityRole="button" accessibilityLabel="Retry loading saved route"
-          style={styles.routeLoadError}>
-          <Text style={styles.backLabel}>Could not open saved route: {routeLoadError}. Tap to retry.</Text>
+    <View style={[styles.container, { paddingBottom: Platform.OS === "web" ? 0 : insets.bottom }]}>
+      <View
+        onLayout={e => setHeaderH(Math.round(e.nativeEvent.layout.height))}
+        style={[styles.header, { paddingTop: (Platform.OS === "web" ? 16 : insets.top + 8), paddingLeft: Math.max(12, insets.left + 8), paddingRight: Math.max(12, insets.right + 8) }]}
+        testID="planner-header"
+      >
+        <Pressable onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Back"
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <ChevronLeft size={18} color="#fff" />
+          <Text style={styles.backLabel}>Back</Text>
         </Pressable>
-      )}
-      {Platform.OS === "web" ? (
-        React.createElement("iframe", {
-          ref: frameRef,
-          src: MAP_URL,
-          style: { border: "none", width: "100%", height: "100%" },
-          title: "Route planner",
-        })
-      ) : (
-        <WebView
-          ref={webViewRef}
-          source={{ uri: MAP_URL }}
-          style={styles.webview}
-          javaScriptEnabled
-          domStorageEnabled
-          geolocationEnabled
-          originWhitelist={["*"]}
-          onMessage={e => onMessage(e.nativeEvent.data)}
-          allowsBackForwardNavigationGestures={false}
-        />
-      )}
-
-      <Pressable
-        onPress={() => router.back()}
-        style={[styles.back, { top: Platform.OS === "web" ? 16 : insets.top + 12 }]}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <ChevronLeft size={18} color="#fff" />
-        <Text style={styles.backLabel}>Back</Text>
-      </Pressable>
-      {snapshotName || startLabel ? (
-        <View pointerEvents="none" style={{ position: "absolute", bottom: Math.max(34, insets.bottom + 12), left: 12, right: 12, padding: 12, borderRadius: 8, backgroundColor: "#080e16ee" }}>
-          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>{snapshotName ?? startLabel}</Text>
-          <Text style={{ color: "#c4ceda", fontSize: 11, marginTop: 4 }}>
-            {snapshotName ? "Saved route snapshot. Basemap tiles require a connection. Any edited copy is a personal plan." : "Selected access point for your personal plan. Confirm local access before setting out."}
-          </Text>
-          {snapshotAttribution ? <Text style={{ color: "#c4ceda", fontSize: 10, marginTop: 4 }}>{snapshotAttribution}</Text> : null}
-        </View>
-      ) : null}
-
-      <Pressable
-        onPress={openList}
-        style={[styles.saved, { top: Platform.OS === "web" ? 16 : insets.top + 12 }]}
-      >
-        <Text style={styles.backLabel}>Saved routes</Text>
-      </Pressable>
-      {selectedSavedRoute?.owner === userId && selectedSavedRoute ? (
-        <View style={styles.followRoutePanel}>
-          <Text style={styles.backLabel} numberOfLines={1}>{selectedSavedRoute.route.name}</Text>
-          <FollowRouteButton route={selectedSavedRoute.route} />
-        </View>
-      ) : null}
+        <Pressable onPress={openList} style={styles.saved} accessibilityRole="button" accessibilityLabel="Saved routes">
+          <Text style={styles.backLabel}>Saved routes</Text>
+        </Pressable>
+        {selectedSavedRoute?.owner === userId && selectedSavedRoute ? (
+          <View style={styles.followRoutePanel}>
+            <Text style={[styles.backLabel, { flexShrink: 1 }]} numberOfLines={1}>{selectedSavedRoute.route.name}</Text>
+            <FollowRouteButton route={selectedSavedRoute.route} />
+          </View>
+        ) : null}
+      </View>
+      <View style={styles.viewport} testID="planner-viewport" data-header-height={headerH}>
+        {Platform.OS === "web" ? (
+          React.createElement("iframe", {
+            ref: frameRef,
+            src: MAP_URL,
+            style: { border: "none", width: "100%", height: "100%" },
+            title: "Route planner",
+          })
+        ) : (
+          <WebView
+            ref={webViewRef}
+            source={{ uri: MAP_URL }}
+            style={styles.webview}
+            javaScriptEnabled
+            domStorageEnabled
+            geolocationEnabled
+            originWhitelist={["*"]}
+            onMessage={e => onMessage(e.nativeEvent.data)}
+            allowsBackForwardNavigationGestures={false}
+          />
+        )}
+        {routeLoadError && (
+          <Pressable onPress={() => setRouteLoadAttempt(value => value + 1)}
+            accessibilityRole="button" accessibilityLabel="Retry loading saved route"
+            style={styles.routeLoadError}>
+            <Text style={styles.backLabel}>Could not open saved route: {routeLoadError}. Tap to retry.</Text>
+          </Pressable>
+        )}
+        {snapshotName || startLabel ? (
+          /* Bottom offset keeps the OS attribution strip visible beneath. */
+          <View pointerEvents="none" style={{ position: "absolute", bottom: 34, left: 12, right: 12, maxHeight: "40%", padding: 12, borderRadius: 8, backgroundColor: "#080e16ee" }}>
+            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>{snapshotName ?? startLabel}</Text>
+            <Text style={{ color: "#c4ceda", fontSize: 11, marginTop: 4 }}>
+              {snapshotName ? "Saved route snapshot. Basemap tiles require a connection. Any edited copy is a personal plan." : "Selected access point for your personal plan. Confirm local access before setting out."}
+            </Text>
+            {snapshotAttribution ? <Text style={{ color: "#c4ceda", fontSize: 10, marginTop: 4 }}>{snapshotAttribution}</Text> : null}
+          </View>
+        ) : null}
+      </View>
 
       {/* Naming happens here rather than in the page because Alert.prompt is
           iOS only, and a route worth saving is worth being able to name on
           every device. */}
       <Modal visible={draft !== null} transparent animationType="fade" onRequestClose={() => setDraft(null)}>
-        <View style={styles.sheetBackdrop}>
+        <KeyboardAvoidingView style={styles.sheetBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>Name this route</Text>
             {draft ? (
@@ -354,9 +379,14 @@ export default function RoutePlannerScreen() {
               autoFocus
               maxLength={120}
               onSubmitEditing={doSave}
+              returnKeyType="done"
+              accessibilityLabel="Route name"
             />
+            {saveError ? (
+              <Text style={styles.sheetError} accessibilityRole="alert" accessibilityLiveRegion="assertive">{saveError}</Text>
+            ) : null}
             <View style={styles.sheetRow}>
-              <Pressable onPress={() => setDraft(null)} style={[styles.sheetBtn, styles.sheetBtnGhost]}>
+              <Pressable onPress={() => { setDraft(null); setSaveError(null); }} style={[styles.sheetBtn, styles.sheetBtnGhost]}>
                 <Text style={styles.sheetBtnGhostLabel}>Cancel</Text>
               </Pressable>
               <Pressable
@@ -370,7 +400,8 @@ export default function RoutePlannerScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={listOpen} transparent animationType="slide" onRequestClose={() => setListOpen(false)}>
@@ -411,17 +442,19 @@ export default function RoutePlannerScreen() {
 }
 
 const styles = StyleSheet.create({
-  followRoutePanel: { position: "absolute", bottom: Platform.OS === "web" ? 110 : 140, left: 16, right: 16, backgroundColor: "#16221e", padding: 12, borderRadius: 12 },
-  routeLoadError: { position: "absolute", bottom: 150, left: 16, right: 16, zIndex: 10, backgroundColor: "#16221e", padding: 16, borderRadius: 12 },
+  header: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, paddingBottom: 8, backgroundColor: "#05090B" },
+  viewport: { flex: 1, position: "relative", overflow: "hidden", backgroundColor: "#05090B" },
+  followRoutePanel: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, maxWidth: "100%", backgroundColor: "#16221e", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12 },
+  routeLoadError: { position: "absolute", top: 8, left: 12, right: 12, zIndex: 10, backgroundColor: "#16221e", padding: 12, borderRadius: 12 },
   container: { flex: 1, backgroundColor: "#05090B" },
   webview: { flex: 1, backgroundColor: "#05090B" },
   back: {
-    position: "absolute", left: 12, flexDirection: "row", alignItems: "center", gap: 4,
+    flexDirection: "row", alignItems: "center", gap: 4,
     paddingVertical: 8, paddingHorizontal: 11, borderRadius: 9,
     backgroundColor: "rgba(11,20,24,0.86)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
   },
   saved: {
-    position: "absolute", left: 92, paddingVertical: 8, paddingHorizontal: 11, borderRadius: 9,
+    paddingVertical: 8, paddingHorizontal: 11, borderRadius: 9,
     backgroundColor: "rgba(11,20,24,0.86)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
   },
   backLabel: { color: "rgba(255,255,255,0.82)", fontSize: 11, fontWeight: "600" },
@@ -447,7 +480,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10, color: "#fff", fontSize: 14,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
   },
-  sheetRow: { flexDirection: "row", gap: 8, marginTop: 4 },
+  sheetRow: { flexDirection: "row", gap: 8, marginTop: 4, minHeight: 46 },
   sheetBtn: {
     flex: 1, alignItems: "center", justifyContent: "center",
     paddingVertical: 11, borderRadius: 9, backgroundColor: "#24EFA4", minHeight: 42,

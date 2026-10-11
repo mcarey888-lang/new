@@ -109,7 +109,7 @@ function sheetShell() {
     "background:" + CONTROL_FACE, "border:1px solid " + CONTROL_EDGE,
     "border-radius:10px", "padding:10px", "color:#F4F7F6",
     "font:400 13px/1.4 system-ui,-apple-system,sans-serif",
-    "box-shadow:0 10px 30px rgba(0,0,0,.45)",
+    "box-shadow:0 10px 30px rgba(0,0,0,.45)", "box-sizing:border-box",
   ].join(";");
   return el;
 }
@@ -128,9 +128,13 @@ function sheetButton(label) {
 
 function buildLayersSheet() {
   layersSheet = sheetShell();
-  layersSheet.style.top = "66px";
-  layersSheet.style.right = "12px";
+  /* Beside the rail, not under it, and below the drawing bar when that is
+     showing; placeLayersSheet measures. */
+  layersSheet.style.top = "12px";
+  layersSheet.style.right = "68px";
   layersSheet.style.minWidth = "188px";
+  layersSheet.style.maxWidth = "calc(100% - 80px)";
+  layersSheet.style.overflowY = "auto";
 
   var dim = document.createElement("div");
   dim.textContent = "View";
@@ -170,6 +174,43 @@ function buildLayersSheet() {
     })(LAYERS[i]);
   }
   document.body.appendChild(layersSheet);
+  window.addEventListener("resize", placeLayersSheet);
+  window.addEventListener("orientationchange", placeLayersSheet);
+  window.addEventListener("resize", placeMapNavigation);
+}
+
+function placeLayersSheet() {
+  if (!layersSheet) return;
+  var top = 12;
+  if (drawBar && drawBar.style.display !== "none") {
+    var box = drawBar.getBoundingClientRect();
+    if (box.height > 0) top = Math.round(box.bottom) + 8;
+  }
+  layersSheet.style.top = top + "px";
+  layersSheet.style.maxHeight = Math.max(120, window.innerHeight - top - 12) + "px";
+}
+
+function layersOpen() { return !!layersSheet && layersSheet.style.display === "block"; }
+
+function placeMapNavigation() {
+  var nav = document.querySelector(".maplibregl-ctrl-top-left");
+  if (!nav) return;
+  var bottom = 0;
+  if (typeof searchBox !== "undefined" && searchBox && searchBox.style.display !== "none") {
+    bottom = searchBox.getBoundingClientRect().bottom;
+  }
+  if (drawBar && drawBar.style.display !== "none") {
+    bottom = Math.max(bottom, drawBar.getBoundingClientRect().bottom);
+  }
+  // MapLibre adds its own 10px group margin. Keep zoom/compass reachable below
+  // search results or the wrapped drawing bar, not beneath either of them.
+  nav.style.top = (bottom ? bottom + 2 : 0) + "px";
+}
+
+/* Search yields to drawing and to the layers panel. Its text and results are
+   kept, only hidden; stale result lists are closed when it returns. */
+function syncSearchVisibility() {
+  if (typeof setSearchControlHidden === "function") setSearchControlHidden(!!drawing || layersOpen());
 }
 
 function toggleLayersSheet() {
@@ -177,13 +218,15 @@ function toggleLayersSheet() {
   layersSheet.style.display = open ? "none" : "block";
   var btn = document.querySelector('[aria-label="Map layers"]');
   if (btn) btn.setAttribute("aria-expanded", open ? "false" : "true");
-  if (!open) syncControls();
+  syncControls();
 }
 
 function closeLayersSheet() {
   layersSheet.style.display = "none";
   var btn = document.querySelector('[aria-label="Map layers"]');
   if (btn) btn.setAttribute("aria-expanded", "false");
+  syncSearchVisibility();
+  placeMapNavigation();
 }
 
 function buildDrawBar() {
@@ -192,11 +235,13 @@ function buildDrawBar() {
   drawBar = sheetShell();
   drawBar.style.left = "12px";
   drawBar.style.top = "12px";
+  drawBar.style.right = "68px";
+  drawBar.style.maxWidth = "calc(100% - 80px)";
   drawBar.style.padding = "7px";
   drawBar.style.display = "none";
 
   var row = document.createElement("div");
-  row.style.cssText = "display:flex;gap:6px;align-items:center";
+  row.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;align-items:center";
 
   var follow = document.createElement("button");
   follow.type = "button";
@@ -312,6 +357,9 @@ function syncControls() {
     drawBtn.setAttribute("aria-pressed", drawing ? "true" : "false");
   }
   if (drawBar) drawBar.style.display = drawing ? "block" : "none";
+  placeLayersSheet();
+  syncSearchVisibility();
+  placeMapNavigation();
 
   var follow = document.getElementById("ctlFollow");
   if (follow) {

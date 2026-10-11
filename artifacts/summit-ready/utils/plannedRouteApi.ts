@@ -74,36 +74,65 @@ async function call<T>(
   read: (body: unknown) => T,
 ): Promise<ApiResult<T>> {
   let token: string | null = null;
+  let tokenTimer: ReturnType<typeof setTimeout> | undefined;
   try {
-    token = await getToken();
+    token = await Promise.race([
+      getToken(),
+      new Promise<never>((_, reject) => {
+        tokenTimer = setTimeout(() => reject(new Error("Token check timed out")), 15_000);
+      }),
+    ]);
   } catch {
     return { ok: false, reason: "Could not check you are signed in", signedOut: true };
+  } finally {
+    if (tokenTimer) clearTimeout(tokenTimer);
   }
   /* Checked before the request rather than after a 401. A route is somebody's
      work, and losing it to a round trip that was never going to succeed is
      avoidable. */
   if (!token) return { ok: false, reason: "Sign in to save routes", signedOut: true };
 
+  const controller = new AbortController();
+  const requestTimer = setTimeout(() => controller.abort(), 20_000);
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       ...init,
+      redirect: "manual",
+      signal: controller.signal,
       headers: {
         ...(init.headers ?? {}),
+        Accept: "application/json",
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
+    if (res.redirected || res.type === "opaqueredirect" || (res.status >= 300 && res.status < 400)) {
+      return { ok: false, reason: "Your sign-in could not be verified. Please sign in again to save routes.", signedOut: true };
+    }
     const body = (await res.json().catch(() => null)) as Record<string, unknown> | null;
-    if (res.status === 401) return { ok: false, reason: "Sign in to save routes", signedOut: true };
+    if (res.status === 401) {
+      return { ok: false, reason: typeof body?.error === "string" ? body.error : "Sign in to save routes", signedOut: true };
+    }
     if (!res.ok) {
       /* The server's own reason where it gave one: "a route needs a name" is
          something the person can act on, where "save failed" is not. */
       const reason = typeof body?.["error"] === "string" ? (body["error"] as string) : "Could not reach the server";
       return { ok: false, reason };
     }
-    return { ok: true, value: read(body) };
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return { ok: false, reason: "The server returned an unexpected response. Please retry." };
+    }
+    try {
+      return { ok: true, value: read(body) };
+    } catch {
+      return { ok: false, reason: "The server did not return valid route data. Please retry." };
+    }
   } catch {
-    return { ok: false, reason: "No connection" };
+    return { ok: false, reason: controller.signal.aborted
+      ? "The server took too long to respond. Please retry."
+      : "No connection" };
+  } finally {
+    clearTimeout(requestTimer);
   }
 }
 
@@ -112,7 +141,12 @@ export function saveRoute(draft: SaveDraft, getToken: GetToken): Promise<ApiResu
     "/planned-routes",
     { method: "POST", body: JSON.stringify(draft) },
     getToken,
-    body => (body as { route: PlannedRoute }).route,
+    body => {
+      const route = (body as { route?: PlannedRoute }).route;
+      if (!route || typeof route.id !== "string" || !route.id ||
+        typeof route.name !== "string" || !Array.isArray(route.geometry)) throw new Error("Invalid route response");
+      return route;
+    },
   );
 }
 
@@ -135,7 +169,11 @@ export function loadRoute(id: string, getToken: GetToken): Promise<ApiResult<Pla
     `/planned-routes/${encodeURIComponent(id)}`,
     { method: "GET" },
     getToken,
-    body => (body as { route: PlannedRoute }).route,
+    body => {
+      const route = (body as { route?: PlannedRoute }).route;
+      if (!route || typeof route.id !== "string" || !Array.isArray(route.geometry)) throw new Error("Invalid route response");
+      return route;
+    },
   );
 }
 

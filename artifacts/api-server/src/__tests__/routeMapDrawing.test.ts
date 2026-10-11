@@ -40,11 +40,15 @@ describe("zooming out in 3D", () => {
       window,
       document: {
         getElementById: () => ({ setAttribute: vi.fn() }),
+        querySelector: () => null,
         querySelectorAll: () => [], addEventListener: vi.fn(),
       },
       setTimeout, clearTimeout,
     };
-    const script = page().match(/<script>([\s\S]*?)<\/script>/)?.[1];
+    // These assertions exercise camera/projection behavior, not the toolbar.
+    // The small map stub intentionally has no interactive control DOM.
+    const script = buildRouteMapHtml("K", "none", "/api/map-tiles", true)
+      .match(/<script>([\s\S]*?)<\/script>/)?.[1];
     expect(script).toBeTruthy();
     runInNewContext(script!, context);
     const runtime = context as typeof context & {

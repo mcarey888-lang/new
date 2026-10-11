@@ -43,7 +43,7 @@ describe("signing in", () => {
   });
 
   it("sends the token when there is one", async () => {
-    const spy = stubFetch(200, { route: { id: "r1" } });
+    const spy = stubFetch(200, { route: { ...draft, id: "r1" } });
     await saveRoute(draft, token);
     const init = spy.mock.calls[0]![1] as RequestInit;
     expect((init.headers as Record<string, string>)["Authorization"]).toBe("Bearer clerk-token");
@@ -89,8 +89,30 @@ describe("failures reach the person intact", () => {
 });
 
 describe("reading what comes back", () => {
+  it("does not treat a login redirect as a saved route", async () => {
+    stubFetch(302, null);
+    expect(await saveRoute(draft, token)).toMatchObject({ ok: false, signedOut: true });
+  });
+  it("does not treat a followed marketing-page response as success", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true, status: 200, redirected: true, json: async () => null,
+    }));
+    expect(await saveRoute(draft, token)).toMatchObject({ ok: false, signedOut: true });
+  });
+  it("rejects a successful status without saved route data", async () => {
+    stubFetch(200, {});
+    expect(await saveRoute(draft, token)).toEqual({
+      ok: false, reason: "The server did not return valid route data. Please retry.",
+    });
+  });
+  it("preserves the route ID when retrying a save", async () => {
+    const spy = stubFetch(200, { route: { ...draft, id: "r1" } });
+    await saveRoute({ ...draft, id: "r1" }, token);
+    expect(JSON.parse(spy.mock.calls[0]![1].body as string).id).toBe("r1");
+    expect(spy.mock.calls[0]![1]).toMatchObject({ redirect: "manual" });
+  });
   it("returns the saved route", async () => {
-    stubFetch(200, { route: { id: "r1", name: "North Ridge" } });
+    stubFetch(200, { route: { ...draft, id: "r1" } });
     const r = await saveRoute(draft, token);
     expect(r.ok && r.value.id).toBe("r1");
   });

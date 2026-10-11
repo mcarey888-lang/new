@@ -5,6 +5,28 @@ import { mapControlsScript } from "../routes/map-controls-script";
 const script = (gpx = true) => mapControlsScript(gpx);
 const page = () => buildRouteMapHtml("K", "full", "/api/map-tiles", true, "/api/path-snap", "/api/route-profile", "/api/route-gpx", "/api/summits");
 
+describe("small-screen control separation", () => {
+  it("wraps the drawing bar and reserves the three-icon rail width", () => {
+    expect(script()).toContain("flex-wrap:wrap");
+    expect(script()).toContain('drawBar.style.right = "68px"');
+    expect(script()).toContain('drawBar.style.maxWidth = "calc(100% - 80px)"');
+  });
+  it("positions the layers panel below the measured drawing bar after resizing", () => {
+    expect(script()).toContain("drawBar.getBoundingClientRect()");
+    expect(script()).toContain('window.addEventListener("resize", placeLayersSheet)');
+    expect(script()).toContain('window.addEventListener("orientationchange", placeLayersSheet)');
+    expect(script()).toContain('layersSheet.style.overflowY = "auto"');
+  });
+  it("makes search yield to drawing and the open layers panel", () => {
+    expect(script()).toContain("setSearchControlHidden(!!drawing || layersOpen())");
+  });
+  it("keeps the MapLibre zoom and compass below search or drawing", () => {
+    expect(script()).toContain('document.querySelector(".maplibregl-ctrl-top-left")');
+    expect(script()).toContain("searchBox.getBoundingClientRect().bottom");
+    expect(script()).toContain('window.addEventListener("resize", placeMapNavigation)');
+  });
+});
+
 describe("the script is valid JavaScript", () => {
   it("parses", () => {
     expect(() => new Function(`var map, post, LAYERS, drawing, snapping, mode, activeLayer,

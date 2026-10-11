@@ -87,7 +87,10 @@ router.use(trackedRoutesRouter);
 
 // Hill sessions and tracking data belong to a user — require auth.
 // The mobile app (only caller) provides a Clerk JWT in the Authorization header.
-router.use(requireAuth(), plannedRoutesRouter);
+// An API caller must get JSON, not a browser sign-in redirect. Scope the
+// middleware to these paths so it cannot intercept unrelated router requests.
+router.use("/planned-routes", requireAuth({ json: true }));
+router.use(plannedRoutesRouter);
 router.use("/hill-session", requireAuth(), hillSessionRouter);
 router.use(requireAuth(), activitiesRouter);
 router.use("/explore-hike", requireAuth(), exploreHikeCanonicalRouter);

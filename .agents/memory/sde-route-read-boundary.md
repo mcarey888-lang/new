@@ -3,6 +3,19 @@ name: SDE route read boundary
 description: Durable trust and activation rules for canonical route intelligence reads and geometry disclosure.
 ---
 
+## Production connectivity is a separate check
+
+Successful queries through Replit's production database tooling do not prove that
+the dedicated engine connection is reachable by the deployed API.
+
+**Why:** The managed production queries succeeded while the deployed summit
+reader reported `database_dns_unavailable`. The two access paths have different
+connection configuration and DNS reachability.
+
+**How to apply:** Investigate the engine connection's production reachability
+when this diagnostic appears. Do not bypass its trust boundary by silently
+switching to the main application database.
+
 Canonical mountain and route intelligence must be read server-side from the independently managed Summit Data Engine through `ENGINE_DATABASE_URL` only. The connection is bounded and read-only, and it must never fall back to the application `DATABASE_URL`.
 
 **Why:** Treating the application database as an undocumented SDE replica creates an unsupported publication boundary. Falling back to another database can also promote stale or unrelated rows to canonical trust.

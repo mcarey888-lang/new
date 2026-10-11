@@ -23,7 +23,7 @@
  *   const { userId } = getAuth(req);
  */
 
-import { requireAuth as clerkRequireAuth } from "@clerk/express";
+import { getAuth, requireAuth as clerkRequireAuth } from "@clerk/express";
 import type { RequestHandler } from "express";
 
 export type AuthMode = "enforce" | "refuse" | "allow_unauthenticated";
@@ -45,9 +45,24 @@ export function authMode(env: {
   return "allow_unauthenticated";
 }
 
-export function requireAuth(): RequestHandler {
+export function requireAuth(options: { json?: boolean } = {}): RequestHandler {
   switch (authMode(process.env)) {
     case "enforce":
+      if (options.json) {
+        return (req, res, next) => {
+          try {
+            // clerkMiddleware has already verified the JWT. Never trust a
+            // user ID supplied in the request body or unverified token.
+            if (getAuth(req).userId) { next(); return; }
+            req.log?.warn({ bearerPresent: /^Bearer\s+\S+/i.test(req.headers.authorization ?? "") },
+              "route API authentication rejected");
+            res.status(401).json({ error: "Your sign-in could not be verified. Please sign in again to save routes." });
+          } catch {
+            req.log?.error("Route API authentication could not be checked");
+            res.status(503).json({ error: "authentication_unavailable" });
+          }
+        };
+      }
       return clerkRequireAuth() as unknown as RequestHandler;
     case "refuse":
       return (req, res) => {

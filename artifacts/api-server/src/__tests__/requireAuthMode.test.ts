@@ -1,5 +1,45 @@
-import { describe, expect, it } from "vitest";
-import { authMode } from "../middlewares/requireAuth";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getAuth } from "@clerk/express";
+import { authMode, requireAuth } from "../middlewares/requireAuth";
+import type { Request, Response, NextFunction } from "express";
+
+vi.mock("@clerk/express", () => ({ getAuth: vi.fn(), requireAuth: vi.fn() }));
+afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
+
+describe("route API authentication", () => {
+  const request = () => ({ headers: { authorization: "Bearer fixture-token" }, log: { warn: vi.fn(), error: vi.fn() } }) as unknown as Request;
+  const response = () => {
+    const res = { status: vi.fn(), json: vi.fn() };
+    res.status.mockReturnValue(res);
+    return res;
+  };
+  it("returns JSON 401 rather than redirecting a rejected token", () => {
+    vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fixture");
+    vi.mocked(getAuth).mockReturnValue({ userId: null } as ReturnType<typeof getAuth>);
+    const res = response(), next = vi.fn();
+    requireAuth({ json: true })(request(), res as unknown as Response, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: expect.stringContaining("sign in again") });
+    expect(next).not.toHaveBeenCalled();
+  });
+  it("allows only the user identity already verified by Clerk", () => {
+    vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fixture");
+    vi.mocked(getAuth).mockReturnValue({ userId: "user_fixture" } as ReturnType<typeof getAuth>);
+    const res = response(), next = vi.fn();
+    requireAuth({ json: true })(request(), res as unknown as Response, next as NextFunction);
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+  it("fails closed if authentication cannot be checked", () => {
+    vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fixture");
+    vi.mocked(getAuth).mockImplementation(() => { throw new Error("private diagnostic"); });
+    const res = response(), next = vi.fn();
+    requireAuth({ json: true })(request(), res as unknown as Response, next);
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({ error: "authentication_unavailable" });
+    expect(next).not.toHaveBeenCalled();
+  });
+});
 
 /**
  * Which way this fails is the whole point.
