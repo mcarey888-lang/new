@@ -137,9 +137,11 @@ describe("Training Session keeps its behaviour", () => {
 
   it("shows multiple hills for an area without prescribing reps in the picker", () => {
     const picker = read("components/HillPickerModal.tsx");
-    expect(picker).toMatch(/kind === "area"\s*\?\s*\{ location: q, radius: 50 \}/);
+    const search = read("utils/trainingHillSearch.ts");
+    expect(picker).toContain("searchTrainingHills(kind, q, location, controller.signal)");
+    expect(search).toContain("NEARBY_HILL_RADIUS_KM = 25");
     expect(picker).toMatch(/searchResults\.map\(\(hill, index\)/);
-    expect(picker).toMatch(/hillName: q, location/);
+    expect(search).toContain("hillName: term, location: area");
     expect(picker).not.toMatch(/hill\.repeats\}/);
   });
 

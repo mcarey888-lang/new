@@ -15,10 +15,8 @@ import { router } from "expo-router";
 import { NearbyHill } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { isMappedTrainingHill } from "@/utils/hillDetailNavigation";
-
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : "/api";
+import { normalizeUkPostcode, looksLikeUkPostcode } from "@/utils/explorePostcode";
+import { searchTrainingHills } from "@/utils/trainingHillSearch";
 
 export function HillPickerModal({
   visible,
@@ -42,8 +40,10 @@ export function HillPickerModal({
   const [resultQuery, setResultQuery] = React.useState("");
   const [searchError, setSearchError] = React.useState<string | null>(null);
   const requestId = React.useRef(0);
+  const abortRef = React.useRef<AbortController | null>(null);
 
   function clearSearch() {
+    abortRef.current?.abort();
     requestId.current += 1;
     setSearchResults([]);
     setResultKind(null);
@@ -60,44 +60,30 @@ export function HillPickerModal({
   }, [query, hills]);
 
   async function searchOnline(kind: "area" | "name" = "area", searchQuery = query) {
-    const q = searchQuery.trim();
+    const q = normalizeUkPostcode(searchQuery) ?? searchQuery.trim();
     if (q.length < 2) return;
     const currentRequest = ++requestId.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setSearching(true);
     setSearchResults([]);
     setResultKind(null);
     setSearchError(null);
     try {
-      const res = await fetch(`${API_BASE}/hills-unified`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(kind === "area"
-          ? { location: q, radius: 50 }
-          : { hillName: q, location }),
-      });
-      if (!res.ok) {
-        if (res.status >= 500) {
-          if (currentRequest === requestId.current) setSearchError("Hill map data is temporarily unavailable. Please retry.");
-          return;
-        }
-        throw new Error("Search failed");
-      }
-      const data = await res.json() as { hills?: NearbyHill[]; hill?: NearbyHill };
+      const usable = await searchTrainingHills(kind, q, location, controller.signal);
       if (currentRequest !== requestId.current) return;
-      const results = kind === "area" ? data.hills : data.hill ? [data.hill] : null;
-      if (!results) throw new Error("Invalid hill search response");
-      const usable = results.filter(hill => Number.isFinite(hill.elevation) && hill.elevation > 0);
       setSearchResults(usable);
       setResultKind(kind);
       setResultQuery(q);
       if (usable.length === 0) setSearchError(kind === "area"
         ? `No hills found near "${q}". Try another area or search by hill name.`
         : `No hill found named "${q}". Try another name or search an area.`);
-    } catch {
+    } catch (error) {
       if (currentRequest === requestId.current) {
-        setSearchError(kind === "area"
-          ? "Couldn't search that area. Try a town, postcode or region."
-          : "Couldn't find that hill — try a different name.");
+        if ((error as Error)?.name !== "AbortError") {
+          setSearchError(error instanceof Error ? error.message : "Hill search is unavailable. Please retry.");
+        }
       }
     } finally {
       if (currentRequest === requestId.current) setSearching(false);
@@ -105,9 +91,17 @@ export function HillPickerModal({
   }
 
   React.useEffect(() => {
-    if (visible && location.trim().length >= 2) void searchOnline("area", location);
-    return () => { requestId.current += 1; };
-  }, [visible, location]);
+    if (!visible) return;
+    const postcode = normalizeUkPostcode(query);
+    const term = postcode ?? (!query.trim() ? location : "");
+    if (!term || term.trim().length < 2) return;
+    const timer = setTimeout(() => { void searchOnline("area", term); }, postcode ? 450 : 0);
+    return () => {
+      clearTimeout(timer);
+      requestId.current += 1;
+      abortRef.current?.abort();
+    };
+  }, [visible, location, query]);
 
   function handleSelect(hill: NearbyHill) {
     if (searchResults.includes(hill)) {
@@ -140,7 +134,7 @@ export function HillPickerModal({
             style={st.searchInput}
             value={query}
             onChangeText={v => { setQuery(v); clearSearch(); }}
-            placeholder="Search your hills or find a new one…"
+            placeholder="Hill name, town or postcode…"
             placeholderTextColor={T.textDim}
             onSubmitEditing={() => searchOnline("area")}
             returnKeyType="search"
@@ -172,7 +166,7 @@ export function HillPickerModal({
                   <Text style={st.hillEmoji}>{hill.emoji}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={st.hillName}>{hill.name}</Text>
-                    <Text style={st.hillSub}>{hill.surface} · {hill.grade} grade</Text>
+                    <Text style={st.hillSub}>{hill.distance} km away · {hill.surface}</Text>
                   </View>
                   <Text style={st.hillElev}>{hill.routeDataStatus === "terrain_calculated" ? "~" : ""}{hill.elevation}m</Text>
                 </TouchableOpacity>
@@ -193,7 +187,7 @@ export function HillPickerModal({
               <Text style={st.onlineSearchText}>Find hills near "{query.trim()}"</Text>
             </TouchableOpacity>
           )}
-          {showOnlineBtn && (
+          {showOnlineBtn && !looksLikeUkPostcode(query) && (
             <TouchableOpacity style={st.nameSearchBtn} onPress={() => searchOnline("name")} activeOpacity={0.8}>
               <Search size={14} color={T.textMuted} />
               <Text style={st.nameSearchText}>Search by exact hill name</Text>

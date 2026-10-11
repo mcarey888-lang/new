@@ -28,6 +28,7 @@ import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import { createExploreAiRequestGuard } from "@/utils/exploreRequestGuard";
 import { appendApprovedImageRevision } from "@/utils/mountainImage";
 import { looksLikeUkPostcode, normalizeUkPostcode } from "@/utils/explorePostcode";
+import { searchTrainingHills } from "@/utils/trainingHillSearch";
 import { ExploreSearchControls } from "@/components/explore/ExploreSearchControls";
 import {
   DEFAULT_EXPLORE_FILTERS, activeExploreFilterCount, filterExploreRoutes, mountainDiscoveryParameters,
@@ -510,20 +511,9 @@ export default function ExploreScreen() {
     setNearbySearched(false);
     setNearbyError(null);
     try {
-      const response = await fetch(`${API_BASE}/hills-unified`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ location: term, radius: 25 }),
-        signal: controller.signal,
-      });
+      const hills = await searchTrainingHills("area", term, "", controller.signal);
       if (currentRequest !== requestId.current) return;
-      if (!response.ok) throw new Error(response.status === 429
-        ? "Search is busy. Wait a moment and try again."
-        : "Could not find hills near this postcode. Check it and try again.");
-      const data = await response.json() as { hills: NearbyHill[] };
-      if (currentRequest !== requestId.current) return;
-      if (!Array.isArray(data.hills)) throw new Error("Nearby hills are unavailable right now.");
-      setNearbyHills(data.hills);
+      setNearbyHills(hills);
       setNearbySearched(true);
     } catch (error) {
       if ((error as Error)?.name === "AbortError" || currentRequest !== requestId.current) return;

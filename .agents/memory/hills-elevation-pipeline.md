@@ -14,3 +14,9 @@ Keep the existing non-UK/alpine fallback policy separate from this UK restrictio
 **Why:** Radial sampling has insufficient coverage in some alpine regions, while established route-access calibrations correct misleading summit-to-valley differences.
 
 **How to apply:** Do not silently remove global fallback behavior when tightening UK training discovery, or promote a terrain estimate to verified route ascent.
+
+Explore and Change hill should use the same nearby-search behavior and results, not independent postcode-search policies.
+
+**Why:** The user could find hills for the same postcode in Explore while the session picker failed. They explicitly requested the Explore search for changing session hills.
+
+**How to apply:** Keep postcode normalization, search radius and successful-result reuse shared across both entry points. Preserve source identities and estimated-climb labels when assigning a result to a session.

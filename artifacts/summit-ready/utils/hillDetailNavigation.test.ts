@@ -51,7 +51,8 @@ describe("session hill information and directions", () => {
   });
   it("refreshes the picker from the user's area and excludes old ungrounded suggestions", () => {
     const source = readFileSync(join(__dirname, "../components/HillPickerModal.tsx"), "utf8");
-    expect(source).toContain('searchOnline("area", location)');
+    expect(source).toContain('searchOnline("area", term)');
+    expect(source).toContain('searchTrainingHills(kind, q, location, controller.signal)');
     expect(source).toContain("hills.filter(isMappedTrainingHill)");
   });
   it("pins mapped summit coordinates rather than asking a map app to guess a street", () => {
