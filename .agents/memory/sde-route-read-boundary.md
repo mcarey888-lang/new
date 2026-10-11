@@ -5,6 +5,21 @@ description: Durable trust and activation rules for canonical route intelligence
 
 ## Production connectivity is a separate check
 
+The dedicated engine variable and read-only pool are an ownership/code boundary,
+not proof of separate physical infrastructure. The documented shared-database
+import explicitly binds `ENGINE_DATABASE_URL` to `DATABASE_URL`; production also
+contains engine-owned catalogue tables in `public`.
+
+**Why:** The user explicitly protects this boundary and rejected moving only the
+map to another source as a workaround. Map pins and canonical mountain lookups
+must resolve against a consistent catalogue.
+
+**How to apply:** Repair the explicit engine connection rather than introducing
+a fallback or a map-only source switch. A colocated deployment can explicitly
+configure the engine connection for that same database, while retaining its
+bounded read-only pool. Never assume the current secret values match, and do
+not change production settings or publish without authorization.
+
 Successful queries through Replit's production database tooling do not prove that
 the dedicated engine connection is reachable by the deployed API.
 
