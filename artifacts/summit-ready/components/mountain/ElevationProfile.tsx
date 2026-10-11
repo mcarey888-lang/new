@@ -13,10 +13,11 @@
  */
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Svg, { Defs, G, Line, LinearGradient, Path, Stop, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Stop, Text as SvgText } from "react-native-svg";
 import { BASECAMP, EXPLORE } from "@/constants/tokens";
 import { SREmptyState } from "@/components/ui";
 import type { ElevationProfilePoint } from "@/utils/mountainDetailPresentation";
+import { elevationAtDistance } from "@/utils/routeProgress";
 
 const GEO = { width: 362, height: 168, padLeft: 38, padRight: 14, padTop: 18, padBottom: 24 };
 
@@ -29,9 +30,18 @@ export function axisTicks(maxElevationM: number): number[] {
   return ticks;
 }
 
+export interface ElevationProfileProps {
+  points: readonly ElevationProfilePoint[] | null;
+  routeName: string;
+  /** Metres along the route. Unknown positions leave the static chart unchanged. */
+  positionM?: number | null;
+  /** Unknown remaining climbing is not zero and must not be displayed as zero. */
+  remainingAscentM?: number | null;
+}
+
 export function ElevationProfile({
-  points, routeName,
-}: { points: readonly ElevationProfilePoint[] | null; routeName: string }) {
+  points, routeName, positionM, remainingAscentM,
+}: ElevationProfileProps) {
   if (!points || points.length < 2) {
     return (
       <SREmptyState
@@ -65,6 +75,25 @@ export function ElevationProfile({
 
   const highPoint = points[elevations.indexOf(high)];
   const km = (m: number) => (m / 1000);
+
+  // Never pin an unknown or off-profile position to a misleading endpoint.
+  const livePosition =
+    typeof positionM === "number" && Number.isFinite(positionM)
+    && positionM >= points[0].distanceM && positionM <= points[points.length - 1].distanceM
+      ? positionM
+      : null;
+  const liveElevation = livePosition === null ? null : elevationAtDistance(points, livePosition);
+
+  // Meet on the interpolated marker, not on the nearest recorded sample.
+  const behind = livePosition === null ? null : (() => {
+    const run = points.filter(p => p.distanceM <= livePosition);
+    const path = run
+      .map((p, i) => `${i === 0 ? "M" : "L"}${x(p.distanceM).toFixed(1)} ${y(p.elevationM).toFixed(1)}`)
+      .join(" ");
+    if (liveElevation === null) return path;
+    const join = `${run.length === 0 ? "M" : "L"}${x(livePosition).toFixed(1)} ${y(liveElevation).toFixed(1)}`;
+    return `${path} ${join}`.trim();
+  })();
 
   return (
     <View
@@ -100,9 +129,30 @@ export function ElevationProfile({
 
         <Path d={area} fill="url(#srProfileFill)" />
         <Path
-          d={line} fill="none" stroke={EXPLORE.accent} strokeWidth={2.4}
+          d={line} fill="none"
+          stroke={behind ? "rgba(255,255,255,0.28)" : EXPLORE.accent}
+          strokeWidth={2.4}
           strokeLinecap="round" strokeLinejoin="round"
         />
+        {behind && (
+          <Path
+            d={behind} fill="none" stroke={EXPLORE.accent} strokeWidth={2.4}
+            strokeLinecap="round" strokeLinejoin="round"
+          />
+        )}
+        {livePosition !== null && liveElevation !== null && (
+          <G>
+            <Line
+              x1={x(livePosition)} y1={y(liveElevation)}
+              x2={x(livePosition)} y2={GEO.height - GEO.padBottom}
+              stroke="rgba(255,255,255,0.3)" strokeWidth={1} strokeDasharray="2 2"
+            />
+            <Circle
+              cx={x(livePosition)} cy={y(liveElevation)} r={4.5}
+              fill={BASECAMP.ink} stroke={EXPLORE.accent} strokeWidth={2.4}
+            />
+          </G>
+        )}
         <SvgText
           x={x(highPoint.distanceM)} y={Math.max(10, y(high) - 8)}
           textAnchor="middle" fontSize={10} fontWeight="700" fill={BASECAMP.text}
@@ -123,6 +173,9 @@ export function ElevationProfile({
           );
         })}
       </Svg>
+      {typeof remainingAscentM === "number" && Number.isFinite(remainingAscentM) && remainingAscentM >= 0 ? (
+        <Text style={styles.remaining}>{`${Math.round(remainingAscentM)} m of climbing left`}</Text>
+      ) : null}
       <Text style={styles.caption}>
         Altitude along the route. Total ascent is listed separately — it is not the high point.
       </Text>
@@ -134,5 +187,9 @@ const styles = StyleSheet.create({
   caption: {
     marginTop: 2, fontSize: 10, lineHeight: 14,
     fontFamily: "Inter_400Regular", color: BASECAMP.textDim,
+  },
+  remaining: {
+    marginTop: 4, fontSize: 12,
+    fontFamily: "Inter_600SemiBold", color: BASECAMP.text,
   },
 });
