@@ -318,7 +318,9 @@ function showSummitCard(p, coordinates) {
     var at = { lng: summitCardFor.lng, lat: summitCardFor.lat,
                id: summitCardFor.id, name: summitCardFor.name };
     post({ type: "planRouteTo", id: at.id, name: at.name, lat: at.lat, lng: at.lng });
-    hideSummitCard();
+    /* Kept: the next tap is where the walk starts, and on a hill that is
+       nearly always one of these car parks. */
+    hideSummitCard(true);
     if (typeof setDrawing !== "function" || typeof addPoint !== "function") return;
 
     if (summitRouteExists()) {
@@ -412,13 +414,21 @@ function summitRouteExists() {
   return typeof anchors !== "undefined" && anchors && anchors.length > 0;
 }
 
-function hideSummitCard() {
+/**
+ * Close the card.
+ *
+ * The car parks normally go with it: left behind, they sit on the map
+ * claiming to be the parking for whatever gets opened next. The exception is
+ * planning a route to this very hill, where the card closes to make room and
+ * the car parks become the most useful thing on the screen — the next tap is
+ * the start of the walk, and that is usually one of them.
+ */
+function hideSummitCard(keepParking) {
   var wasOpen = !!(summitCard && summitCard.style.display === "block");
   if (summitCard) summitCard.style.display = "none";
   summitCardFor = null;
   if (wasOpen) post({ type: "summitCardClosed" });
-  /* The marker belongs to the card. Left behind, it sits on the map claiming
-     to be the parking for whatever gets opened next. */
+  if (keepParking) return;
   parkingToken++;
   clearParking();
 }
