@@ -428,7 +428,7 @@ function hideSummitCard(keepParking) {
   if (summitCard) summitCard.style.display = "none";
   summitCardFor = null;
   if (wasOpen) post({ type: "summitCardClosed" });
-  if (keepParking) return;
+  if (keepParking === true) return;
   parkingToken++;
   clearParking();
 }

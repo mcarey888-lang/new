@@ -56,3 +56,12 @@ override, but a fresh page with permission denied produced the actual refusal.
 **How to apply:** Check the page's real PermissionStatus and the actual callback
 result before claiming the refusal path ran. Distinguish a posted error message
 from a visible explanation to the person using the map.
+
+Return small, plain results from raw DevTools evaluations, never a MapLibre
+instance or a method's fluent return value.
+
+**Why:** Serializing the live map by value can fail with "Object reference chain
+is too long" even though the evaluated action succeeded.
+
+**How to apply:** Use `void` for map actions and extract primitive fields for
+assertions; treat serialization failures as harness errors, not app failures.

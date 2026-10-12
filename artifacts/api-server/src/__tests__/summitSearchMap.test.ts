@@ -110,7 +110,7 @@ function harness() {
     searchInput(): El; searchList(): El;
     goToSummit(s: Record<string, unknown>): void;
     showParkingFor(s: Record<string, unknown>): void;
-    hideSummitCard(keepParking?: boolean): void;
+    hideSummitCard(keepParking?: boolean | { type: string }): void;
     showSummitCard(p: Record<string, unknown>, c: number[]): void;
     ensureParkingLayers(): void;
     onDrawingFinished(): void;
@@ -371,6 +371,18 @@ describe("the car parks on the summit card", () => {
        hill somebody opens. */
     expect(h.parking()!.features).toHaveLength(0);
     expect(h.byId.get("summitParking")!.style["display"]).toBe("none");
+  });
+
+  it("does not mistake the close button's click event for keepParking", async () => {
+    const h = harness();
+    h.api.showSummitCard(HILL, [HILL.lng, HILL.lat]);
+    h.queue[0]!.resolve({ parking: [confirmed, guess] });
+    await h.tick();
+    expect(h.parking()!.features).toHaveLength(2);
+
+    const close = h.byId.get("summitCardClose")!.onclick! as (event: { type: string }) => void;
+    close({ type: "click" });
+    expect(h.parking()!.features).toHaveLength(0);
   });
 
   it("does not let a slow answer land on the card that replaced it", async () => {
