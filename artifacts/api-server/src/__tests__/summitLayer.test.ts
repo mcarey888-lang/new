@@ -170,10 +170,14 @@ describe("the card a tapped summit opens", () => {
     expect(s).toContain("escapeSummitText(p.name)");
   });
 
-  it("offers planning a route from the summit", () => {
+  it("offers planning a route to the summit", () => {
+    /* A hill is where a walk ends: you park at the bottom and go up. The
+       button used to start the line at the summit, which is the walk
+       backwards. */
     const s = script();
-    expect(s).toContain('type: "planRouteFrom"');
-    expect(s).toContain("Plan a route from here");
+    expect(s).toContain('type: "planRouteTo"');
+    expect(s).toContain("Plan a route to here");
+    expect(s).not.toContain("Plan a route from here");
   });
 
   it("closes the card when the pins are switched off", () => {
@@ -245,16 +249,25 @@ describe("the card, rendered", () => {
 
 describe("the card's route button says what it will do", () => {
   it("offers to start a route when there is none", () => {
-    expect(script()).toContain("'Plan a route from here'");
+    expect(script()).toContain("'Plan a route to here'");
   });
 
-  it("offers to add to one when there is", () => {
-    /* It appends either way. Appending is reasonable; calling it "plan a
-       route from here" is not, because somebody would tap it expecting their
-       existing line to be replaced. */
+  it("says it is extending an existing line rather than replacing it", () => {
+    /* With a line already drawn the summit becomes its next point, which is
+       the same idea arriving sooner. Calling that "plan a route" would read
+       as starting over, and somebody would tap it expecting their existing
+       line to be thrown away. */
     const s = script();
-    expect(s).toContain("summitRouteExists() ? 'Add to your route'");
+    expect(s).toContain("summitRouteExists() ? 'Continue route to here'");
     expect(s).toContain("function summitRouteExists()");
+  });
+
+  it("holds the summit back as the finish when nothing is drawn yet", () => {
+    /* The drawing model appends and never inserts, so putting the summit
+       down first would make it the start of the walk. It waits instead. */
+    const s = script();
+    expect(s).toContain("summitDestination = at;");
+    expect(s).toContain("function onDrawingFinished()");
   });
 
   it("copes with the route state not existing at all", () => {
