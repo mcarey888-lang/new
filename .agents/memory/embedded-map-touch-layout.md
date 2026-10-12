@@ -35,3 +35,25 @@ overlapping the raised attribution box, hiding the licensed OS text.
 **How to apply:** Check actual card and attribution bounds together with the
 host overlays. Reserve attribution space separately and preserve the author's
 map implementation boundary when requesting a correction.
+
+Embedded map HTML must revalidate as application code, retaining conditional
+ETag responses rather than being cached like artwork or tiles.
+
+**Why:** The author confirmed a phone kept the previous map for an hour after
+new code was imported; Explore's obsolete route-button wording exposed the stale
+page and made the repaired Track layout appear broken.
+
+**How to apply:** Check response headers and a conditional second request.
+Distinguish an old cached page from a lost host measurement before changing
+layout logic.
+
+Combine imported host-inset handshakes with existing navigation clearance and
+selected-route replay; never choose one branch's entire handler over the other.
+
+**Why:** The author's map changes and local host corrections contain
+complementary responsibilities. Replacing either wholesale loses an independent
+fix even when the imported server page is correct.
+
+**How to apply:** Retain measurements before map load, replay them on the map's
+request, and preserve ready-triggered route geometry and the full navigation
+footprint when resolving future imports.
