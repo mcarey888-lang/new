@@ -249,9 +249,12 @@ describe("Track screen", () => {
   });
 
   it("states the recording state once, not twice", () => {
-    /* the drawer repeats the header pill only when it can add "· OFFLINE" */
-    const drawer = track.slice(track.indexOf("The sheet header pill above"));
-    expect(drawer.slice(0, 400)).toContain("{isOffline && (");
+    /* The drawer repeats what the sheet header already shows only when it can
+       add "· OFFLINE". Anchored on the status row itself rather than on the
+       comment above it, so rewording the comment cannot break the test and
+       deleting the guard cannot pass it. */
+    const before = track.slice(0, track.indexOf("<View style={s.trackStatusRow}>"));
+    expect(before.slice(-120)).toContain("{isOffline && (");
   });
 
   it("keeps pause, resume and finish on the recording sheet", () => {

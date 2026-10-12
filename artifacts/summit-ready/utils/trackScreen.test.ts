@@ -151,25 +151,57 @@ describe("the recording screen", () => {
   });
 
   it("shows the three metrics that get read at arm's length", () => {
-    const primary = REC.slice(REC.indexOf("<View style={s.primaryStats}>"));
-    const block = primary.slice(0, primary.indexOf("</View>\n\n"));
-    for (const label of ["Distance", "Ascent", "Time"]) {
-      expect(block).toContain(`>${label}</Text>`);
+    const row = REC.slice(REC.indexOf("<View style={s.metricRow}>"));
+    const block = row.slice(0, row.indexOf("</View>\n\n"));
+    for (const label of ["Distance", "Ascent", "Avg pace"]) {
+      expect(block).toContain(`label: "${label}"`);
     }
   });
 
-  it("calls the clock Time, because that is what it measures", () => {
+  it("prints the clock once, in the sheet header", () => {
+    /* It was the third metric AND the header figure, which is what made the
+       sheet shout. The header keeps it; the row below gave its place up to
+       pace. */
+    /* Not preceded by $, so the screen reader's own "Time hh:mm:ss" label
+       on that same figure is not counted as a second clock. */
+    const shown = REC_CODE.match(/(?<!\$)\{formatTime\(elapsedSecs\)\}/g) ?? [];
+    expect(shown).toHaveLength(1);
+    expect(REC_CODE).toMatch(/style=\{s\.timerHero\}[\s\S]{0,200}formatTime\(elapsedSecs\)/);
+  });
+
+  it("does not call the clock moving time, because that is not what it measures", () => {
     /* It is wall clock minus pauses the person took by hand. Nothing here
        detects a stop, so standing still counts, and "Moving time" would be
        a claim this recorder cannot make. */
     expect(REC_CODE).not.toMatch(/Moving time|movingTime/i);
-    expect(REC_CODE).toMatch(/formatTime\(elapsedSecs\)[\s\S]{0,400}>Time<\/Text>/);
   });
 
-  it("keeps the other metrics, below", () => {
-    const secondary = REC.slice(REC.indexOf("<View style={s.statsRow}>"));
-    expect(secondary.slice(0, 900)).toContain("Altitude");
-    expect(secondary.slice(0, 900)).toContain("Descended");
+  it("keeps altitude and descent, beside the line they cannot be read off", () => {
+    const block = REC.slice(REC.indexOf("<View style={s.profileFootRow}>"));
+    expect(block.slice(0, 600)).toContain("altitude");
+    expect(block.slice(0, 600)).toContain("descended");
+  });
+
+  it("leaves the metrics uncoloured, so colour still means state", () => {
+    /* Green ascent and orange descent made two ordinary measurements look
+       like warnings. Colour on this screen is the recording dot, the paused
+       state and Finish — nothing else. */
+    const row = REC.slice(REC.indexOf("<View style={s.metricRow}>"));
+    const block = row.slice(0, row.indexOf("</View>\n\n"));
+    expect(block).not.toMatch(/color: T\.(green|orange|red|blue)/);
+  });
+
+  it("draws no elevation line until the recorder has points", () => {
+    /* An empty chart at the moment you press Start is chrome, and the height
+       it takes is exactly the height this redesign was asked to give back. */
+    expect(REC_CODE).toMatch(
+      /\{trackPoints\.current\.length > 0 \?[\s\S]{0,600}<RecordingElevationSpark/);
+  });
+
+  it("draws the line from the recorder's own points, not a second copy", () => {
+    /* One physical activity, one set of points. A separate buffer kept for
+       drawing is a second truth that can drift from the one being saved. */
+    expect(REC_CODE).toMatch(/samples=\{trackPoints\.current\}/);
   });
 
   it("gives the clock digits that do not jitter", () => {

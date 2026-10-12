@@ -1,15 +1,12 @@
 import {
-  Activity,
   ArrowLeft,
   CheckCircle,
   ChevronRight,
-  Gauge,
   MapPin,
   Check,
   Pause,
   Play,
   Square,
-  TrendingDown,
   TrendingUp,
   Users,
   Wifi,
@@ -59,13 +56,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useGetElevationBank } from "@workspace/api-client-react";
 import {
-  canonicalRouteMapPoints, formatPace, offlineNotice, paceMinPerKm, readyBrief, statusLabel,
+  canonicalRouteMapPoints, offlineNotice, paceMinPerKm, readyBrief,
+  splitDistance, splitMetres, splitPace, statusLabel,
 } from "@/utils/trackPresentation";
 import { T } from "@/constants/theme";
-import { BASECAMP, EXPLORE, TYPE } from "@/constants/tokens";
+import { BASECAMP, TYPE } from "@/constants/tokens";
 import { useApp } from "@/context/AppContext";
 import { ActivityCompleteView } from "@/components/track/ActivityCompleteView";
 import { TrackProgressPanel } from "@/components/track/TrackProgressPanel";
+import { RecordingElevationSpark } from "@/components/track/RecordingElevationSpark";
 import { LogHikeModal } from "@/components/LogHikeModal";
 import { recordingFailureNote } from "@/utils/recordingOutcome";
 import type { PlanSession, SavedExpedition } from "@/context/AppContext";
@@ -152,15 +151,19 @@ function formatTimeHM(secs: number): string {
   return `${h}h ${m}m`;
 }
 
+/* Both are the split figures joined back up, so prose on this screen and the
+   large figures in the recording sheet can never round differently. */
 function fmtKm(km: number): string {
-  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(2)} km`;
+  const f = splitDistance(km);
+  return `${f.value} ${f.unit}`;
 }
 
 function fmtM(m: number): string {
   /* Grouped, like every other metre figure in the app. Rendering exposed
      "Lifetime 1284500 m" on Activity Complete, which is unreadable at a
      glance. Display only — nothing measured, stored or credited changes. */
-  return `${Math.round(m).toLocaleString()} m`;
+  const f = splitMetres(m);
+  return `${f.value} ${f.unit}`;
 }
 
 function computeDifficulty(distKm: number, elevM: number): "Easy" | "Moderate" | "Hard" {
@@ -376,6 +379,10 @@ export default function HikeTrackingScreen() {
   const [elevGainM, setElevGainM]         = useState(0);
   const [elevLossM, setElevLossM]         = useState(0);
   const [currentAltM, setCurrentAltM]     = useState<number | null>(null);
+  /* Still recorded, no longer printed. Current speed on foot swings by half
+     its value between fixes, and a figure that jumps while you stand still
+     reads as a fault; average pace beside it says the same thing steadily.
+     Kept in state so showing it again is one line, not a GPS change. */
   const [currentSpeedKmh, setCurrentSpeedKmh] = useState(0);
   const [gpsReady, setGpsReady]           = useState(false);
   const [isOffline, setIsOffline]         = useState(false);
@@ -1957,7 +1964,7 @@ export default function HikeTrackingScreen() {
             {nameLocked && routeName ? routeName : hillMeta.trackingMode === "freehike" ? "Start Free Hike" : "Start Hiking"}
           </Text>
           {hillMeta.trackingMode === "freehike" && nameLocked && (
-            <Text style={s.headerSubtitle}>Free Hike (GPS Mode)</Text>
+            <Text style={s.headerSubtitle}>Free hike</Text>
           )}
         </View>
 
@@ -2100,27 +2107,37 @@ export default function HikeTrackingScreen() {
         >
           <View style={s.handle} />
 
-          {/* Status + timer — always visible in header row of sheet */}
+          {/* One line, always visible. The elapsed time lives here and only
+              here: it was also the third figure in the row below, and a clock
+              printed twice on one card is what made the sheet shout.
+
+              Closed, the line carries distance and ascent as well, so a shut
+              sheet still answers the two questions worth asking mid-walk
+              without opening anything. Open, they are dropped, because the
+              row beneath states them properly. */}
           {!isIdle && (
             <View style={s.sheetStatusRow}>
-              <View style={[s.statusPill,
-                isTracking && s.statusPillTracking,
-                isPaused   && s.statusPillPaused,
-              ]}>
-                {isTracking && <Activity size={11} color={T.green} />}
-                {isPaused   && <Pause size={11} color={T.orange} />}
-                <Text
-                  style={[s.statusText,
-                    isTracking && { color: T.green },
-                    isPaused   && { color: T.orange },
-                  ]}
-                  accessibilityLiveRegion="polite"
-                >
-                  {isTracking ? "TRACKING" : "PAUSED"}
+              <View style={[s.recDot, isPaused && s.recDotPaused]} />
+              <Text
+                style={[s.recState, isPaused && { color: T.orange }]}
+                accessibilityLiveRegion="polite"
+              >
+                {isTracking ? "REC" : "PAUSED"}
+              </Text>
+              <Text
+                style={s.timerHero}
+                accessibilityLabel={`Time ${formatTime(elapsedSecs)}`}
+              >
+                {formatTime(elapsedSecs)}
+              </Text>
+              {drawerOpen ? (
+                <View style={s.statusSpacer} />
+              ) : (
+                <Text style={s.collapsedSummary} numberOfLines={1}>
+                  {`${fmtKm(distanceKm)} · ${fmtM(elevGainM)}`}
                 </Text>
-              </View>
-              <Text style={s.timerInline}>{formatTime(elapsedSecs)}</Text>
-              <Text style={s.chevron}>{drawerOpen ? "▾" : "▴"}</Text>
+              )}
+              <Text style={s.chevron}>{drawerOpen ? "⌄" : "⌃"}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -2231,9 +2248,10 @@ export default function HikeTrackingScreen() {
         {!isIdle && drawerOpen && (
           <Animated.View entering={FadeIn.duration(200)} style={s.sheetBody}>
 
-            {/* The sheet header pill above already names TRACKING or PAUSED
-                and stays visible when the drawer is closed. This row only
-                appears when it has something that pill cannot say. */}
+            {/* The dot and REC/PAUSED in the header above already say what
+                state the recording is in, and stay visible when the drawer is
+                closed. This row only appears when it has something they
+                cannot say. */}
             {isOffline && (
               <View style={s.trackStatusRow}>
                 <View
@@ -2253,70 +2271,67 @@ export default function HikeTrackingScreen() {
               <Text style={s.trackOfflineNote}>{offlineNotice(isOffline, status)}</Text>
             ) : null}
 
-            {/* The three that get read at arm's length, in gloves, in rain.
-                Everything else is below, where it can be looked for. */}
-            <View style={s.primaryStats}>
-              <View style={s.primaryCell}>
-                <Text style={s.primaryValue} accessibilityLabel={`Distance ${fmtKm(distanceKm)}`}>
-                  {fmtKm(distanceKm)}
-                </Text>
-                <Text style={s.primaryLabel}>Distance</Text>
-              </View>
-              <View style={[s.primaryCell, s.primaryCellBorder]}>
-                <Text
-                  style={[s.primaryValue, { color: T.green }]}
-                  accessibilityLabel={`Ascent ${fmtM(elevGainM)}`}
-                >
-                  {fmtM(elevGainM)}
-                </Text>
-                <Text style={s.primaryLabel}>Ascent</Text>
-              </View>
-              <View style={[s.primaryCell, s.primaryCellBorder]}>
-                <Text style={s.primaryValue} accessibilityLabel={`Time ${formatTime(elapsedSecs)}`}>
-                  {formatTime(elapsedSecs)}
-                </Text>
-                {/* "Time", not "Moving time": the clock runs whenever the
-                    recording is not paused, and pausing is something the
-                    person does by hand. Nothing here detects a stop, so
-                    standing still still counts, and "Moving" would be a
-                    claim this recorder does not make. */}
-                <Text style={s.primaryLabel}>Time</Text>
-              </View>
-            </View>
+            {/* The three read at arm's length, in gloves, in rain. Figure
+                large, unit small beneath it — the arrangement every walking
+                recorder uses, because the number is what is being read and
+                the unit only confirms it.
 
-            {/* The rest, for when there is a reason to look. */}
-            <View style={s.statsRow}>
-              <View style={s.statCell}>
-                <Text style={s.statValue}>{currentAltM != null ? fmtM(currentAltM) : "—"}</Text>
-                <Text style={s.statLabel}>Altitude</Text>
-              </View>
-              <View style={[s.statCell, s.statCellBorder]}>
-                <View style={s.statValueRow}>
-                  <TrendingDown size={13} color={T.orange} style={{ marginRight: 2 }} />
-                  <Text style={[s.statValue, { color: T.orange }]}>{fmtM(elevLossM)}</Text>
+                No colour on any of them. Green ascent and orange descent made
+                two ordinary measurements look like warnings; colour on this
+                screen now means state (recording, paused, finish) and nothing
+                else.
+
+                Pace replaces the clock here, which has moved up to the header
+                row. "Time", not "Moving time", applied there too: the clock
+                runs whenever the recording is not paused, pausing is done by
+                hand, and nothing detects a stop. */}
+            <View style={s.metricRow}>
+              {([
+                { ...splitDistance(distanceKm), label: "Distance" },
+                { ...splitMetres(elevGainM),    label: "Ascent" },
+                { ...splitPace(paceMinPerKm(distanceKm, elapsedSecs)), label: "Avg pace" },
+              ] as const).map(metric => (
+                <View key={metric.label} style={s.metricCell}>
+                  <Text
+                    style={s.metricValue}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                    accessibilityLabel={`${metric.label} ${metric.value} ${metric.unit}`}
+                  >
+                    {metric.value}
+                  </Text>
+                  <Text style={s.metricUnit}>{`${metric.label} · ${metric.unit}`}</Text>
                 </View>
-                <Text style={s.statLabel}>Descended</Text>
-              </View>
+              ))}
             </View>
 
-            {/* Pace and speed, from recorded distance and elapsed time only.
-                Each shows an em dash until there is enough movement to state
-                one — neither is ever estimated. On one line, because two
-                near-identical rows read as a repeat rather than as two facts. */}
-            <View style={s.paceRow}>
-              <View style={s.speedRow}>
-                <Activity size={12} color={T.textMuted} />
-                <Text style={s.speedText}>{formatPace(paceMinPerKm(distanceKm, elapsedSecs))}</Text>
-                <Text style={s.speedLabel}>avg pace</Text>
+            {/* The ground so far. Altitude against time, drawn only once there
+                are enough readings to show a shape — before that this is
+                absent rather than an empty box, which is what keeps the sheet
+                short at the moment you press Start.
+
+                Altitude and descent are printed beside it because neither can
+                be read off the curve: a walk that drops into a col and
+                re-climbs accumulates descent the line cannot show. */}
+            {trackPoints.current.length > 0 ? (
+              <View style={s.profileBlock}>
+                {/* Read straight from the recorder's own points, which the
+                    one-second clock above re-renders. No second copy of the
+                    track is kept for drawing. */}
+                <RecordingElevationSpark
+                  samples={trackPoints.current}
+                  paused={isPaused}
+                  testID="track-elevation-spark"
+                />
+                <View style={s.profileFootRow}>
+                  <Text style={s.profileFoot}>
+                    {currentAltM != null ? `${fmtM(currentAltM)} altitude` : "Altitude —"}
+                  </Text>
+                  <Text style={s.profileFoot}>{`${fmtM(elevLossM)} descended`}</Text>
+                </View>
               </View>
-              <View style={s.speedRow}>
-                <Gauge size={12} color={T.textMuted} />
-                <Text style={s.speedText}>
-                  {currentSpeedKmh > 0 ? `${currentSpeedKmh.toFixed(1)} km/h` : "— km/h"}
-                </Text>
-                <Text style={s.speedLabel}>now</Text>
-              </View>
-            </View>
+            ) : null}
 
             {/* Finishing takes two deliberate steps: pause, then finish, then
                 confirm. A single Finish beside Pause on a wet screen in a
@@ -2501,21 +2516,31 @@ const s = StyleSheet.create({
     backgroundColor: T.card, borderRadius: 16, borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)", padding: 14,
   },
-  primaryStats: {
-    flexDirection: "row", alignItems: "stretch",
-    paddingVertical: 6, marginBottom: 2,
+  /* No dividers between the cells and no panel behind them. Space separates
+     three figures perfectly well, and every rule drawn on this sheet was one
+     more line competing with the map above it. */
+  metricRow: {
+    flexDirection: "row", alignItems: "flex-start",
+    paddingTop: 2, paddingBottom: 2,
   },
-  primaryCell: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 4 },
-  primaryCellBorder: { borderLeftWidth: 1, borderLeftColor: "rgba(255,255,255,0.07)" },
-  /* Read at arm's length, so large and tabular: proportional digits make the
-     time jitter sideways every second. */
-  primaryValue: {
-    fontSize: 30, lineHeight: 36, color: T.text, fontFamily: "Inter_700Bold",
-    fontVariant: ["tabular-nums"],
+  metricCell: { flex: 1, alignItems: "flex-start", paddingRight: 10 },
+  /* Read at arm's length, so large and tabular: proportional digits make a
+     figure jitter sideways as it counts. */
+  metricValue: {
+    fontSize: 26, lineHeight: 31, color: T.text, fontFamily: "Inter_700Bold",
+    fontVariant: ["tabular-nums"], letterSpacing: -0.4,
   },
-  primaryLabel: {
-    fontSize: 11, letterSpacing: 0.9, color: T.textMuted,
-    fontFamily: "Inter_500Medium", marginTop: 2,
+  metricUnit: {
+    fontSize: 10, lineHeight: 13, letterSpacing: 0.5, color: BASECAMP.textDim,
+    fontFamily: "Inter_500Medium", marginTop: 1,
+  },
+
+  // The altitude line and the two figures that cannot be read off it.
+  profileBlock: { gap: 4 },
+  profileFootRow: { flexDirection: "row", justifyContent: "space-between" },
+  profileFoot: {
+    fontSize: 10.5, lineHeight: 14, color: BASECAMP.textDim,
+    fontFamily: "Inter_500Medium",
   },
   controlBtnWide: { flex: 1 },
   offlineBanner: {
@@ -2574,11 +2599,14 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: {
-    ...TYPE.bodyBold, fontSize: 16, color: BASECAMP.text, textAlign: "center",
+    ...TYPE.bodyBold, fontSize: 15, color: BASECAMP.textStrong, textAlign: "center",
   },
+  /* Was accent green and read "Free Hike (GPS Mode)". It is a label, not a
+     status: nothing acts on it, so it has no business being the brightest
+     thing over the map. Dimmed, and the jargon dropped. */
   headerSubtitle: {
-    marginTop: 2, fontSize: 11, lineHeight: 14,
-    fontFamily: "Inter_600SemiBold", color: BASECAMP.accent, textAlign: "center",
+    marginTop: 1, fontSize: 10.5, lineHeight: 13,
+    fontFamily: "Inter_500Medium", color: BASECAMP.textDim, textAlign: "center",
   },
   backBtn: { padding: 4 },
 
@@ -2647,35 +2675,30 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.25)", marginBottom: 8,
   },
   sheetStatusRow: {
-    flexDirection: "row", alignItems: "center", gap: 10, width: "100%",
+    flexDirection: "row", alignItems: "center", gap: 8, width: "100%",
   },
-  timerInline: { flex: 1, ...TYPE.metric, fontSize: 30, lineHeight: 34, color: BASECAMP.text },
-  chevron: { fontSize: 14, color: BASECAMP.textDim },
+  timerHero: { ...TYPE.metric, fontSize: 28, lineHeight: 32, color: BASECAMP.text },
+  statusSpacer: { flex: 1 },
+  collapsedSummary: {
+    flex: 1, textAlign: "right", fontSize: 12.5, lineHeight: 16,
+    fontFamily: "Inter_500Medium", color: BASECAMP.textMuted,
+    fontVariant: ["tabular-nums"],
+  },
+  chevron: { fontSize: 13, color: BASECAMP.textDim, marginLeft: 2 },
 
-  // Status pill (inside sheet header row)
-  statusPill: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: BASECAMP.panelSub, borderRadius: 13,
-    paddingHorizontal: 10, minHeight: 26,
-    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+  /* A dot and three letters, where a bordered pill with an icon used to be.
+     The state has to be legible at a glance and nothing more: the running
+     clock beside it already says a recording is in progress. */
+  recDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: BASECAMP.accent },
+  recDotPaused: { backgroundColor: T.orange },
+  recState: {
+    fontSize: 10, lineHeight: 13, letterSpacing: 1.1,
+    fontFamily: "Inter_700Bold", color: BASECAMP.accent,
   },
-  statusPillTracking: { backgroundColor: BASECAMP.accentDim, borderColor: BASECAMP.accentLine },
-  statusPillPaused:   { backgroundColor: EXPLORE.unverifiedDim, borderColor: EXPLORE.unverifiedLine },
-  statusText: { fontSize: 10, fontFamily: "Inter_700Bold", color: BASECAMP.textDim, letterSpacing: 0.9 },
 
   // Sheet body (stats + controls)
   sheetBody: { paddingHorizontal: BASECAMP.gutter, paddingBottom: 4, gap: 10 },
 
-  // Stats row — 4 cells
-  statsRow: {
-    flexDirection: "row",
-    backgroundColor: BASECAMP.panelSub,
-    borderRadius: 8, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
-    paddingVertical: 12,
-  },
-  statCell: { flex: 1, alignItems: "center", gap: 4 },
-  statCellBorder: { borderLeftWidth: 1, borderLeftColor: "rgba(255,255,255,0.07)" },
-  statValueRow: { flexDirection: "row", alignItems: "center" },
   // Recording status + offline notice.
   trackStatusRow: { flexDirection: "row", marginBottom: 10 },
   trackStatusPill: {
@@ -2688,18 +2711,6 @@ const s = StyleSheet.create({
     fontSize: 11, lineHeight: 15, fontFamily: "Inter_400Regular",
     color: T.textMuted, marginBottom: 10,
   },
-  statValue: { fontSize: 17, lineHeight: 21, fontFamily: "Inter_700Bold", color: BASECAMP.text },
-  statLabel: { ...TYPE.eyebrow, fontSize: 9, letterSpacing: 0.9, color: BASECAMP.textDim },
-
-  // Speed bar
-  paceRow: { flexDirection: "row", alignItems: "center", gap: 18, flexWrap: "wrap" },
-  speedRow: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 2,
-  },
-  speedText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.text },
-  speedLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
-
   // Controls
   controls: { flexDirection: "row", gap: 10 },
   controlBtn: {

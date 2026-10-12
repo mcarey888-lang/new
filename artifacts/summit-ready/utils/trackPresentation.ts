@@ -61,6 +61,45 @@ export function formatKm(v: number | null | undefined): string {
   return v === null || v === undefined || !Number.isFinite(v) ? "—" : `${v.toFixed(2)} km`;
 }
 
+/**
+ * A figure split from its unit.
+ *
+ * The recording sheet prints the number large and the unit small beneath it,
+ * the way every hill-walking recorder does, so these have to come apart. The
+ * rules for rounding live here and only here — the joined-up `fmtKm` and
+ * `fmtM` on the Track screen are built from these, so a figure cannot read one
+ * way in the sheet and another in the same screen's prose.
+ */
+export interface SplitFigure {
+  value: string;
+  /** Lower case as stored. The sheet upper-cases it in the stylesheet. */
+  unit: string;
+}
+
+/**
+ * Under a kilometre the figure is given in metres: "420 m" is read at a glance
+ * on a wet screen where "0.42 km" is not.
+ */
+export function splitDistance(km: number): SplitFigure {
+  if (!Number.isFinite(km)) return { value: "—", unit: "km" };
+  return km < 1
+    ? { value: String(Math.round(km * 1000)), unit: "m" }
+    : { value: km.toFixed(2), unit: "km" };
+}
+
+/** Metres, grouped, because an ungrouped 1284500 is unreadable. */
+export function splitMetres(m: number): SplitFigure {
+  if (!Number.isFinite(m)) return { value: "—", unit: "m" };
+  return { value: Math.round(m).toLocaleString(), unit: "m" };
+}
+
+/** Pace, or an em dash when there is not yet enough movement to state one. */
+export function splitPace(pace: number | null): SplitFigure {
+  const formatted = formatPace(pace);
+  if (formatted === "—") return { value: "—", unit: "/km" };
+  return { value: formatted.replace(" /km", ""), unit: "/km" };
+}
+
 /** Status pill copy for the recording header. */
 export function statusLabel(status: TrackStatus, isOffline: boolean): string {
   if (status === "paused") return "PAUSED";

@@ -234,8 +234,13 @@ describe("Activity Complete tells the truth about consequences", () => {
   });
 
   it("groups large metre figures so a lifetime total stays readable", () => {
-    /* rendering showed "Lifetime 1284500 m" before this */
-    expect(read(TRACKING)).toMatch(/Math\.round\(m\)\.toLocaleString\(\) } m|Math\.round\(m\)\.toLocaleString\(\)\} m/);
+    /* rendering showed "Lifetime 1284500 m" before this. The grouping rule
+       moved into splitMetres so the recording sheet could print the figure
+       and its unit apart; the Track screen's fmtM is that function joined
+       back up, which is what keeps the two from drifting. */
+    expect(read("utils/trackPresentation.ts"))
+      .toMatch(/Math\.round\(m\)\.toLocaleString\(\)/);
+    expect(read(TRACKING)).toMatch(/const f = splitMetres\(m\);/);
   });
 
   it("is the screen's only finished-state presentation", () => {
