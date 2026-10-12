@@ -31,3 +31,13 @@ resolving the first few conflicts in a large file is not sufficient.
 
 **How to apply:** Check the complete file, not just the inspected region, and
 verify the combined batch with type checks after completing the sequence.
+
+Automatic reference packing can fail on an existing `packed-refs.new` even when
+the fetch or commit itself has completed.
+
+**Why:** Background repository maintenance reported a packing error while the
+requested remote ref and subsequent commits were successfully updated.
+
+**How to apply:** Inspect fetched refs, history and sequencer state before
+retrying the substantive operation. Do not delete platform-owned maintenance
+files merely to suppress the warning.

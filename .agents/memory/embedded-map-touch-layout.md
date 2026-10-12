@@ -25,3 +25,13 @@ bar; it covered the Start hike button despite that button being rendered.
 
 **How to apply:** Share the navigation height calculation rather than maintaining
 separate offsets. Do not add the native bottom safe area twice.
+
+Summit cards and attribution must also remain clear of each other, not just the
+host panel. Moving both upward by the same bottom inset does not guarantee this.
+
+**Why:** A software-rendered mobile map showed a readable raised summit card
+overlapping the raised attribution box, hiding the licensed OS text.
+
+**How to apply:** Check actual card and attribution bounds together with the
+host overlays. Reserve attribution space separately and preserve the author's
+map implementation boundary when requesting a correction.
