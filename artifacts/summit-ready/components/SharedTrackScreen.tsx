@@ -83,6 +83,18 @@ export function SharedTrackScreen() {
   const [starting, setStarting] = useState(false);
   const startedRef = useRef(false);
   const mapRef = useRef<TrackMapHandle | null>(null);
+
+  /* Held so they can be sent again. The first send happens as this screen
+     lays out, which is before the map page has loaded — and a message sent
+     to a page that does not exist yet is lost, taking the summit card's
+     only instruction to sit above this sheet with it. */
+  const insetsRef = useRef({ bottom: 0, top: 0 });
+
+  const sendInsets = useCallback(() => {
+    mapRef.current?.send({ type: "bottomInset", px: Math.round(insetsRef.current.bottom) });
+    mapRef.current?.send({ type: "topInset", px: Math.round(insetsRef.current.top) });
+  }, []);
+
   const [sheetHeight, setSheetHeight] = useState(0);
   const [mapRevision, setMapRevision] = useState(0);
   /* Collapsed by default. Opening Track is usually the last thing somebody
@@ -99,8 +111,9 @@ export function SharedTrackScreen() {
      "Contains OS data (c) Crown copyright" is a licence condition, so the map
      is told how much room is taken and lifts it clear. */
   useEffect(() => {
+    insetsRef.current.bottom = Math.round(sheetHeight + navigationHeight);
     if (!mapRevision) return;
-    mapRef.current?.send({ type: "bottomInset", px: Math.round(sheetHeight + navigationHeight) });
+    sendInsets();
     /* The card is not the preview: send the selected geometry after the map
        has its sources, and resend after a reload. An empty line removes the
        previous selection without touching recorded GPS or the planner. */
@@ -108,22 +121,26 @@ export function SharedTrackScreen() {
       type: "recPlanned",
       points: (route?.geometry ?? []).map(point => [point.lat, point.lng]),
     });
-  }, [mapRevision, sheetHeight, navigationHeight, route]);
+  }, [mapRevision, sheetHeight, navigationHeight, route, sendInsets]);
 
   /* The header sits across the top of the map, over the search box. */
   useEffect(() => {
+    insetsRef.current.top = insets.top + 46;
     if (!mapRevision) return;
-    mapRef.current?.send({ type: "topInset", px: Math.round(insets.top + 46) });
-  }, [insets.top, mapRevision]);
+    sendInsets();
+  }, [insets.top, mapRevision, sendInsets]);
 
   const handleMapMessage = useCallback((message: Record<string, unknown>) => {
     if (message.type === "ready") setMapRevision(value => value + 1);
+    /* The page says it is ready and asks for them, which is the only moment
+       both sides are known to exist. */
+    if (message["type"] === "needInsets" || message["type"] === "ready") sendInsets();
     if (message["type"] === "summitCardOpened") {
       setSummitOpen(true);
       setExpanded(false);
     }
     if (message["type"] === "summitCardClosed") setSummitOpen(false);
-  }, []);
+  }, [sendInsets]);
 
   /* What this shell can offer besides a free hike. */
   const currentWeek = getCurrentWeek(trainingPlan);

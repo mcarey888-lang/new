@@ -22,11 +22,19 @@ describe("selected saved-route preview", () => {
   it("waits for the map handshake and resends on route, sheet or map changes", () => {
     expect(TRACK_CODE).toContain('message.type === "ready"');
     expect(TRACK_CODE).toContain("if (!mapRevision) return");
-    expect(TRACK_CODE).toContain("[mapRevision, sheetHeight, navigationHeight, route]");
+    expect(TRACK_CODE).toContain("[mapRevision, sheetHeight, navigationHeight, route, sendInsets]");
     expect(TRACK_CODE).toContain("onMessage={handleMapMessage}");
     expect(TRACK_CODE).toContain('type: "recPlanned"');
     expect(TRACK_CODE).toContain("(route?.geometry ?? []).map(point => [point.lat, point.lng])");
     expect(TRACK_CODE.indexOf('type: "bottomInset"')).toBeLessThan(TRACK_CODE.indexOf('type: "recPlanned"'));
+  });
+
+  it("retains measured host insets and answers the loaded map without losing navigation clearance", () => {
+    expect(TRACK_CODE).toContain("insetsRef.current.bottom = Math.round(sheetHeight + navigationHeight)");
+    expect(TRACK_CODE).toContain("insetsRef.current.top = insets.top + 46");
+    expect(TRACK_CODE).toContain('message["type"] === "needInsets" || message["type"] === "ready"');
+    expect(TRACK_CODE).toContain('px: Math.round(insetsRef.current.bottom)');
+    expect(TRACK_CODE).toContain('px: Math.round(insetsRef.current.top)');
   });
 
   it("does not reload the web map when its message callback changes", () => {
