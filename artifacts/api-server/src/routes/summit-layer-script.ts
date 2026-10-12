@@ -173,6 +173,16 @@ function addSummitLayers() {
 var summitCard = null;
 var summitCardFor = null;
 
+/** Keep the card clear of whatever the host has drawn over the map. */
+function liftSummitCard(inset) {
+  if (summitCard) summitCard.style.bottom = (Math.max(0, inset) + 12) + "px";
+}
+
+/** Keep the search box clear of the host's header. */
+function liftSearchBox(inset) {
+  if (searchBox) searchBox.style.top = Math.max(64, Math.max(0, inset) + 8) + "px";
+}
+
 function ensureSummitCard() {
   if (summitCard) return summitCard;
   summitCard = document.createElement("div");
@@ -190,6 +200,7 @@ function ensureSummitCard() {
     "font:400 14px/1.45 system-ui,-apple-system,sans-serif",
   ].join(";");
   document.body.appendChild(summitCard);
+  if (typeof hostBottomInset === "number") liftSummitCard(hostBottomInset);
   return summitCard;
 }
 
@@ -257,6 +268,7 @@ function showSummitCard(p, coordinates) {
       (summitRouteExists() ? 'Continue route to here' : 'Plan a route to here') +
       '</button>';
   card.style.display = "block";
+  post({ type: "summitCardOpened", id: summitCardFor.id, name: summitCardFor.name });
   /* The clicked coordinates rather than the pin's, so a cluster click looks
      for parking where the person actually tapped. The region comes from the
      pin, because "Scafell Pike" alone matches more than one hill. */
@@ -384,8 +396,10 @@ function summitRouteExists() {
 }
 
 function hideSummitCard() {
+  var wasOpen = !!(summitCard && summitCard.style.display === "block");
   if (summitCard) summitCard.style.display = "none";
   summitCardFor = null;
+  if (wasOpen) post({ type: "summitCardClosed" });
   /* The marker belongs to the card. Left behind, it sits on the map claiming
      to be the parking for whatever gets opened next. */
   parkingToken++;
@@ -442,6 +456,7 @@ function buildSummitSearch() {
   ].join(";");
   searchBox.appendChild(searchList);
   document.body.appendChild(searchBox);
+  if (typeof hostTopInset === "number") liftSearchBox(hostTopInset);
 }
 
 function scheduleSearch() {

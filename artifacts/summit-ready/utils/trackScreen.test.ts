@@ -282,3 +282,42 @@ describe("a way through when GPS fails", () => {
     expect(REC_CODE).toMatch(/prefillElevation=\{elevGainM > 0 \?/);
   });
 });
+
+
+describe("the sheet gets out of its own way", () => {
+  it("starts collapsed", () => {
+    /* Opening Track is usually the last thing before walking, and the
+       common path is Start. The rest is deliberate and can cost a tap. */
+    expect(TRACK_CODE).toMatch(/const \[expanded, setExpanded\] = useState\(false\)/);
+  });
+
+  it("can be opened and closed by the person", () => {
+    /* The old sheet was a fixed slab covering a third of the map with no
+       way to shrink it. */
+    expect(TRACK_CODE).toContain("track-sheet-toggle");
+    expect(TRACK_CODE).toMatch(/setExpanded\(v => !v\)/);
+  });
+
+  it("keeps Start and GPS visible when collapsed", () => {
+    /* Collapsing must not hide the button the screen exists for, nor the
+       one fact that decides whether the track will be any good. */
+    const collapsed = TRACK_CODE.slice(
+      TRACK_CODE.indexOf("track-sheet-toggle"),
+      TRACK_CODE.indexOf("track-start-hike"),
+    );
+    expect(collapsed).toContain("gpsText.label");
+    expect(TRACK_CODE).toContain("track-start-hike");
+  });
+
+  it("collapses itself when a tapped hill opens a card", () => {
+    /* The card is drawn inside the map at the bottom, which is where this
+       sheet sits. Behind it, tapping a hill looks like nothing happened. */
+    expect(TRACK_CODE).toMatch(/summitCardOpened/);
+    expect(TRACK_CODE).toMatch(/setExpanded\(false\)/);
+  });
+
+  it("tells the map how much of the top and bottom it covers", () => {
+    expect(TRACK_CODE).toMatch(/type: "bottomInset"/);
+    expect(TRACK_CODE).toMatch(/type: "topInset"/);
+  });
+});

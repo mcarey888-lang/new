@@ -292,3 +292,34 @@ describe("leaving for the mountain page", () => {
     expect(open.slice(0, open.indexOf("};"))).toContain("hideSummitCard()");
   });
 });
+
+
+describe("the map keeps its own furniture clear of the host", () => {
+  it("lifts the summit card above whatever covers the bottom", () => {
+    /* The card is drawn at the bottom of the map, which is exactly where
+       the Track screen's sheet sits. Behind it, tapping a hill reads as
+       the tap having done nothing. */
+    const s = script();
+    expect(s).toMatch(/function liftSummitCard\(/);
+    expect(s).toMatch(/summitCard\.style\.bottom = \(Math\.max\(0, inset\) \+ 12\)/);
+  });
+
+  it("lifts the search box below the host's header", () => {
+    const s = script();
+    expect(s).toMatch(/function liftSearchBox\(/);
+    /* Never above its own resting place, or it would ride up under the
+       native chips on a phone with no header. */
+    expect(s).toMatch(/Math\.max\(64, Math\.max\(0, inset\) \+ 8\)/);
+  });
+
+  it("tells the host when a card opens and closes", () => {
+    const s = script();
+    expect(s).toContain('type: "summitCardOpened"');
+    expect(s).toContain('type: "summitCardClosed"');
+  });
+
+  it("does not announce closing a card that was not open", () => {
+    /* hideSummitCard runs on plenty of paths that never showed one. */
+    expect(script()).toMatch(/if \(wasOpen\) post\(\{ type: "summitCardClosed" \}\)/);
+  });
+});
