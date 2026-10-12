@@ -110,7 +110,7 @@ function harness() {
     searchInput(): El; searchList(): El;
     goToSummit(s: Record<string, unknown>): void;
     showParkingFor(s: Record<string, unknown>): void;
-    hideSummitCard(): void;
+    hideSummitCard(keepParking?: boolean): void;
     showSummitCard(p: Record<string, unknown>, c: number[]): void;
     ensureParkingLayers(): void;
     onDrawingFinished(): void;
@@ -474,5 +474,48 @@ describe("the summit card's route button", () => {
        at the end minutes later, is a magic trick rather than a tool. */
     expect(script()).toContain("Tap where you will start");
     expect(script()).toContain("is added as the finish when you are done");
+  });
+});
+
+
+describe("car parks while planning a route to the hill", () => {
+  const park = {
+    placeId: "N2", name: "Wasdale Head NT", lat: 54.46, lng: -3.28,
+    distanceM: 1800, status: "gps_confirmed",
+  };
+
+  it("keeps them when the card closes to plan a route there", async () => {
+    /* The card closes to make room, and the next tap is where the walk
+       starts — which on a hill is nearly always one of these. Clearing them
+       at that exact moment takes away the one thing being looked at. */
+    const h = harness();
+    h.api.showParkingFor({ name: "Scafell Pike", lat: 54.454, lng: -3.211 });
+    h.queue[0]!.resolve({ parking: [park] });
+    await h.tick();
+    expect(h.parking()!.features).toHaveLength(1);
+
+    h.api.hideSummitCard(true);
+    expect(h.parking()!.features).toHaveLength(1);
+  });
+
+  it("still takes them away when the card is simply dismissed", async () => {
+    const h = harness();
+    h.api.showParkingFor({ name: "Scafell Pike", lat: 54.454, lng: -3.211 });
+    h.queue[0]!.resolve({ parking: [park] });
+    await h.tick();
+
+    h.api.hideSummitCard();
+    expect(h.parking()!.features).toHaveLength(0);
+  });
+
+  it("closes the card keeping parking when planning a route", () => {
+    const body = summitLayerScript("/api/summits", "/api/summits/parking");
+    const handler = body.slice(
+      body.indexOf('summitPlanRoute").onclick'),
+      body.indexOf("function summitRouteExists"),
+    );
+    expect(handler).toContain("hideSummitCard(true)");
+    /* And nowhere else: dismissing the card must still clear them. */
+    expect(body.match(/hideSummitCard\(true\)/g) ?? []).toHaveLength(1);
   });
 });
