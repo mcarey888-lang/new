@@ -465,6 +465,9 @@ map.on("load", function () {
   map.getCanvas().addEventListener("mouseleave", drop);
 
   post({ type: "ready" });
+  /* The host measured itself before this page existed, so its first insets
+     were sent into nothing. Ask again now there is something to receive. */
+  if (typeof requestHostInsets === "function") requestHostInsets();
 });
 
 function empty() {
@@ -1098,7 +1101,13 @@ router.get("/route-map", (req, res) => {
   const recording = req.query["recording"] === "1";
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // Vary on the query so a chromeless response is not served to a browser.
-  res.setHeader("Cache-Control", "public, max-age=3600");
+  /* This page is application code, not an asset. Cached for an hour, a fix
+     shipped today reaches a phone that already opened the map tomorrow —
+     which is how a corrected summit card went on being drawn in the old
+     place, and a renamed button went on saying the old thing, long after
+     both were fixed. The ETag above still makes a revalidation cheap: an
+     unchanged page comes back 304 with no body. */
+  res.setHeader("Cache-Control", "no-cache");
   res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl, summitsUrl, parkingUrl, recording));
 });
 

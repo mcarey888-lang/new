@@ -43,6 +43,9 @@ function stubDom() {
   const doc = {
     createElement: make,
     body: make("body"),
+    /* The summit card measures the attribution so it can sit clear of it.
+       Null is what a page with no map control rendered yet would answer. */
+    querySelector: () => null,
     getElementById: (id: string) => {
       if (!byId.has(id)) byId.set(id, make("div"));
       return byId.get(id)!;

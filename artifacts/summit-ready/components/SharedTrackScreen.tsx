@@ -81,6 +81,18 @@ export function SharedTrackScreen() {
   const [starting, setStarting] = useState(false);
   const startedRef = useRef(false);
   const mapRef = useRef<TrackMapHandle | null>(null);
+
+  /* Held so they can be sent again. The first send happens as this screen
+     lays out, which is before the map page has loaded — and a message sent
+     to a page that does not exist yet is lost, taking the summit card's
+     only instruction to sit above this sheet with it. */
+  const insetsRef = useRef({ bottom: 0, top: 0 });
+
+  const sendInsets = useCallback(() => {
+    mapRef.current?.send({ type: "bottomInset", px: Math.round(insetsRef.current.bottom) });
+    mapRef.current?.send({ type: "topInset", px: Math.round(insetsRef.current.top) });
+  }, []);
+
   const [sheetHeight, setSheetHeight] = useState(0);
   /* Collapsed by default. Opening Track is usually the last thing somebody
      does before walking, and the common path is Start. The rest — changing
@@ -97,21 +109,26 @@ export function SharedTrackScreen() {
      is told how much room is taken and lifts it clear. */
   useEffect(() => {
     if (!sheetHeight) return;
-    mapRef.current?.send({ type: "bottomInset", px: Math.round(sheetHeight) });
-  }, [sheetHeight]);
+    insetsRef.current.bottom = sheetHeight;
+    sendInsets();
+  }, [sheetHeight, sendInsets]);
 
   /* The header sits across the top of the map, over the search box. */
   useEffect(() => {
-    mapRef.current?.send({ type: "topInset", px: Math.round(insets.top + 46) });
-  }, [insets.top]);
+    insetsRef.current.top = insets.top + 46;
+    sendInsets();
+  }, [insets.top, sendInsets]);
 
   const onMapMessage = useCallback((message: Record<string, unknown>) => {
+    /* The page says it is ready and asks for them, which is the only moment
+       both sides are known to exist. */
+    if (message["type"] === "needInsets" || message["type"] === "ready") sendInsets();
     if (message["type"] === "summitCardOpened") {
       setSummitOpen(true);
       setExpanded(false);
     }
     if (message["type"] === "summitCardClosed") setSummitOpen(false);
-  }, []);
+  }, [sendInsets]);
 
   /* What this shell can offer besides a free hike. */
   const currentWeek = getCurrentWeek(trainingPlan);

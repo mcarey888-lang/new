@@ -173,9 +173,27 @@ function addSummitLayers() {
 var summitCard = null;
 var summitCardFor = null;
 
-/** Keep the card clear of whatever the host has drawn over the map. */
+/**
+ * Keep the card clear of the host's furniture, and of the attribution.
+ *
+ * Lifting it by the host's inset alone put it straight over "Contains OS data
+ * (c) Crown copyright", which sits in the same band at the bottom right. That
+ * line is a condition of the OS licence, so a card covering it is a licence
+ * problem rather than a cosmetic one. The attribution's own height is
+ * measured rather than guessed, because it wraps to two lines on a narrow
+ * phone and a fixed number would be wrong on exactly the screens with least
+ * room to spare.
+ */
+function attributionHeight() {
+  var node = document.querySelector(".maplibregl-ctrl-bottom-right");
+  if (!node) return 0;
+  var box = node.getBoundingClientRect();
+  return box && box.height ? Math.ceil(box.height) : 0;
+}
+
 function liftSummitCard(inset) {
-  if (summitCard) summitCard.style.bottom = (Math.max(0, inset) + 12) + "px";
+  if (!summitCard) return;
+  summitCard.style.bottom = (Math.max(0, inset) + attributionHeight() + 12) + "px";
 }
 
 /** Keep the search box clear of the host's header. */
@@ -268,6 +286,9 @@ function showSummitCard(p, coordinates) {
       (summitRouteExists() ? 'Continue route to here' : 'Plan a route to here') +
       '</button>';
   card.style.display = "block";
+  /* Measured now rather than at build time: the attribution renders after
+     the map does, and wraps differently once the card is on screen. */
+  liftSummitCard(typeof hostBottomInset === "number" ? hostBottomInset : 0);
   post({ type: "summitCardOpened", id: summitCardFor.id, name: summitCardFor.name });
   /* The clicked coordinates rather than the pin's, so a cluster click looks
      for parking where the person actually tapped. The region comes from the

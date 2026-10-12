@@ -202,6 +202,10 @@ describe("the card, rendered", () => {
       createElement: () => card,
       body: { appendChild() {} },
       getElementById: () => ({ onclick: null, textContent: "", style: {} }),
+      /* The card measures the attribution so it can sit above it. A page
+         with no map control rendered yet answers null, which is the same
+         answer this gives. */
+      querySelector: () => null,
     };
     const api = new Function(
       "map", "post", "fetch", "document", "setTimeout", "clearTimeout", "AbortController",
@@ -301,7 +305,7 @@ describe("the map keeps its own furniture clear of the host", () => {
        the tap having done nothing. */
     const s = script();
     expect(s).toMatch(/function liftSummitCard\(/);
-    expect(s).toMatch(/summitCard\.style\.bottom = \(Math\.max\(0, inset\) \+ 12\)/);
+    expect(s).toMatch(/summitCard\.style\.bottom = \(Math\.max\(0, inset\) \+ attributionHeight\(\) \+ 12\)/);
   });
 
   it("lifts the search box below the host's header", () => {
@@ -321,5 +325,31 @@ describe("the map keeps its own furniture clear of the host", () => {
   it("does not announce closing a card that was not open", () => {
     /* hideSummitCard runs on plenty of paths that never showed one. */
     expect(script()).toMatch(/if \(wasOpen\) post\(\{ type: "summitCardClosed" \}\)/);
+  });
+});
+
+
+describe("the lifted card and the attribution", () => {
+  it("leaves room for the attribution rather than covering it", () => {
+    /* Lifting the card by the host's inset alone put it straight over
+       "Contains OS data (c) Crown copyright", which sits in the same band.
+       That line is a licence condition, not decoration. */
+    const s = script();
+    expect(s).toMatch(/function attributionHeight\(/);
+    expect(s).toContain("maplibregl-ctrl-bottom-right");
+    expect(s).toMatch(/attributionHeight\(\) \+ 12/);
+  });
+
+  it("measures the attribution rather than assuming its size", () => {
+    /* It wraps to two lines on a narrow phone, and a fixed number would be
+       wrong on exactly the screens with least room to spare. */
+    expect(script()).toMatch(/getBoundingClientRect\(\)/);
+  });
+
+  it("re-measures as the card opens", () => {
+    /* The attribution renders after the map does, so its height is not
+       known when the card is first built. */
+    const s = script();
+    expect(s).toMatch(/liftSummitCard\(typeof hostBottomInset === "number"/);
   });
 });

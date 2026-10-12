@@ -70,6 +70,19 @@ function setTopInset(px) {
   if (typeof liftSearchBox === "function") liftSearchBox(hostTopInset);
 }
 
+/**
+ * Ask the host for the insets again.
+ *
+ * The host measures its own furniture the moment it lays out, which is long
+ * before this page has finished loading over the network. A message sent to a
+ * page that does not exist yet is simply lost, so the first — and often only
+ * — bottomInset never arrives, and the summit card stays where it would be
+ * with nothing covering it: underneath the sheet.
+ */
+function requestHostInsets() {
+  post({ type: "needInsets" });
+}
+
 function recEmpty() { return { type: "FeatureCollection", features: [] }; }
 
 function recLine(points) {
