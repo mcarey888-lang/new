@@ -88,7 +88,11 @@ function harness() {
   return { buildSummitSearch: buildSummitSearch, searchInput: function () { return searchInput; },
            searchList: function () { return searchList; }, goToSummit: goToSummit,
            showParkingFor: showParkingFor, hideSummitCard: hideSummitCard,
-           showSummitCard: showSummitCard, ensureParkingLayers: ensureParkingLayers };`;
+           showSummitCard: showSummitCard, ensureParkingLayers: ensureParkingLayers,
+           onDrawingFinished: onDrawingFinished,
+           clearSummitDestination: clearSummitDestination,
+           destination: function () { return summitDestination; },
+           setDestination: function (d) { summitDestination = d; } };`;
 
   const api = new Function(
     "map", "post", "fetch", "document", "setTimeout", "clearTimeout", "AbortController", body,
@@ -106,6 +110,10 @@ function harness() {
     hideSummitCard(): void;
     showSummitCard(p: Record<string, unknown>, c: number[]): void;
     ensureParkingLayers(): void;
+    onDrawingFinished(): void;
+    clearSummitDestination(): void;
+    destination(): Record<string, number | string> | null;
+    setDestination(d: Record<string, number | string> | null): void;
   };
 
   return {
@@ -376,5 +384,92 @@ describe("the car parks on the summit card", () => {
 
     expect(h.parking()!.features).toHaveLength(1);
     expect(h.parking()!.features[0]!.properties["name"]).toBe("Honister");
+  });
+});
+
+describe("planning a route to a summit", () => {
+  /* The drawing engine, as the page implements it: append only. */
+  function drawing() {
+    const added: Array<{ lng: number; lat: number }> = [];
+    return {
+      added,
+      scope: {
+        anchors: [] as Array<{ lat: number; lng: number }>,
+        drawing: false,
+        addPoint(p: { lng: number; lat: number }) {
+          added.push(p);
+          this.anchors.push({ lat: p.lat, lng: p.lng });
+        },
+      },
+    };
+  }
+
+  function harnessWithDrawing() {
+    const h = harness();
+    return h;
+  }
+
+  it("holds the summit back instead of making it the start", () => {
+    /* Putting it down first would make the hill the start of the walk, and
+       every point after it would come later still — the opposite of what a
+       walk up a mountain looks like. */
+    const h = harnessWithDrawing();
+    h.api.setDestination({ lat: 54.454, lng: -3.211, id: "abc", name: "Scafell Pike" });
+    expect(h.api.destination()).not.toBeNull();
+  });
+
+  it("adds nothing when the drawing finished with no route", () => {
+    /* A lone summit point is not a route, and leaving one behind is worse
+       than leaving nothing. */
+    const h = harnessWithDrawing();
+    h.api.setDestination({ lat: 54.454, lng: -3.211, id: "abc", name: "Scafell Pike" });
+    h.api.onDrawingFinished();
+    expect(h.api.destination()).toBeNull();
+  });
+
+  it("forgets the destination once the drawing is done", () => {
+    const h = harnessWithDrawing();
+    h.api.setDestination({ lat: 54.454, lng: -3.211, id: "abc", name: "Scafell Pike" });
+    h.api.onDrawingFinished();
+    /* Left set, the next route drawn anywhere would silently end at this
+       hill. */
+    expect(h.api.destination()).toBeNull();
+  });
+
+  it("drops the destination when the route is cleared", () => {
+    const h = harnessWithDrawing();
+    h.api.setDestination({ lat: 54.454, lng: -3.211, id: "abc", name: "Scafell Pike" });
+    h.api.clearSummitDestination();
+    expect(h.api.destination()).toBeNull();
+  });
+});
+
+describe("the summit card's route button", () => {
+  const script = () => summitLayerScript("/api/summits", "/api/summits/parking");
+
+  it("offers to route to the hill, not from it", () => {
+    /* You park at the bottom and walk up. A hill is where a walk ends. */
+    const body = script();
+    expect(body).toContain("Plan a route to here");
+    expect(body).not.toContain("Plan a route from here");
+  });
+
+  it("says it is extending an existing line rather than starting over", () => {
+    expect(script()).toContain("Continue route to here");
+  });
+
+  it("will not append the summit twice when the walker drew to it themselves", () => {
+    /* A last point already on the summit means they have arrived. Adding it
+       again leaves a leg of no length. */
+    const body = script();
+    expect(body).toMatch(/SUMMIT_ARRIVED_M/);
+    expect(body).toMatch(/summitMetres\(last, destination\) <= SUMMIT_ARRIVED_M\) return;/);
+  });
+
+  it("tells the person what is about to happen", () => {
+    /* Drawing mode turning on with no visible reason, and a hill appearing
+       at the end minutes later, is a magic trick rather than a tool. */
+    expect(script()).toContain("Tap where you will start");
+    expect(script()).toContain("is added as the finish when you are done");
   });
 });

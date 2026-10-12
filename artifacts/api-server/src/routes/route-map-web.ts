@@ -675,6 +675,9 @@ function setDrawing(on) {
   if (b) b.setAttribute("aria-pressed", String(drawing));
   document.body.classList.toggle("drawing", drawing);
   post({ type: "drawingChanged", on: drawing });
+  /* A route planned towards a summit puts that summit on the end once the
+     drawing is done. Guarded, because the summit layer is optional. */
+  if (!drawing && typeof onDrawingFinished === "function") onDrawingFinished();
 }
 
 function setSnapping(on) {
@@ -840,6 +843,7 @@ function undoPoint() {
 }
 
 function clearRoute() {
+  if (typeof clearSummitDestination === "function") clearSummitDestination();
   anchors = [];
   legs = [];
   redraw();

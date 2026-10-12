@@ -241,12 +241,11 @@ function showSummitCard(p, coordinates) {
     '<button type="button" id="summitPlanRoute" ' +
       'style="margin-top:12px;width:100%;padding:10px;border:0;border-radius:7px;' +
       'background:#F2C14E;color:#0B1418;font:600 14px system-ui,sans-serif;cursor:pointer">' +
-      /* The label has to match what the button does. With a route already
-         drawn this appends to it, which is reasonable — but calling that
-         "plan a route from here" would read as starting a new one, and
-         somebody would tap it expecting their existing line to be replaced.
-         Neither behaviour is wrong; describing it wrongly is. */
-      (summitRouteExists() ? 'Add to your route' : 'Plan a route from here') +
+      /* A hill is where a walk ends, not where it starts: you park at the
+         bottom and go up. So the summit is the destination, and the label
+         says so. With a line already drawn the summit extends it, which is
+         the same idea arriving sooner. */
+      (summitRouteExists() ? 'Continue route to here' : 'Plan a route to here') +
       '</button>';
   card.style.display = "block";
   /* The clicked coordinates rather than the pin's, so a cluster click looks
@@ -272,19 +271,99 @@ function showSummitCard(p, coordinates) {
   };
 
   document.getElementById("summitPlanRoute").onclick = function () {
-    /* Handled here rather than by the app: starting a route from a summit is
+    /* Handled here rather than by the app: planning a route to a summit is
        the map's own job, and a round trip to ask permission would only add a
        way for it to fail. The app is told so it can follow along. */
-    var at = { lng: summitCardFor.lng, lat: summitCardFor.lat };
-    post({ type: "planRouteFrom", id: summitCardFor.id, name: summitCardFor.name,
-           lat: summitCardFor.lat, lng: summitCardFor.lng });
+    var at = { lng: summitCardFor.lng, lat: summitCardFor.lat,
+               id: summitCardFor.id, name: summitCardFor.name };
+    post({ type: "planRouteTo", id: at.id, name: at.name, lat: at.lat, lng: at.lng });
     hideSummitCard();
-    if (typeof setDrawing === "function" && typeof addPoint === "function") {
+    if (typeof setDrawing !== "function" || typeof addPoint !== "function") return;
+
+    if (summitRouteExists()) {
+      /* A line already exists, so extending it to the summit needs no
+         waiting: the summit is simply its next point. */
       if (!drawing) setDrawing(true);
-      addPoint(at);
+      addPoint({ lng: at.lng, lat: at.lat });
       if (typeof syncControls === "function") syncControls();
+      return;
     }
+
+    /* Nothing drawn yet. The summit is held back as the finish and appended
+       when the person is done, because the drawing model only ever appends:
+       putting the summit down first would make it the start, and every point
+       after it would come later still. */
+    summitDestination = at;
+    if (!drawing) setDrawing(true);
+    if (typeof syncControls === "function") syncControls();
+    showDestinationHint();
   };
+}
+
+/* ── Routing to a summit ─────────────────────────────────────────────────
+   The summit a route is being drawn towards, held until the drawing is
+   finished. The drawing model appends and never inserts, so a destination
+   cannot be put down in advance: it has to wait for the end. */
+var summitDestination = null;
+var summitDestHint = null;
+
+/** Close enough to the summit that adding it again would be a duplicate. */
+var SUMMIT_ARRIVED_M = 40;
+
+function summitMetres(a, b) {
+  var rad = Math.PI / 180;
+  var dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function showDestinationHint() {
+  if (!summitDestination) return;
+  if (!summitDestHint) {
+    summitDestHint = document.createElement("div");
+    summitDestHint.style.cssText = [
+      "position:absolute", "left:50%", "transform:translateX(-50%)", "bottom:150px",
+      "z-index:7", "max-width:min(360px, calc(100% - 32px))",
+      "background:rgba(11,20,24,.94)", "border:1px solid rgba(242,193,78,.45)",
+      "border-radius:10px", "padding:10px 14px", "color:#F4F7F6",
+      "font:400 13px/1.35 system-ui,-apple-system,sans-serif", "text-align:center",
+      "box-shadow:0 4px 16px rgba(0,0,0,.45)",
+    ].join(";");
+    document.body.appendChild(summitDestHint);
+  }
+  summitDestHint.textContent =
+    "Tap where you will start — " + escapeSummitText(summitDestination.name) +
+    " is added as the finish when you are done.";
+  summitDestHint.style.display = "block";
+}
+
+function hideDestinationHint() {
+  if (summitDestHint) summitDestHint.style.display = "none";
+}
+
+function clearSummitDestination() {
+  summitDestination = null;
+  hideDestinationHint();
+}
+
+/**
+ * Called by the page when drawing stops. Puts the summit on the end.
+ *
+ * Nothing drawn means there is no route to finish, so the summit is dropped
+ * rather than left as a lone point going nowhere. A last point already at the
+ * summit means they walked there themselves, and adding it again would leave
+ * a zero-length leg.
+ */
+function onDrawingFinished() {
+  if (!summitDestination) return;
+  var destination = summitDestination;
+  clearSummitDestination();
+  if (!summitRouteExists()) return;
+  var last = anchors[anchors.length - 1];
+  if (summitMetres(last, destination) <= SUMMIT_ARRIVED_M) return;
+  if (typeof addPoint === "function") addPoint({ lng: destination.lng, lat: destination.lat });
+  post({ type: "routeFinishedAt", id: destination.id, name: destination.name });
 }
 
 /** Whether there is already a line on the map to add to. */
