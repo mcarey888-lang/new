@@ -42,16 +42,34 @@ var recRecentreBtn = null;
  * is taking and the controls move up by that much.
  */
 var recBottomInset = 0;
+var hostBottomInset = 0;
+var hostTopInset = 0;
+
 function setBottomInset(px) {
-  var inset = Math.max(0, Math.min(600, Number(px) || 0));
-  recBottomInset = inset;
+  hostBottomInset = Math.max(0, Math.min(600, Number(px) || 0));
+  recBottomInset = hostBottomInset;
   var nodes = document.querySelectorAll(
     ".maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left"
   );
   for (var i = 0; i < nodes.length; i++) {
-    nodes[i].style.marginBottom = inset + "px";
+    nodes[i].style.marginBottom = hostBottomInset + "px";
   }
-  if (recRecentreBtn) recRecentreBtn.style.bottom = (inset + 16) + "px";
+  if (recRecentreBtn) recRecentreBtn.style.bottom = (hostBottomInset + 16) + "px";
+  /* The summit card is the map's own, drawn at the bottom of the page where
+     the host's sheet sits. Behind it, a tapped hill opens a card nobody can
+     see — which reads as the tap having done nothing. */
+  if (typeof liftSummitCard === "function") liftSummitCard(hostBottomInset);
+}
+
+/**
+ * Move the map's own furniture below whatever the app has put over the top.
+ *
+ * The host draws its header across the top of the map, and the search box
+ * sits there too. Without this they overlap and neither can be read.
+ */
+function setTopInset(px) {
+  hostTopInset = Math.max(0, Math.min(400, Number(px) || 0));
+  if (typeof liftSearchBox === "function") liftSearchBox(hostTopInset);
 }
 
 function recEmpty() { return { type: "FeatureCollection", features: [] }; }

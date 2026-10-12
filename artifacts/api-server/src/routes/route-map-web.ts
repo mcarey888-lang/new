@@ -923,6 +923,7 @@ function handleMsg(ev) {
   if (msg.type === "recRecentre") { recRecentre(); return; }
   if (msg.type === "recording") { setRecording(msg.on !== false); return; }
   if (msg.type === "bottomInset") { setBottomInset(msg.px); return; }
+  if (msg.type === "topInset") { setTopInset(msg.px); return; }
 
   if (msg.type === "layer") setLayer(msg.id);
   if (msg.type === "mode") setMode(msg.value === "3d" ? "3d" : "2d");

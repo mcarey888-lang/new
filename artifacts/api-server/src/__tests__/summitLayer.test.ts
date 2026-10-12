@@ -275,3 +275,51 @@ describe("the card's route button says what it will do", () => {
     expect(script()).toContain('typeof anchors !== "undefined"');
   });
 });
+
+describe("a tap while drawing", () => {
+  it("does not also open a summit card", () => {
+    /* The page's own handler has already added a point. A card as well, with
+       a button that adds a second, builds a two-leg route nobody drew. */
+    expect(script()).toContain('if (typeof drawing !== "undefined" && drawing) return;');
+  });
+});
+
+describe("leaving for the mountain page", () => {
+  it("closes the card on the way out", () => {
+    // Otherwise coming back lands on a card describing where you were before.
+    const s = script();
+    const open = s.slice(s.indexOf("var openMountain"));
+    expect(open.slice(0, open.indexOf("};"))).toContain("hideSummitCard()");
+  });
+});
+
+
+describe("the map keeps its own furniture clear of the host", () => {
+  it("lifts the summit card above whatever covers the bottom", () => {
+    /* The card is drawn at the bottom of the map, which is exactly where
+       the Track screen's sheet sits. Behind it, tapping a hill reads as
+       the tap having done nothing. */
+    const s = script();
+    expect(s).toMatch(/function liftSummitCard\(/);
+    expect(s).toMatch(/summitCard\.style\.bottom = \(Math\.max\(0, inset\) \+ 12\)/);
+  });
+
+  it("lifts the search box below the host's header", () => {
+    const s = script();
+    expect(s).toMatch(/function liftSearchBox\(/);
+    /* Never above its own resting place, or it would ride up under the
+       native chips on a phone with no header. */
+    expect(s).toMatch(/Math\.max\(64, Math\.max\(0, inset\) \+ 8\)/);
+  });
+
+  it("tells the host when a card opens and closes", () => {
+    const s = script();
+    expect(s).toContain('type: "summitCardOpened"');
+    expect(s).toContain('type: "summitCardClosed"');
+  });
+
+  it("does not announce closing a card that was not open", () => {
+    /* hideSummitCard runs on plenty of paths that never showed one. */
+    expect(script()).toMatch(/if \(wasOpen\) post\(\{ type: "summitCardClosed" \}\)/);
+  });
+});

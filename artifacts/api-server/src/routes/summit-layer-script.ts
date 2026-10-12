@@ -136,6 +136,11 @@ function addSummitLayers() {
   map.on("click", "summit-point", function (e) {
     var feature = e.features && e.features[0];
     if (!feature) return;
+    /* While drawing, every tap is a point on the route — the page's own
+       handler has already added one. Opening a card as well, and then
+       offering a button that adds a second point, builds a two-leg route
+       nobody drew. */
+    if (typeof drawing !== "undefined" && drawing) return;
     var p = feature.properties || {};
     showSummitCard(p, feature.geometry.coordinates);
     post({
@@ -164,6 +169,16 @@ function addSummitLayers() {
 var summitCard = null;
 var summitCardFor = null;
 
+/** Keep the card clear of whatever the host has drawn over the map. */
+function liftSummitCard(inset) {
+  if (summitCard) summitCard.style.bottom = (Math.max(0, inset) + 12) + "px";
+}
+
+/** Keep the search box clear of the host's header. */
+function liftSearchBox(inset) {
+  if (searchBox) searchBox.style.top = Math.max(64, Math.max(0, inset) + 8) + "px";
+}
+
 function ensureSummitCard() {
   if (summitCard) return summitCard;
   summitCard = document.createElement("div");
@@ -181,6 +196,7 @@ function ensureSummitCard() {
     "font:400 14px/1.45 system-ui,-apple-system,sans-serif",
   ].join(";");
   document.body.appendChild(summitCard);
+  if (typeof hostBottomInset === "number") liftSummitCard(hostBottomInset);
   return summitCard;
 }
 
@@ -248,6 +264,7 @@ function showSummitCard(p, coordinates) {
       (summitRouteExists() ? 'Continue route to here' : 'Plan a route to here') +
       '</button>';
   card.style.display = "block";
+  post({ type: "summitCardOpened", id: summitCardFor.id, name: summitCardFor.name });
   /* The clicked coordinates rather than the pin's, so a cluster click looks
      for parking where the person actually tapped. The region comes from the
      pin, because "Scafell Pike" alone matches more than one hill. */
@@ -264,6 +281,9 @@ function showSummitCard(p, coordinates) {
        the lookup exact; the rest is what it falls back to. */
     post({ type: "openMountain", catalogueId: p.id, name: p.name,
            region: p.area || null, country: p.country || null });
+    /* Closed on the way out, or coming back from the mountain page lands on a
+       card still describing where you were before you left. */
+    hideSummitCard();
   };
   open.onclick = openMountain;
   open.onkeydown = function (e) {
@@ -372,8 +392,10 @@ function summitRouteExists() {
 }
 
 function hideSummitCard() {
+  var wasOpen = !!(summitCard && summitCard.style.display === "block");
   if (summitCard) summitCard.style.display = "none";
   summitCardFor = null;
+  if (wasOpen) post({ type: "summitCardClosed" });
   /* The marker belongs to the card. Left behind, it sits on the map claiming
      to be the parking for whatever gets opened next. */
   parkingToken++;
@@ -438,6 +460,7 @@ function buildSummitSearch() {
       if (typeof placeMapNavigation === "function") placeMapNavigation();
     }).observe(searchBox);
   }
+  if (typeof hostTopInset === "number") liftSearchBox(hostTopInset);
 }
 
 function scheduleSearch() {

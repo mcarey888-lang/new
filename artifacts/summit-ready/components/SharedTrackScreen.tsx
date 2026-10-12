@@ -6,7 +6,8 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@clerk/expo";
 import {
-  ChevronLeft, ChevronRight, Map as MapIcon, PencilLine, Play, Route as RouteIcon, X,
+  ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Map as MapIcon, PencilLine,
+  Play, Route as RouteIcon, X,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -84,9 +85,15 @@ export function SharedTrackScreen() {
   const mapRef = useRef<TrackMapHandle | null>(null);
   const [sheetHeight, setSheetHeight] = useState(0);
   const [mapRevision, setMapRevision] = useState(0);
-  const handleMapMessage = useCallback((message: Record<string, unknown>) => {
-    if (message.type === "ready") setMapRevision(value => value + 1);
-  }, []);
+  /* Collapsed by default. Opening Track is usually the last thing somebody
+     does before walking, and the common path is Start. The rest — changing
+     what this counts towards, attaching a route — is deliberate, so it can
+     cost a tap. */
+  const [expanded, setExpanded] = useState(false);
+  /* A tapped hill opens a card inside the map, at the bottom, which is
+     exactly where this sheet sits. Getting out of its way beats drawing
+     over it. */
+  const [summitOpen, setSummitOpen] = useState(false);
 
   /* The sheet covers the bottom of the map, where the attribution sits.
      "Contains OS data (c) Crown copyright" is a licence condition, so the map
@@ -102,6 +109,21 @@ export function SharedTrackScreen() {
       points: (route?.geometry ?? []).map(point => [point.lat, point.lng]),
     });
   }, [mapRevision, sheetHeight, navigationHeight, route]);
+
+  /* The header sits across the top of the map, over the search box. */
+  useEffect(() => {
+    if (!mapRevision) return;
+    mapRef.current?.send({ type: "topInset", px: Math.round(insets.top + 46) });
+  }, [insets.top, mapRevision]);
+
+  const handleMapMessage = useCallback((message: Record<string, unknown>) => {
+    if (message.type === "ready") setMapRevision(value => value + 1);
+    if (message["type"] === "summitCardOpened") {
+      setSummitOpen(true);
+      setExpanded(false);
+    }
+    if (message["type"] === "summitCardClosed") setSummitOpen(false);
+  }, []);
 
   /* What this shell can offer besides a free hike. */
   const currentWeek = getCurrentWeek(trainingPlan);
@@ -255,50 +277,83 @@ export function SharedTrackScreen() {
           </TouchableOpacity>
         ) : (
           <>
-            <View style={st.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={st.rowLabel}>RECORDING</Text>
-                <Text style={st.rowValue} numberOfLines={1}>{contextLabel(context)}</Text>
-                {contextDetail(context) ? (
-                  <Text style={st.rowDetail} numberOfLines={1}>{contextDetail(context)}</Text>
-                ) : null}
-              </View>
-              {choices.length > 1 ? (
-                <TouchableOpacity
-                  onPress={() => setPickerOpen(true)}
-                  style={st.changeBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel="Change what this hike counts towards"
-                  testID="track-change-context"
-                >
-                  <Text style={st.changeText}>Change</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
+            {/* Collapsed: the one line worth reading and the one button worth
+                pressing. Everything else is a tap away, because it is chosen
+                deliberately and rarely. */}
             <TouchableOpacity
-              onPress={route ? () => setRoute(null) : openRoutes}
-              style={st.routeRow}
-              activeOpacity={0.8}
+              onPress={() => setExpanded(v => !v)}
+              style={st.summaryRow}
+              activeOpacity={0.75}
               accessibilityRole="button"
-              accessibilityLabel={route ? `Remove route ${route.name}` : "Add a route"}
-              testID="track-route-row"
+              accessibilityState={{ expanded }}
+              accessibilityLabel={`${contextLabel(context)}. ${gpsText.label}. ${expanded ? "Hide" : "Show"} options`}
+              testID="track-sheet-toggle"
             >
-              <RouteIcon size={16} color={route ? T.green : T.textMuted} />
               <View style={{ flex: 1 }}>
-                <Text style={st.routeName} numberOfLines={1}>{route ? route.name : "Add a route"}</Text>
-                {route ? <Text style={st.routeMeta}>{describeRoute(route)}</Text> : null}
+                <Text style={st.rowValue} numberOfLines={1}>{contextLabel(context)}</Text>
+                <View style={st.gpsRow}>
+                  <View style={[st.gpsDot, {
+                    backgroundColor: gpsText.tone === "good" ? T.green
+                      : gpsText.tone === "bad" ? "#FF6B6B" : "#E9B949",
+                  }]} />
+                  <Text style={st.gpsText} numberOfLines={1}>{gpsText.label}</Text>
+                  {route && !expanded ? (
+                    <Text style={st.gpsText} numberOfLines={1}> · {route.name}</Text>
+                  ) : null}
+                </View>
               </View>
-              {route ? <X size={16} color={T.textMuted} /> : <ChevronRight size={16} color={T.textMuted} />}
+              {expanded
+                ? <ChevronDown size={20} color={T.textMuted} />
+                : <ChevronUp size={20} color={T.textMuted} />}
             </TouchableOpacity>
 
-            <View style={st.gpsRow} accessibilityLabel={gpsText.label}>
-              <View style={[st.gpsDot, {
-                backgroundColor: gpsText.tone === "good" ? T.green
-                  : gpsText.tone === "bad" ? "#FF6B6B" : "#E9B949",
-              }]} />
-              <Text style={st.gpsText}>{gpsText.label}</Text>
-            </View>
+            {expanded ? (
+              <>
+                {contextDetail(context) ? (
+                  <Text style={st.rowDetail} numberOfLines={2}>{contextDetail(context)}</Text>
+                ) : null}
+
+                {choices.length > 1 ? (
+                  <TouchableOpacity
+                    onPress={() => setPickerOpen(true)}
+                    style={st.changeRow}
+                    accessibilityRole="button"
+                    accessibilityLabel="Change what this hike counts towards"
+                    testID="track-change-context"
+                  >
+                    <Text style={st.changeText}>Change what this counts towards</Text>
+                    <ChevronRight size={16} color={T.textMuted} />
+                  </TouchableOpacity>
+                ) : null}
+
+                <TouchableOpacity
+                  onPress={route ? () => setRoute(null) : openRoutes}
+                  style={st.routeRow}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={route ? `Remove route ${route.name}` : "Add a route"}
+                  testID="track-route-row"
+                >
+                  <RouteIcon size={16} color={route ? T.green : T.textMuted} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.routeName} numberOfLines={1}>{route ? route.name : "Add a route"}</Text>
+                    {route ? <Text style={st.routeMeta}>{describeRoute(route)}</Text> : null}
+                  </View>
+                  {route ? <X size={16} color={T.textMuted} /> : <ChevronRight size={16} color={T.textMuted} />}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setLogOpen(true)}
+                  style={st.manualBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add a hike by hand"
+                  testID="track-log-manually"
+                >
+                  <PencilLine size={14} color={T.textMuted} />
+                  <Text style={st.manualText}>Add a hike by hand</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
 
             <TouchableOpacity
               onPress={start}
@@ -313,22 +368,9 @@ export function SharedTrackScreen() {
               <Text style={st.startText}>Start hike</Text>
             </TouchableOpacity>
 
-            <Text style={st.footnote}>Saved on your phone. Syncs when connected.</Text>
-
-            {/* The way out when GPS will not play. Somebody standing at a
-                trailhead with no fix, or back home having found the track
-                was nonsense, needs this offered where they already are —
-                not buried in another tab they would have to know about. */}
-            <TouchableOpacity
-              onPress={() => setLogOpen(true)}
-              style={st.manualBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Add a hike by hand"
-              testID="track-log-manually"
-            >
-              <PencilLine size={14} color={T.textMuted} />
-              <Text style={st.manualText}>Add a hike by hand</Text>
-            </TouchableOpacity>
+            {expanded ? (
+              <Text style={st.footnote}>Saved on your phone. Syncs when connected.</Text>
+            ) : null}
           </>
         )}
       </View>
@@ -435,6 +477,13 @@ const st = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.18)", marginBottom: 4,
   },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  summaryRow: {
+    flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48, paddingVertical: 2,
+  },
+  changeRow: {
+    flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, minHeight: 48,
+    borderTopWidth: 1, borderTopColor: T.border,
+  },
   rowLabel: { fontSize: 10, letterSpacing: 1.1, color: T.textDim, fontFamily: "Inter_700Bold" },
   rowValue: { fontSize: 19, color: T.text, fontFamily: "Inter_700Bold", marginTop: 2 },
   rowDetail: { fontSize: 12, color: T.textMuted, marginTop: 2, fontFamily: "Inter_400Regular" },
@@ -442,7 +491,7 @@ const st = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10,
     borderWidth: 1, borderColor: T.border, backgroundColor: "rgba(255,255,255,0.04)",
   },
-  changeText: { color: T.text, fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  changeText: { flex: 1, color: T.text, fontSize: 14, fontFamily: "Inter_500Medium" },
   routeRow: {
     flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, paddingHorizontal: 12,
     borderRadius: 12, borderWidth: 1, borderColor: T.border, backgroundColor: "rgba(255,255,255,0.03)",
