@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACTIVITY_DETAILS_COPY, applyDetails, assertSameActivity, availableControls,
   canStartRecording, canonicalRouteMapPoints, formatKm, formatMetres, formatPace, gpsLabel, offlineNotice,
-  paceMinPerKm, statusLabel, trackContext,
+  paceMinPerKm, splitDistance, splitMetres, splitPace, statusLabel, trackContext,
 } from "./trackPresentation";
 
 describe("Start is never gated (offline-first is protected)", () => {
@@ -136,5 +136,33 @@ describe("Activity Details edits the stored activity", () => {
     expect(ACTIVITY_DETAILS_COPY.title).toBe("Activity Details");
     expect(ACTIVITY_DETAILS_COPY.subtitle).toBe("Add photos, notes and details to your hike.");
     expect(ACTIVITY_DETAILS_COPY.cta).toBe("Save Details");
+  });
+});
+
+describe("figures split from their units for the recording sheet", () => {
+  it("gives short distances in metres and longer ones in kilometres", () => {
+    expect(splitDistance(0)).toEqual({ value: "0", unit: "m" });
+    expect(splitDistance(0.42)).toEqual({ value: "420", unit: "m" });
+    expect(splitDistance(0.999)).toEqual({ value: "999", unit: "m" });
+    expect(splitDistance(1)).toEqual({ value: "1.00", unit: "km" });
+    expect(splitDistance(12.345)).toEqual({ value: "12.35", unit: "km" });
+  });
+
+  it("groups metres so a lifetime figure stays readable", () => {
+    expect(splitMetres(0)).toEqual({ value: "0", unit: "m" });
+    expect(splitMetres(948)).toEqual({ value: "948", unit: "m" });
+    expect(splitMetres(1284500).value).toContain(",");
+  });
+
+  it("keeps the em dash when there is nothing to state", () => {
+    expect(splitPace(null)).toEqual({ value: "\u2014", unit: "/km" });
+    expect(splitDistance(Number.NaN).value).toBe("\u2014");
+    expect(splitMetres(Number.NaN).value).toBe("\u2014");
+  });
+
+  it("splits a pace without changing how it reads", () => {
+    const split = splitPace(paceMinPerKm(2, 720));
+    expect(split).toEqual({ value: "6:00", unit: "/km" });
+    expect(`${split.value} ${split.unit}`).toBe(formatPace(paceMinPerKm(2, 720)));
   });
 });
