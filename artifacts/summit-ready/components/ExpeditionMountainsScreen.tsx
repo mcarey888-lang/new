@@ -79,10 +79,9 @@ import {
 import { createReadinessInput } from "@/utils/readinessAdapter";
 import { projectExpeditionReadiness } from "@/utils/expeditionReadinessProjection";
 import { validateExpeditionResultContract } from "@/utils/expeditionResultContract";
+import { fetchExpeditionResponse } from "@/utils/expeditionRequest";
+import { activityApiBase as API_BASE } from "@/utils/activityAudience";
 
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : "/api";
 
 // ── Region data ────────────────────────────────────────────────────────────────
 
@@ -426,6 +425,12 @@ export default function ExpeditionMountainsScreen() {
   // fetch state
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [failedRequest, setFailedRequest] = useState<PendingExpeditionRequest | null>(null);
+  const expeditionRequestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => {
+    expeditionRequestRef.current?.abort();
+    expeditionRequestRef.current = null;
+  }, []);
   const [routeChoices, setRouteChoices] = useState<VerifiedTargetRouteChoice[]>([]);
   const [routeChooserOpen, setRouteChooserOpen] = useState<boolean>(false);
   const [pendingRouteRequest, setPendingRouteRequest] = useState<PendingExpeditionRequest | null>(null);
@@ -575,9 +580,15 @@ export default function ExpeditionMountainsScreen() {
     selectedRouteIdentityKeys: string[] = [],
     resolveOnly = false,
   ) {
+    expeditionRequestRef.current?.abort();
+    const controller = new AbortController();
+    expeditionRequestRef.current = controller;
+    let request: PendingExpeditionRequest | undefined;
     setLoading(true);
     setFetchError(null);
-    setResults(null);
+    setFailedRequest(null);
+    // Retain the resolved target/route until a replacement succeeds.
+    if (resolveOnly) setResults(null);
     if (!includeSignatureChallenge) {
       setSigChallenge(null);
       setSigLoading(false);
@@ -598,7 +609,7 @@ export default function ExpeditionMountainsScreen() {
           ? results.provenance?.selectedTargetRouteIdentityKey ?? undefined
           : undefined;
       const persistedRouteKey = activeRouteKey ?? currentResultRouteKey;
-      const request: PendingExpeditionRequest = {
+      request = {
         mountain,
         region,
         radius,
@@ -613,10 +624,7 @@ export default function ExpeditionMountainsScreen() {
         selectedRouteIdentityKeys,
         resolveOnly,
       };
-      const res = await fetch(`${API_BASE}/virtual-expedition`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await fetchExpeditionResponse(`${API_BASE}/virtual-expedition`, {
           targetMountain: mountain,
           userLocation:   region,
           radius,
@@ -630,9 +638,9 @@ export default function ExpeditionMountainsScreen() {
           mode,
           ...(selectedRouteIdentityKeys.length ? { selectedRouteIdentityKeys } : {}),
           resolveOnly,
-        }),
-      });
-      const body = await res.json() as ExpeditionResult & {
+      }, controller.signal);
+      if (expeditionRequestRef.current !== controller || controller.signal.aborted) return;
+      const body = res.body as unknown as ExpeditionResult & {
         error?: string;
         code?: string;
         routes?: VerifiedTargetRouteChoice[];
@@ -687,9 +695,16 @@ export default function ExpeditionMountainsScreen() {
       }
       setView("results");
     } catch (err) {
-      setFetchError(err instanceof Error ? err.message : "Couldn't load expedition data.");
+      if (expeditionRequestRef.current !== controller || controller.signal.aborted) return;
+      if (request) setFailedRequest(request);
+      setFetchError(err instanceof TypeError
+        ? "Couldn’t reach the expedition service. Check your connection and retry; your choices have been kept."
+        : err instanceof Error ? err.message : "Couldn't load expedition data.");
     } finally {
-      setLoading(false);
+      if (expeditionRequestRef.current === controller) {
+        expeditionRequestRef.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -1253,6 +1268,49 @@ export default function ExpeditionMountainsScreen() {
         <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" }}>
           {label}
         </Text>
+        <Text style={{ color: T.textMuted, textAlign: "center", fontSize: 12 }}>
+          Checking mapped summits and route evidence. Your selection is kept if this search fails.
+        </Text>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel expedition search"
+          onPress={() => {
+            expeditionRequestRef.current?.abort();
+            expeditionRequestRef.current = null;
+            setLoading(false);
+          }} style={s.choiceCard}>
+          <Text style={s.choiceTitle}>Cancel search</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  }
+
+  if (fetchError && failedRequest) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad, paddingHorizontal: 16, gap: 16 }}>
+          <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: T.white }}>Couldn’t build your expedition</Text>
+          <View style={s.card}>
+            <Text style={s.choiceTitle}>{failedRequest.mountain}</Text>
+            <Text style={s.choiceCopy}>{failedRequest.region} · {failedRequest.radius} km · {failedRequest.daysOverride ?? customDays} walking days</Text>
+            <Text style={[s.choiceCopy, { color: T.orange, marginTop: 14 }]} accessibilityRole="alert">{fetchError}</Text>
+            <Text style={s.choiceCopy}>Your target and search choices have been kept. No expedition has been created or changed.</Text>
+          </View>
+          <TouchableOpacity testID="retry-custom-expedition" accessibilityRole="button" style={s.choiceCard}
+            onPress={() => void fetchExpedition(
+              failedRequest.mountain, failedRequest.region, failedRequest.radius,
+              failedRequest.daysOverride, failedRequest.includeSignatureChallenge,
+              failedRequest.targetRouteIdentityKey, failedRequest.targetCountry, failedRequest.targetRegion,
+              failedRequest.mode ?? "automatic", failedRequest.selectedRouteIdentityKeys ?? [],
+              failedRequest.resolveOnly ?? false,
+            )}>
+            <Text style={s.choiceTitle}>Retry search</Text>
+          </TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" style={s.choiceCard} onPress={() => {
+            setFailedRequest(null); setFetchError(null); setView("browse");
+            setResults(null); setSetupResolved(false); setCreationChoice(null);
+          }}>
+            <Text style={s.choiceTitle}>Edit search</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </LinearGradient>
     );
   }
@@ -1321,7 +1379,9 @@ export default function ExpeditionMountainsScreen() {
           <ScrollView contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad, paddingHorizontal: 16, gap: 14 }}>
             <View style={[s.card, { gap: 8 }]}>
               <Text style={s.mountainTitle}>{tp.name}</Text>
-              <Text style={s.mountainSub}>Target route: {results.provenance?.selectedTargetRouteName ?? "verified route selected"}</Text>
+              <Text style={s.mountainSub}>Target route: {results.provenance?.selectedTargetRouteName
+                ?? (results.provenance?.routeDataStatus === "verified"
+                  ? "verified route selected" : "verified facts unavailable · estimated target")}</Text>
               <Text style={s.improveCandidateMeta}>Area: {customLocation || searchRegion} · {searchRadius}km · {tp.estimatedDays} day{tp.estimatedDays === 1 ? "" : "s"}</Text>
             </View>
             <View style={{ flexDirection: "row", gap: 10 }}>

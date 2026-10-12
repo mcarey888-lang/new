@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text,
+  ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -17,7 +17,9 @@ import { useApp } from "@/context/AppContext";
 import { useGpsStatus } from "@/hooks/useGpsStatus";
 import { useScreenView } from "@/lib/analytics";
 import { T } from "@/constants/theme";
-import { discardActiveHike, readActiveHike } from "@/utils/activeHikeSession";
+import { readActiveHike } from "@/utils/activeHikeSession";
+import { personalRouteHandoff, savePersonalRouteHandoff } from "@/utils/personalRouteHandoff";
+import { savePlannerDraft } from "@/utils/plannerDraftHandoff";
 import { canStart, gpsDisplay } from "@/utils/gpsStatus";
 import { primaryTabBarHeight } from "@/utils/tabBarLayout";
 import {
@@ -30,9 +32,6 @@ import {
   nextExpeditionStage, nextTrainingSession, resolveTrackContext, storedFromContext,
   trainingContextFor, type TrackContext,
 } from "@/utils/trackContext";
-
-/** How long an abandoned session stays resumable before it is dropped. */
-const RESUME_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function useActiveHike() {
   const { isLoaded: authLoaded, userId } = useAuth();
@@ -47,8 +46,9 @@ function useActiveHike() {
         const session = await readActiveHike<any>(ownerUserId);
         if (!mounted) return;
         if (!session) { setActiveHike(null); return; }
-        if (Date.now() - (session.savedAt ?? 0) < RESUME_WINDOW_MS) setActiveHike(session);
-        else { await discardActiveHike(session); if (mounted) setActiveHike(null); }
+        // Paused and finished-unsaved recordings belong to the walker until
+        // they explicitly save or discard them, even after a multi-day gap.
+        setActiveHike(session);
       } catch { /* a read failure is not a reason to hide the screen */ }
     }
     void check();
@@ -60,6 +60,11 @@ function useActiveHike() {
 }
 
 export function SharedTrackScreen() {
+  const { userId } = useAuth();
+  return <SharedTrackScreenBody key={userId ?? "signed-out"} />;
+}
+
+function SharedTrackScreenBody() {
   useScreenView("track");
   const insets = useSafeAreaInsets();
   const navigationHeight = primaryTabBarHeight(Platform.OS, insets.bottom);
@@ -79,6 +84,7 @@ export function SharedTrackScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [routesOpen, setRoutesOpen] = useState(false);
   const [routes, setRoutes] = useState<PlannedRoute[] | null>(null);
+  const [routeError, setRouteError] = useState<string | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [starting, setStarting] = useState(false);
   const startedRef = useRef(false);
@@ -131,6 +137,7 @@ export function SharedTrackScreen() {
   }, [insets.top, mapRevision, sendInsets]);
 
   const handleMapMessage = useCallback((message: Record<string, unknown>) => {
+    if(message.type==="routeChanged"){setRoute(null);return;}
     if (message.type === "ready") setMapRevision(value => value + 1);
     /* The page says it is ready and asks for them, which is the only moment
        both sides are known to exist. */
@@ -140,7 +147,20 @@ export function SharedTrackScreen() {
       setExpanded(false);
     }
     if (message["type"] === "summitCardClosed") setSummitOpen(false);
-  }, [sendInsets]);
+    if (message.type === "saveRequested") {
+      mapRef.current?.send({ type: "saveResult", ok: false });
+      if (!userId) { Alert.alert("Sign in required", "Sign in before saving this route."); return; }
+      void savePlannerDraft(userId, message.route).then(() =>
+        router.push({ pathname: "/route-planner", params: { draftHandoff: "1" } } as never),
+      ).catch(error => Alert.alert("Route not saved", error.message));
+    }
+    if (message.type === "openMountain" && typeof message.name === "string") {
+      router.push({ pathname: "/mountain", params: {
+        name: message.name, catalogueId: String(message.catalogueId ?? ""),
+        region: String(message.region ?? ""), country: String(message.country ?? ""),
+      }} as never);
+    }
+  }, [sendInsets, userId]);
 
   /* What this shell can offer besides a free hike. */
   const currentWeek = getCurrentWeek(trainingPlan);
@@ -200,26 +220,40 @@ export function SharedTrackScreen() {
   const openRoutes = useCallback(async () => {
     setRoutesOpen(true);
     setRoutes(null);
+    setRouteError(null);
     const result = await listRoutes(getToken);
-    setRoutes(result.ok ? result.value : []);
+    if (result.ok) setRoutes(result.value);
+    else { setRoutes([]); setRouteError("Saved routes could not be loaded. Check your connection and sign-in, then retry."); }
   }, [getToken]);
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     /* Synchronous, before any await. Two taps a frame apart must not make two
        activities, and the recorder's own guard cannot help until it mounts. */
     if (startedRef.current) return;
     startedRef.current = true;
     setStarting(true);
+    try {
+    if (route) {
+      if (!userId) throw new Error("Sign in to follow your saved route.");
+      await savePersonalRouteHandoff(personalRouteHandoff(userId, route));
+    }
     const launch = launchParamsFor(context, shellMode, activeExpeditionId);
     router.push({
       pathname: "/hike-tracking",
       params: {
         ...launch,
-        ...(route ? { referenceRouteId: route.id, referenceRouteName: route.name } : {}),
+        autoStart: "1",
+        ...(route ? { plannedRouteId: route.id, plannedRouteName: route.name } : {}),
       },
     } as never);
     setTimeout(() => { startedRef.current = false; setStarting(false); }, 1200);
-  }, [context, shellMode, activeExpeditionId, route]);
+    } catch (error) {
+      setRouteError(error instanceof Error ? error.message : "Could not start this route.");
+      startedRef.current = false;
+      setStarting(false);
+      setRoutesOpen(true);
+    }
+  }, [context, shellMode, activeExpeditionId, route, userId]);
 
   const resume = useCallback(() => {
     if (startedRef.current || !activeHike) return;
@@ -250,6 +284,9 @@ export function SharedTrackScreen() {
   return (
     <View style={[st.screen, { backgroundColor: T.bg }]} testID="track-landing-screen">
       <TrackMap recording={false} mapRef={mapRef} onMessage={handleMapMessage} />
+      {routeError && !routesOpen ? (
+        <Text accessibilityRole="alert" style={{ color: T.text, padding: 12 }}>{routeError}</Text>
+      ) : null}
 
       <View style={[st.header, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
         {cameFromElsewhere ? (
@@ -431,6 +468,11 @@ export function SharedTrackScreen() {
             <Text style={st.modalTitle}>Your saved routes</Text>
             {routes === null ? (
               <ActivityIndicator color={T.green} style={{ marginVertical: 24 }} />
+            ) : routeError ? (
+              <View>
+                <Text style={st.modalTitle} accessibilityRole="alert">{routeError}</Text>
+                <TouchableOpacity onPress={openRoutes}><Text style={st.planText}>Retry saved routes</Text></TouchableOpacity>
+              </View>
             ) : routes.length === 0 ? (
               <>
                 <Text style={st.empty}>No saved routes yet.</Text>

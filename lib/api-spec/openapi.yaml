@@ -15,6 +15,134 @@ tags:
   - name: community
     description: Authenticated SummitReady member sharing
 paths:
+  /activity-community/profile-cover:
+    get:
+      operationId: getPersonalProfileCover
+      responses:
+        "200":
+          description: Owner-private profile cover, authenticated and never cacheable
+          content:
+            image/webp:
+              schema: { type: string, format: binary }
+        "404": { description: No personal cover selected }
+    put:
+      operationId: uploadPersonalProfileCover
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema: { type: string, format: binary }
+          image/png:
+            schema: { type: string, format: binary }
+          image/webp:
+            schema: { type: string, format: binary }
+      responses:
+        "200": { description: Cover saved privately and stripped of metadata }
+        "400": { description: Invalid image or upload could not complete }
+  /activity-community/preferences:
+    get:
+      operationId: getActivityAudiencePreference
+      responses:
+        "200":
+          description: Explicit recorded-activity default; null until first choice
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  audience: { type: ["string", "null"], enum: [public, followers, private, null] }
+                  publicAccess: { type: string }
+    put:
+      operationId: setActivityAudiencePreference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActivityAudienceInput" }
+      responses:
+        "200": { description: Default saved }
+  /activity-community:
+    get:
+      operationId: getActivityRoutes
+      summary: Signed-in community recordings, never verified trails; audience enforced server-side
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 120 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 1000 } }
+        - { name: saved, in: query, schema: { type: string, enum: ["1"] } }
+        - { name: lat, in: query, schema: { type: number, minimum: -90, maximum: 90 } }
+        - { name: lng, in: query, schema: { type: number, minimum: -180, maximum: 180 } }
+        - { name: radiusKm, in: query, schema: { type: number, minimum: 1, maximum: 100 } }
+      responses:
+        "200":
+          description: Page of accessible routes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [routes, hasMore]
+                properties:
+                  routes: { type: array, items: { $ref: "#/components/schemas/ActivityCommunityRoute" } }
+                  hasMore: { type: boolean }
+        "401": { description: Sign-in required }
+        "503": { description: Sharing schema or service unavailable }
+  /activity-community/{owner}/{hikeId}:
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - { name: hikeId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getActivityRoute
+      responses:
+        "200":
+          description: Accessible original recording geometry, never a catalogue route
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [route, followed]
+                properties:
+                  route: { $ref: "#/components/schemas/ActivityCommunityRoute" }
+                  followed: { type: boolean }
+        "404": { description: Missing or no longer accessible; no geometry returned }
+  /activity-community/{owner}/{hikeId}/audience:
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - { name: hikeId, in: path, required: true, schema: { type: string } }
+    put:
+      operationId: setActivityRouteAudience
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActivityAudienceInput" }
+      responses:
+        "200": { description: Owner's audience changed }
+        "409": { description: Recording must be backed up first }
+  /activity-community/{owner}/{hikeId}/action:
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+      - { name: hikeId, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: actOnRecordedActivityRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityRouteActionInput"
+      responses:
+        "200": { description: Idempotent bookmark/report or pending trail suggestion; never automatic verification }
+        "404": { description: Route is not accessible }
+  /activity-community/follows/{owner}:
+    parameters:
+      - { name: owner, in: path, required: true, schema: { type: string } }
+    put:
+      operationId: followActivityAuthor
+      responses:
+        "200": { description: Author followed }
+    delete:
+      operationId: unfollowActivityAuthor
+      responses:
+        "204": { description: Follow removed }
   /recorded-hikes:
     get:
       operationId: listRecordedHikeBackups
@@ -593,6 +721,33 @@ paths:
 
 components:
   schemas:
+    ActivityRouteActionInput:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: [save, unsave, report, suggest] }
+        reason: { type: string, maxLength: 1000 }
+    ActivityAudienceInput:
+      type: object
+      required: [audience]
+      properties:
+        audience: { type: string, enum: [public, followers, private] }
+    ActivityCommunityRoute:
+      type: object
+      required: [owner, hikeId, audience, author, source, verified, snapshot]
+      properties:
+        owner: { type: string }
+        hikeId: { type: string }
+        audience: { type: string, enum: [public, followers, private] }
+        author:
+          type: object
+          required: [name]
+          properties:
+            name: { type: string }
+            avatarUrl: { type: ["string", "null"] }
+        source: { type: string, enum: [user_recording] }
+        verified: { type: boolean }
+        snapshot: { $ref: "#/components/schemas/PrivateRecordedHikeSnapshot" }
     PrivateRecordedHikeBackupInput:
       type: object
       required: [hikeId, revision, snapshot]

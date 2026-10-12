@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach,afterEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import { PgDialect } from "drizzle-orm/pg-core";
 const store = vi.hoisted(() => new Map<string, any>());
@@ -6,8 +6,11 @@ vi.mock("@clerk/express", () => ({
   getAuth: (req: any) => ({ userId: req.headers["x-test-user"] ?? null }),
   requireAuth: () => (_req: any, res: any) => res.redirect("/"),
 }));
-vi.mock("@workspace/db", () => ({
-  db: {
+vi.mock("@workspace/db", async () => {
+  const schema=await vi.importActual<typeof import("@workspace/db/schema")>("@workspace/db/schema");
+  const db: any = {
+    transaction: async (fn:any)=>fn(db),
+    execute: async()=>[],
     insert: () => ({ values: (value: any) => ({ onConflictDoUpdate: () => ({
       returning: async () => {
         const key = `${value.ownerUserId}:${value.hikeId}`;
@@ -17,16 +20,18 @@ vi.mock("@workspace/db", () => ({
         return [{ revision: value.revision }];
       },
     }) }) }),
-    select: () => ({ from: () => ({ where: (clause: any) => {
+    select: () => ({ from: (table:any) => ({ where: (clause: any) => {
       const { params } = new PgDialect().sqlToQuery(clause);
-      return { orderBy: () => ({ limit: async () => [...store.values()].filter(row => row.ownerUserId === params[0]) }) };
+      const rows=table===schema.activityPublications?[]:[...store.values()].filter(row => row.ownerUserId === params[0]);
+      return Object.assign(rows,{limit:async()=>rows,orderBy:()=>({limit:async()=>rows})});
     } }) }),
     delete: () => ({ where: async (clause: any) => {
       const { params } = new PgDialect().sqlToQuery(clause);
       store.delete(`${params[0]}:${params[1]}`);
     } }),
-  },
-}));
+  };
+  return {...schema,db};
+});
 import router from "../routes/recorded-hikes";
 
 const recording = {
@@ -52,6 +57,7 @@ async function request(method: string, path: string, owner?: string, body?: unkn
 
 describe("private recorded hike backups", () => {
   beforeEach(() => { store.clear(); vi.stubEnv("NODE_ENV", "production"); vi.stubEnv("CLERK_SECRET_KEY", "test-present-key"); });
+  afterEach(()=>vi.unstubAllEnvs());
   it("returns JSON 401, not a sign-in redirect, and never writes anonymously", async () => {
     const response = await request("PUT", "/recorded-hikes", undefined, recording);
     expect(response.status).toBe(401);
@@ -66,7 +72,7 @@ describe("private recorded hike backups", () => {
   it("isolates list, save and deletion even when two users use the same hike ID", async () => {
     await request("PUT", "/recorded-hikes", "user-a", recording);
     await request("PUT", "/recorded-hikes", "user-b", { ...recording, snapshot: { ...recording.snapshot, name: "Other" } });
-    const list = await (await request("GET", "/recorded-hikes", "user-b")).json();
+    const list = await (await request("GET", "/recorded-hikes", "user-b")).json() as {backups: Array<{snapshot:{name:string}}>};
     expect(list.backups).toHaveLength(1);
     expect(list.backups[0].snapshot.name).toBe("Other");
     await request("DELETE", "/recorded-hikes/one", "user-b");

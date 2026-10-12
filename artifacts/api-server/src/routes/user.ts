@@ -1,8 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { recordedHikeBackups } from "@workspace/db/schema";
 import { getAuth, clerkClient } from "@clerk/express";
-import { canonicalActivities, communityPosts, communityReports, db, trackedRoutes, userDemoProfiles } from "@workspace/db";
-import { eq, or } from "drizzle-orm";
+import { canonicalActivities, communityPosts, communityReports, db, trackedRoutes, userDemoProfiles, activityPreferences } from "@workspace/db";
+import { eq, or, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { deleteCommunityPhoto } from "./community";
 
@@ -20,8 +20,7 @@ function respondToDemoProfileError(req: Request, res: Response, err: unknown): v
     });
     return;
   }
-  const msg = err instanceof Error ? err.message : "Failed to access demo profile";
-  res.status(500).json({ error: msg });
+  res.status(500).json({ error: "Failed to access demo profile" });
 }
 
 router.get("/user/demo-profile", requireAuth({ json: true }), async (req, res) => {
@@ -101,6 +100,13 @@ router.delete("/user/me", requireAuth({ json: true }), async (req, res) => {
         req.log.error({ err, userId }, "Failed to remove community photo during account deletion");
       })]
       : []));
+    const [preferences] = await db.select().from(activityPreferences).where(eq(activityPreferences.owner,userId)).limit(1);
+    if(preferences?.coverPath) await deleteCommunityPhoto(preferences.coverPath);
+    await db.execute(sql`DELETE FROM activity_route_reports WHERE reporter=${userId} OR owner=${userId}`);
+    await db.execute(sql`DELETE FROM activity_bookmarks WHERE viewer=${userId} OR owner=${userId}`);
+    await db.execute(sql`DELETE FROM activity_trail_suggestions WHERE owner=${userId}`);
+    await db.execute(sql`DELETE FROM activity_follows WHERE follower=${userId} OR followed=${userId}`);
+    await db.delete(activityPreferences).where(eq(activityPreferences.owner,userId));
     // Delete owned community routes by their authoritative server-side owner.
     // Route contributions on those canonical routes are removed by FK cascade.
     await db.delete(trackedRoutes).where(eq(trackedRoutes.createdBy, userId));

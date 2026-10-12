@@ -37,8 +37,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { WebView } from "react-native-webview";
+import { TrackMap, type TrackMapHandle } from "@/components/track/TrackMap";
 import { logHillSessionStarted, logHillSessionCompleted, logHikeTracked } from "@/lib/analytics";
+import { ActivityAudiencePicker } from "@/components/track/ActivityAudiencePicker";
+import { readActivityAudience, saveActivityAudience, type ActivityAudience } from "@/utils/activityAudience";
+import { elevationQuality } from "@/utils/elevationQuality";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -106,9 +109,9 @@ import {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+const API_BASE = process.env.EXPO_PUBLIC_MAP_BASE ?? (process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : "/api";
+  : "/api");
 
 function localActivityTitle(date = new Date()): string {
   return `Hike – ${date.toLocaleDateString("en-GB", {
@@ -269,8 +272,34 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HikeTrackingScreen() {
+  const { userId } = useAuth();
+  return <HikeTrackingScreenBody key={userId ?? "signed-out"} />;
+}
+
+function HikeTrackingScreenBody() {
   const insets = useSafeAreaInsets();
   const { getToken, userId } = useAuth();
+  const [activityAudience, setActivityAudience] = useState<ActivityAudience | null>(null);
+  const [audienceDefault, setAudienceDefault] = useState<ActivityAudience | null>(null);
+  const [audienceError, setAudienceError] = useState<string | null>(null);
+  const audienceTouchedRef=useRef(false);
+  useEffect(() => {
+    let active = true;
+    audienceTouchedRef.current=false;
+    setActivityAudience(null); setAudienceDefault(null);
+    if (userId) void Promise.all([readActivityAudience(userId),readActiveHike<HikeCheckpoint>(userId)]).then(([audience,checkpoint]) => {
+      if (active && !audienceTouchedRef.current) { setActivityAudience(checkpoint?checkpoint.activityAudience??null:audience); setAudienceDefault(audience); }
+    }).catch(() => { if (active) setAudienceError("Your sharing default could not be loaded. Choose an audience before saving."); });
+    return () => { active = false; };
+  }, [userId]);
+  const chooseAudience = async (audience: ActivityAudience) => {
+    audienceTouchedRef.current=true;
+    setActivityAudience(audience); setAudienceError(null);
+    if (!audienceDefault && userId) {
+      try { await saveActivityAudience(userId, audience, () => getToken({ skipCache: true })); setAudienceDefault(audience); }
+      catch { setAudienceError("Your default could not be stored. This activity still uses your selected audience."); }
+    }
+  };
   const { appMode, shellMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions,
           summitGoal, patchExpedition, activeExpeditionId, expeditions, exploreHikes } = useApp();
   const { lastConsequence: stage8LastConsequence } = useStage8();
@@ -291,8 +320,10 @@ export default function HikeTrackingScreen() {
     estimatedGainPerRep?: string;
     estimatedTotalGain?: string;
     referenceRouteId?: string;
+    communityOwner?: string;
     referenceRouteName?: string;
     plannedRouteId?: string;
+    autoStart?: string;
     plannedRouteName?: string;
     restore?: string;           // "1" when app was killed mid-hike and we're restoring
     trackingMode?: string;
@@ -392,6 +423,7 @@ export default function HikeTrackingScreen() {
   const [saving, setSaving]               = useState(false);
   const [discarding, setDiscarding]       = useState(false);
   const [discardError, setDiscardError]   = useState<string | null>(null);
+  const [checkpointError, setCheckpointError] = useState<string | null>(null);
   const discardInFlightRef               = useRef(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
@@ -486,9 +518,9 @@ export default function HikeTrackingScreen() {
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const statusRef      = useRef<TrackStatus>("idle");
   const initialPosRef  = useRef<{ lat: number; lon: number } | null>(null);
-  const webViewRef        = useRef<WebView>(null);
-  const webMapContainerRef = useRef<View>(null);
-  const iframeRef          = useRef<any>(null);
+  const recordingMapRef = useRef<TrackMapHandle | null>(null);
+  const [mapRevision, setMapRevision] = useState(0);
+  const [recordingSheetHeight, setRecordingSheetHeight] = useState(0);
   const [headerHeight, setHeaderHeight] = useState(0);
   const mapTopInset = Math.max(insets.top + 54, headerHeight);
   const saveInFlightRef    = useRef(false);
@@ -668,31 +700,6 @@ export default function HikeTrackingScreen() {
     });
   }, [params.hillName, params.referenceRouteName, params.plannedRouteId, params.restore, userId]);
 
-  // ── Web-only: mount the hike-map iframe ──────────────────────────────────
-  useEffect(() => {
-    if (Platform.OS !== "web") return;
-    if (restoreCheckpointPending) return;
-    const container = webMapContainerRef.current as unknown as HTMLElement;
-    if (!container) return;
-    const iframe = document.createElement("iframe");
-    iframe.src = `${API_BASE}/route-map?recording=1`;
-    iframe.style.cssText = "width:100%;height:100%;border:none;display:block;";
-    iframe.allow = "geolocation";
-    iframe.onload = () => {
-      setMapReady(true);
-      sendReferenceRouteToMap();
-      const pos = initialPosRef.current;
-      if (pos) sendLocateToMap(pos.lat, pos.lon);
-      if (trackPoints.current.length > 0) replayTrackOnMap();
-    };
-    iframeRef.current = iframe;
-    container.appendChild(iframe);
-    return () => {
-      try { container.removeChild(iframe); } catch { /* already gone */ }
-      iframeRef.current = null;
-    };
-  }, [restoreCheckpointPending]);
-
   // ── Pulsing dot while tracking ───────────────────────────────────────────
   const pulse = useSharedValue(1);
   useEffect(() => {
@@ -746,56 +753,38 @@ export default function HikeTrackingScreen() {
 
   // ── Send a GPS point to the live map ─────────────────────────────────────
   const sendPointToMap = useCallback((lat: number, lng: number) => {
-    const msg = JSON.stringify({ type: "recPoint", lat, lng });
-    if (Platform.OS === "web") {
-      try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
-    } else {
-      webViewRef.current?.postMessage(msg);
-    }
+    recordingMapRef.current?.send({ type: "recPoint", lat, lng });
   }, []);
 
   // ── Show current position on map without starting a track ────────────────
   const sendLocateToMap = useCallback((lat: number, lng: number) => {
-    const msg = JSON.stringify({ type: "recLocate", lat, lng });
-    if (Platform.OS === "web") {
-      try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
-    } else {
-      webViewRef.current?.postMessage(msg);
-    }
+    recordingMapRef.current?.send({ type: "recLocate", lat, lng });
   }, []);
 
   // ── Replay the full track on the map (fixes straight-line after unlock) ──
   const replayTrackOnMap = useCallback(() => {
     const points = trackPoints.current.map(p => [p.lat, p.lon] as [number, number]);
     if (points.length === 0) return;
-    const msg = JSON.stringify({ type: "recReplay", points });
-    if (Platform.OS === "web") {
-      try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
-    } else {
-      webViewRef.current?.postMessage(msg);
-    }
+    recordingMapRef.current?.send({ type: "recReplay", points });
   }, []);
 
   // ── Send a community reference route to the map as a ghost overlay ────────
   const sendRouteOverlay = useCallback(async (routeId: string) => {
     if (canonicalRouteIntent) return;
     try {
-      const res = await fetch(`${API_BASE}/tracked-routes/${routeId}`);
-      if (!res.ok) return;
-      const data = await res.json() as { route: { trackPoints: Array<{ lat: number; lon: number }> | null } };
-      const pts = data.route.trackPoints ?? [];
+      const token = await getToken({ skipCache: true });
+      const path = params.communityOwner ? `/activity-community/${encodeURIComponent(params.communityOwner)}/${encodeURIComponent(routeId)}` : `/tracked-routes/${encodeURIComponent(routeId)}`;
+      const res = await fetch(`${API_BASE}${path}`,{headers:token?{Authorization:`Bearer ${token}`}:{},redirect:"error"});
+      if (!res.ok) { setCheckpointError("The reference route is unavailable to you. This recording still saves your own GPS evidence; do not assume the planned line has loaded."); return; }
+      const data = await res.json() as { route: { trackPoints?: Array<{ lat: number; lon: number }> | null; snapshot?: {trackPoints?:Array<{lat:number;lon:number}>} } };
+      const pts = data.route.snapshot?.trackPoints ?? data.route.trackPoints ?? [];
       if (pts.length < 2) return;
       const points = pts.map(p => [p.lat, p.lon]);
       /* The same route the map is drawing is the one to be judged against.
          Taking it from here rather than re-fetching means the line on screen
          and the line in the alert can never disagree. */
       followedRouteRef.current = pts.map(q => ({ latitude: q.lat, longitude: q.lon }));
-      const msg = JSON.stringify({ type: "recPlanned", points });
-      if (Platform.OS === "web") {
-        try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
-      } else {
-        webViewRef.current?.postMessage(msg);
-      }
+      recordingMapRef.current?.send({ type: "recPlanned", points });
     } catch { /* best-effort */ }
   }, [canonicalRouteIntent]);
 
@@ -812,20 +801,17 @@ export default function HikeTrackingScreen() {
   const canonicalRouteOverlaySentRef = useRef<string | null>(null);
   useEffect(() => {
     if (!mapReady || canonicalRouteIntent || !personalRoute.context) return;
-    const msg = JSON.stringify({
+    const msg = {
       type: "recPlanned",
       points: personalRoute.context.route.geometry.map(point => [point.lat, point.lng]),
       endLabel: "Finish",
-    });
-    if (Platform.OS === "web") iframeRef.current?.contentWindow?.postMessage(msg, "*");
-    else webViewRef.current?.postMessage(msg);
+    };
+    recordingMapRef.current?.send(msg);
     if (statusRef.current === "idle") setRouteName(personalRoute.context.route.name);
     return () => {
-      const clear = JSON.stringify({ type: "recPlanned", points: [] });
-      if (Platform.OS === "web") iframeRef.current?.contentWindow?.postMessage(clear, "*");
-      else webViewRef.current?.postMessage(clear);
+      recordingMapRef.current?.send({ type: "recPlanned", points: [] });
     };
-  }, [mapReady, canonicalRouteIntent, personalRoute.context]);
+  }, [mapReady, mapRevision, canonicalRouteIntent, personalRoute.context]);
   useEffect(() => {
     if (!mapReady || !canonicalRouteIntent || !canonicalRouteContext) return;
     const handoffId = canonicalRouteContext.handoffId;
@@ -835,19 +821,35 @@ export default function HikeTrackingScreen() {
     /* Judged against the same line the map is drawing, for the same reason as
        the community overlay: the alert and the picture must agree. */
     followedRouteRef.current = points.map(([latitude, longitude]) => ({ latitude, longitude }));
-    const msg = JSON.stringify({ type: "recPlanned", points });
     try {
-      if (Platform.OS === "web") {
-        const target = iframeRef.current?.contentWindow;
-        if (!target) return;
-        target.postMessage(msg, "*");
-      } else {
-        if (!webViewRef.current) return;
-        webViewRef.current.postMessage(msg);
-      }
+      if (!recordingMapRef.current) return;
+      recordingMapRef.current.send({ type: "recPlanned", points });
       canonicalRouteOverlaySentRef.current = handoffId;
     } catch { /* map may not accept messages until its ready event */ }
-  }, [mapReady, canonicalRouteIntent, canonicalRouteContext]);
+  }, [mapReady, mapRevision, canonicalRouteIntent, canonicalRouteContext]);
+
+  const handleRecordingMapReady = useCallback(() => {
+    setMapReady(true);
+    setMapRevision(revision => revision + 1);
+    referenceRouteSentRef.current = false;
+    canonicalRouteOverlaySentRef.current = null;
+    void sendReferenceRouteToMap();
+    const pos = initialPosRef.current;
+    if (pos) sendLocateToMap(pos.lat, pos.lon);
+    replayTrackOnMap();
+  }, [sendReferenceRouteToMap, sendLocateToMap, replayTrackOnMap]);
+
+  const sendRecordingInsets = useCallback(() => {
+    recordingMapRef.current?.send({ type: "bottomInset", px: Math.ceil(recordingSheetHeight) });
+    // The map viewport itself starts below the measured recording header.
+    recordingMapRef.current?.send({ type: "topInset", px: 0 });
+  }, [recordingSheetHeight]);
+  useEffect(() => {
+    if (mapReady) sendRecordingInsets();
+  }, [mapReady, mapRevision, sendRecordingInsets]);
+  const handleRecordingMapMessage = useCallback((message: Record<string, unknown>) => {
+    if (message.type === "needInsets" || message.type === "ready") sendRecordingInsets();
+  }, [sendRecordingInsets]);
 
   const fetchNearbyRoutes = useCallback(async () => {
     if (canonicalRouteIntent) return;
@@ -940,10 +942,11 @@ export default function HikeTrackingScreen() {
   // Saved every 15 s while tracking/paused so the session can be restored
   // if the OS terminates the process (screen off, memory pressure, etc.).
   const saveActiveSession = useCallback(async () => {
-    if (statusRef.current !== "tracking" && statusRef.current !== "paused" && statusRef.current !== "finished") return;
+    if (statusRef.current !== "tracking" && statusRef.current !== "paused" && statusRef.current !== "finished") return true;
     try {
       const session: HikeCheckpoint = {
         version: 2,
+        activityAudience: activityAudience ?? undefined,
         routeName,
         status: statusRef.current as "tracking" | "paused" | "finished",
         trackPoints: trackPoints.current,
@@ -991,16 +994,21 @@ export default function HikeTrackingScreen() {
       });
       checkpointWriteRef.current = write.catch(() => {});
       await write;
-    } catch { /* ignore — non-critical */ }
+      setCheckpointError(null);
+      return true;
+    } catch {
+      setCheckpointError("Recovery checkpoint could not be stored. Keep this screen open and retry; do not assume this hike can be recovered after closing the app.");
+      return false;
+    }
   }, [routeName, hillMeta.sessionKey, hillMeta.hillName, hillMeta.targetReps,
       hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain, hillMeta.trackingMode,
       hillMeta.expeditionId, hillMeta.routeIdentityKey, hillMeta.summitIdentityKey,
       hillMeta.objectiveType, userId, isOffline, canonicalRouteContext,
       params.routeHandoffId, params.canonicalRouteId, params.canonicalRouteIdentityKey,
-      params.canonicalRouteVersion, params.canonicalMountainId, personalRoute.context]);
+      params.canonicalRouteVersion, params.canonicalMountainId, personalRoute.context,activityAudience]);
 
   useEffect(() => {
-    if (status !== "tracking" && status !== "paused") return;
+    if (status !== "tracking" && status !== "paused" && status!=="finished") return;
     void saveActiveSession(); // snapshot immediately on status change
     const id = setInterval(saveActiveSession, 15_000);
     return () => clearInterval(id);
@@ -1022,6 +1030,7 @@ export default function HikeTrackingScreen() {
     async function doRestore() {
       try {
         const session = await readActiveHike<HikeCheckpoint>(ownerUserId);
+        if(session?.activityAudience && !audienceTouchedRef.current) setActivityAudience(session.activityAudience);
         if (!session) return;
         const ageMs = Date.now() - (session.savedAt ?? 0);
         if (ageMs > 24 * 60 * 60 * 1000) {
@@ -1219,7 +1228,13 @@ export default function HikeTrackingScreen() {
     setStatus("tracking");
     trackStartMsRef.current = Date.now();
     totalPausedMsRef.current = 0;
-    await saveActiveSession();
+    if (!await saveActiveSession()) {
+      Alert.alert("Cannot start safely", "This phone could not store the recording recovery checkpoint. Free up storage and try Start again.");
+      statusRef.current = "idle";
+      setStatus("idle");
+      setNameLocked(false);
+      return;
+    }
 
     const snapshot = stageSnapshotRef.current;
     const start = snapshot && typeof snapshot === "object"
@@ -1342,6 +1357,13 @@ export default function HikeTrackingScreen() {
     () => serialize(startTrackingImpl),
     [serialize, startTrackingImpl],
   );
+  const autoStartAttempted = useRef(false);
+  useEffect(() => {
+    if (params.autoStart !== "1" || autoStartAttempted.current || !personalRoute.ready ||
+        canonicalRouteContextPending || params.restore === "1") return;
+    autoStartAttempted.current = true;
+    void startTracking();
+  }, [params.autoStart, params.restore, personalRoute.ready, canonicalRouteContextPending, startTracking]);
 
   const pauseTrackingImpl = useCallback(async () => {
     if (pauseTogglingRef.current) return;
@@ -1501,6 +1523,11 @@ export default function HikeTrackingScreen() {
 
   // ── Save completed hike ──────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
+    if (!activityAudience) {
+      setAudienceError("Choose Public, Followers only, or Only me before saving.");
+      Alert.alert("Choose an audience", "Your recording is still here. Select who may see it, then save.");
+      return;
+    }
     if (saveInFlightRef.current || discardInFlightRef.current) return;
     saveInFlightRef.current = true;
     setSaving(true);
@@ -1514,6 +1541,9 @@ export default function HikeTrackingScreen() {
     try {
       // 1 ── Always log the completed hike to the hike history
       await logExploreHike({
+        audience: activityAudience,
+        sharingIntentConfirmed: true,
+        elevationQuality: elevationQuality(trackPoints.current),
         name,
         date: new Date().toISOString(),
         distance: distKm,
@@ -1635,7 +1665,7 @@ export default function HikeTrackingScreen() {
       Alert.alert("Hike save needs attention", "Your recording has been kept. Something prevented saving or syncing from finishing. Please try Save again; it will not duplicate your hike.");
     }
   }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
-       addSession, logExploreHike, activeExpeditionId, trackedExpedition, hillMeta, expeditions, patchExpedition, getToken, userId, selectedCanonical, isOffline, canonicalRouteContext]);
+       addSession, logExploreHike, activeExpeditionId, trackedExpedition, hillMeta, expeditions, patchExpedition, getToken, userId, selectedCanonical, isOffline, canonicalRouteContext, activityAudience]);
 
   const stage8Credit = elevationBankQuery.data?.status === "available"
     ? findElevationBankCreditForActivity(elevationBankQuery.data.recentCredits, routeIdRef.current)
@@ -1703,6 +1733,9 @@ export default function HikeTrackingScreen() {
     return (
       <View style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
+          {checkpointError ? <Text accessibilityRole="alert" style={s.msgBody}>{checkpointError}</Text> : null}
+          <Text style={s.msgBody}>{elevationQuality(trackPoints.current).label}</Text>
+          <ActivityAudiencePicker audience={activityAudience} onChange={chooseAudience} error={audienceError} />
           <ActivityCompleteView
             completionPresentation={completionPresentation}
             elevGainM={elevGainM}
@@ -1874,29 +1907,15 @@ export default function HikeTrackingScreen() {
         style={[StyleSheet.absoluteFill, { top: mapTopInset }]}
         testID="recording-map-viewport"
       >
-        {Platform.OS !== "web" ? (
-          restoreCheckpointPending ? (
+        {restoreCheckpointPending ? (
             <View style={{ flex: 1, backgroundColor: "#08111f" }} />
           ) : (
-            <WebView
-              ref={webViewRef}
-              source={{ uri: `${API_BASE}/route-map?recording=1` }}
-              style={{ flex: 1 }}
-              scrollEnabled={false}
-              javaScriptEnabled
-              domStorageEnabled
-              originWhitelist={["*"]}
-              onLoad={() => {
-                setMapReady(true);
-                sendReferenceRouteToMap();
-                const pos = initialPosRef.current;
-                if (pos) sendLocateToMap(pos.lat, pos.lon);
-                if (trackPoints.current.length > 0) replayTrackOnMap();
-              }}
+            <TrackMap
+              recording
+              mapRef={recordingMapRef}
+              onReady={handleRecordingMapReady}
+              onMessage={handleRecordingMapMessage}
             />
-          )
-        ) : (
-          <View ref={webMapContainerRef} style={{ flex: 1 }} />
         )}
       </View>
 
@@ -2053,7 +2072,8 @@ export default function HikeTrackingScreen() {
       )}
 
       {/* ── Bottom sheet ── */}
-      <View style={[s.sheet, { paddingBottom: insets.bottom + 12 }]}>
+      <View style={[s.sheet, { paddingBottom: insets.bottom + 12 }]}
+        onLayout={event => setRecordingSheetHeight(Math.ceil(event.nativeEvent.layout.height))}>
 
         {/* Drag handle — tapping toggles drawer when tracking */}
         <TouchableOpacity
@@ -2238,6 +2258,10 @@ export default function HikeTrackingScreen() {
               <Text style={s.trackOfflineNote}>{offlineNotice(isOffline, status)}</Text>
             ) : null}
 
+            {checkpointError ? <Text accessibilityRole="alert" style={s.trackOfflineNote}>{checkpointError}</Text> : null}
+            {checkpointError ? <TouchableOpacity accessibilityRole="button" style={{minHeight:44,padding:8}}
+              onPress={()=>void saveActiveSession()}><Text style={s.trackOfflineNote}>Retry recovery checkpoint</Text></TouchableOpacity> : null}
+            <Text style={s.trackOfflineNote}>{elevationQuality(trackPoints.current,elapsedSecs).label}</Text>
             {/* The three that get read at arm's length, in gloves, in rain.
                 Everything else is below, where it can be looked for. */}
             <View style={s.primaryStats}>
@@ -2358,9 +2382,9 @@ export default function HikeTrackingScreen() {
           ) : (
             <>
               <Text style={s.confirmTitle}>Finish this hike?</Text>
-              <Text style={s.confirmSub}>Stop tracking and save your route summary.</Text>
+              <Text style={s.confirmSub}>Stop tracking, then review the recording and choose whether to save it.</Text>
               <TouchableOpacity style={s.confirmPrimary} onPress={() => { setConfirmFinish(false); finishHike(); }} activeOpacity={0.85}>
-                <Text style={s.confirmPrimaryText}>Finish & Save</Text>
+                <Text style={s.confirmPrimaryText}>Finish & Review</Text>
               </TouchableOpacity>
             </>
           )}

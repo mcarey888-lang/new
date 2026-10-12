@@ -28,6 +28,7 @@ import {
   type PlannedRoute,
 } from "../utils/plannedRouteApi";
 import { readMountainRoutePackage } from "../utils/mountainHubStorage";
+import { readPlannerDraft } from "../utils/plannerDraftHandoff";
 
 /**
  * Route planner — the map, inside the app.
@@ -70,9 +71,9 @@ interface DraftFromPage {
 
 export default function RoutePlannerScreen() {
   const router = useRouter();
-  const { plannedRouteId, focusLat, focusLng, startLabel, canonicalPackageRouteId, canonicalPackageMountainId, canonicalPackageVersion } =
+  const { draftHandoff, plannedRouteId, focusLat, focusLng, startLabel, canonicalPackageRouteId, canonicalPackageMountainId, canonicalPackageVersion } =
     useLocalSearchParams<{
-      plannedRouteId?: string; focusLat?: string; focusLng?: string; startLabel?: string;
+      draftHandoff?: string; plannedRouteId?: string; focusLat?: string; focusLng?: string; startLabel?: string;
       canonicalPackageRouteId?: string; canonicalPackageMountainId?: string; canonicalPackageVersion?: string;
     }>();
   const insets = useSafeAreaInsets();
@@ -90,6 +91,7 @@ export default function RoutePlannerScreen() {
   const frameRef = useRef<HTMLIFrameElement | null>(null);
 
   const [draft, setDraft] = useState<DraftFromPage | null>(null);
+  const draftRestored = useRef(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -108,6 +110,16 @@ export default function RoutePlannerScreen() {
     if (Platform.OS === "web") frameRef.current?.contentWindow?.postMessage(text, "*");
     else webViewRef.current?.postMessage(text);
   }, []);
+  useEffect(() => {
+    if (!mapReady || !userId || draftHandoff !== "1" || draftRestored.current) return;
+    draftRestored.current = true;
+    void readPlannerDraft(userId).then(value => {
+      if (!value) throw new Error("The drawn route could not be recovered. Return to Track and try Save again.");
+      toPage({ type: "loadRoute", route: value });
+      draftSaveId.current = randomUUID();
+      setDraft(value);
+    }).catch(error => setRouteLoadError(error.message));
+  }, [mapReady, userId, draftHandoff, toPage]);
 
   const onMessage = useCallback((raw: string) => {
     let msg: {

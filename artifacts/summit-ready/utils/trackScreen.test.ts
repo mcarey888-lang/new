@@ -54,7 +54,7 @@ describe("starting a hike never waits for anything", () => {
     expect(TRACK_CODE).not.toMatch(/disabled=\{[^}]*isOffline/);
   });
 
-  it("does not await anything before navigating to the recorder", () => {
+  it("persists the owner-scoped handoff without waiting for network or GPS", () => {
     const start = TRACK_CODE.slice(
       TRACK_CODE.indexOf("const start = useCallback"),
       TRACK_CODE.indexOf("const resume = useCallback"),
@@ -62,7 +62,8 @@ describe("starting a hike never waits for anything", () => {
     expect(start).toContain("router.push");
     /* An await here is a hike that does not begin until a network call
        finishes, which is the fault this whole design avoids. */
-    expect(start).not.toMatch(/\bawait\b/);
+    expect(start).toContain("savePersonalRouteHandoff");
+    expect(start).not.toMatch(/await\s+(fetch|getCurrentPosition|requestForegroundPermissions)/);
   });
 });
 
@@ -90,9 +91,9 @@ describe("an existing recording is resumed, not replaced", () => {
     expect(TRACK_CODE).toMatch(/restore: "1"/);
   });
 
-  it("drops a session too old to resume rather than offering it forever", () => {
-    expect(TRACK_CODE).toMatch(/RESUME_WINDOW_MS/);
-    expect(TRACK_CODE).toMatch(/discardActiveHike/);
+  it("keeps old recordings until the walker explicitly discards them", () => {
+    expect(TRACK_CODE).not.toMatch(/RESUME_WINDOW_MS/);
+    expect(TRACK_CODE).toMatch(/readActiveHike/);
   });
 });
 
@@ -197,8 +198,26 @@ describe("the recording screen", () => {
     /* Recording used to run on a Leaflet page with its own tiles and no
        basemap switch, so the one thing people want on a hill — satellite to
        read the ground — was the one thing recording could not do. */
-    expect(REC_CODE).toContain("/route-map?recording=1");
+    expect(REC_CODE).toContain("<TrackMap");
+    expect(REC_CODE).toContain("mapRef={recordingMapRef}");
+    expect(REC_CODE).toContain("onReady={handleRecordingMapReady}");
+    expect(REC_CODE).not.toContain("<WebView");
+    expect(REC_CODE).not.toContain('document.createElement("iframe")');
+    expect(read("components/track/TrackMap.tsx")).toContain("?recording=1&host=shared-track");
     expect(REC_CODE).not.toContain("/hike-map");
+  });
+
+  it("answers late inset requests and measures the whole recording sheet", () => {
+    expect(REC_CODE).toContain('message.type === "needInsets" || message.type === "ready"');
+    expect(REC_CODE).toContain("setRecordingSheetHeight(Math.ceil(event.nativeEvent.layout.height))");
+    expect(REC_CODE).toContain('type: "bottomInset", px: Math.ceil(recordingSheetHeight)');
+  });
+
+  it("replays live GPS and reference overlays after map style changes", () => {
+    expect(REC_CODE).toContain("referenceRouteSentRef.current = false");
+    expect(REC_CODE).toContain("canonicalRouteOverlaySentRef.current = null");
+    expect(REC_CODE).toContain("replayTrackOnMap()");
+    expect(REC_CODE).toContain("[mapReady, mapRevision, canonicalRouteIntent, personalRoute.context]");
   });
 
   it("shows the three metrics that get read at arm's length", () => {

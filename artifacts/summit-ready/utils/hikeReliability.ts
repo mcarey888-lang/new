@@ -45,6 +45,7 @@ export interface HikeCheckpoint {
   personalRoute?: PersonalRouteHandoff;
   syncState?: "local_only" | "queued" | "synced";
   hillMeta: Record<string, unknown>;
+  activityAudience?: import("./activityAudience").ActivityAudience;
   savedAt: number;
 }
 
@@ -120,7 +121,7 @@ export function shouldRestoreCheckpoint(
   checkpoint: Pick<HikeCheckpoint, "routeId" | "savedAt">,
   options: { now: number; restoreRequested: boolean; requestedRouteId?: string | null },
 ): boolean {
-  if (options.now - checkpoint.savedAt > 24 * 60 * 60 * 1000) return false;
+  if (!Number.isFinite(checkpoint.savedAt)) return false;
   return options.restoreRequested || (
     !!options.requestedRouteId && checkpoint.routeId === options.requestedRouteId
   );

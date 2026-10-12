@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, type ImageSourcePropType } from "react-native";
 import { useAuth } from "@clerk/expo";
+import { tokenBelongsToUser } from "../utils/authRequest";
+import { randomUUID } from "expo-crypto";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   createCommunityPost,
@@ -15,7 +17,7 @@ import {
 import { authenticatedHeaders, responseError } from "@/utils/authRequest";
 import type { CommunityCreate, CommunityHubProps, CommunityPost } from "@/components/profile/CommunityHub";
 
-const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk"}`;
+const BASE_URL = process.env.EXPO_PUBLIC_MAP_BASE?.replace(/\/api\/?$/,"") ?? `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk"}`;
 
 export function useCommunity(visible = true): CommunityHubProps {
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
@@ -25,6 +27,7 @@ export function useCommunity(visible = true): CommunityHubProps {
   const enabled = visible && isLoaded && Boolean(isSignedIn && userId);
   const [busy, setBusy] = useState(false);
   const [imageToken, setImageToken] = useState<{ userId: string; token: string } | null>(null);
+  const postRequest = useRef<{ fingerprint: string; id: string } | null>(null);
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
   const previousUserId = useRef<string | null>(null);
@@ -61,9 +64,11 @@ export function useCommunity(visible = true): CommunityHubProps {
     // Clerk can supply a new getToken function on re-render. Depending on that
     // function here would request a token, update state, then repeat forever.
     setImageToken(current => current?.userId === userId ? current : null);
-    void getTokenRef.current().then(token => { if (active) setImageToken(token ? { userId, token } : null); })
+    const refresh = () => void getTokenRef.current({ skipCache: true }).then(token => { if (active) setImageToken(token ? { userId, token } : null); })
       .catch(() => { if (active) setImageToken(null); });
-    return () => { active = false; };
+    refresh();
+    const interval = setInterval(refresh, 30_000);
+    return () => { active = false; clearInterval(interval); };
   }, [enabled, hasPhotos, userId]);
 
   const [webPhotos, setWebPhotos] = useState<{ userId: string; urls: Record<string, string> }>({ userId: "", urls: {} });
@@ -131,20 +136,27 @@ export function useCommunity(visible = true): CommunityHubProps {
   }, [busy, enabled, revalidate]);
 
   const onCreate = useCallback((input: CommunityCreate) => run(async () => {
-    const token = await getToken();
+    const token = await getToken({skipCache:true});
+    if(!userId || !token || !tokenBelongsToUser(token,userId))throw new Error("Your account changed. Reopen the composer in the correct account.");
     if (!token) throw new Error("Your sign-in session has expired. Sign in again to post; your draft is still here.");
     const isPhoto = input.kind === "photo";
     // Photos remain private until their bytes are safely stored. Visibility is
     // changed only AFTER the upload succeeds, and only when explicitly chosen.
+    const fingerprint = JSON.stringify({ owner: userId, ...input });
+    if (postRequest.current?.fingerprint !== fingerprint) postRequest.current = { fingerprint, id: randomUUID() };
     const created = await createCommunityPost({
       kind: input.kind,
       text: input.text,
       ...(input.badgeId ? { badgeId: input.badgeId } : {}),
       ...(input.badgeTitle ? { badgeTitle: input.badgeTitle } : {}),
       visibility: isPhoto ? "private" : input.visibility,
-    }, { headers: authenticatedHeaders(token) });
+    }, { headers: { ...authenticatedHeaders(token), "X-Idempotency-Key": postRequest.current.id } });
     if (!isPhoto) return;
     try {
+      if(created.post.hasPhoto) {
+        if(input.visibility==="members")await updateCommunityPostVisibility(created.post.id,{visibility:"members"});
+        return;
+      }
       if (!input.photoUri) throw new Error("Select a photo before posting.");
       const response = await fetch(input.photoUri);
       if (!response.ok) throw new Error("Could not read the selected photo.");
@@ -162,11 +174,11 @@ export function useCommunity(visible = true): CommunityHubProps {
         await updateCommunityPostVisibility(created.post.id, { visibility: "members" });
       }
     } catch (error) {
-      // Avoid retaining a private empty photo post if a device upload fails.
-      await deleteCommunityPost(created.post.id).catch(() => {});
+      // Keep an owned private draft for an idempotent retry. A lost response
+      // is not evidence that the upload failed; never delete a committed photo.
       throw error;
     }
-  }), [getToken, run]);
+  }), [getToken, run,userId]);
 
   const onVisibility = useCallback((id: string, visibility: "private" | "members") =>
     run(async () => { await updateCommunityPostVisibility(id, { visibility }); }), [run]);

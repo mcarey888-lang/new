@@ -7,6 +7,257 @@
  */
 import * as zod from "zod";
 
+export const GetActivityAudiencePreferenceResponse = zod.object({
+  audience: zod
+    .union([
+      zod.literal("public"),
+      zod.literal("followers"),
+      zod.literal("private"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  publicAccess: zod.string().optional(),
+});
+
+export const SetActivityAudiencePreferenceBody = zod.object({
+  audience: zod.enum(["public", "followers", "private"]),
+});
+
+/**
+ * @summary Signed-in community recordings, never verified trails; audience enforced server-side
+ */
+export const getActivityRoutesQueryQMax = 120;
+
+export const getActivityRoutesQueryPageMin = 0;
+export const getActivityRoutesQueryPageMax = 1000;
+
+export const getActivityRoutesQueryLatMin = -90;
+export const getActivityRoutesQueryLatMax = 90;
+
+export const getActivityRoutesQueryLngMin = -180;
+export const getActivityRoutesQueryLngMax = 180;
+
+export const getActivityRoutesQueryRadiusKmMax = 100;
+
+export const GetActivityRoutesQueryParams = zod.object({
+  q: zod.coerce.string().max(getActivityRoutesQueryQMax).optional(),
+  page: zod.coerce
+    .number()
+    .min(getActivityRoutesQueryPageMin)
+    .max(getActivityRoutesQueryPageMax)
+    .optional(),
+  saved: zod.enum(["1"]).optional(),
+  lat: zod.coerce
+    .number()
+    .min(getActivityRoutesQueryLatMin)
+    .max(getActivityRoutesQueryLatMax)
+    .optional(),
+  lng: zod.coerce
+    .number()
+    .min(getActivityRoutesQueryLngMin)
+    .max(getActivityRoutesQueryLngMax)
+    .optional(),
+  radiusKm: zod.coerce
+    .number()
+    .min(1)
+    .max(getActivityRoutesQueryRadiusKmMax)
+    .optional(),
+});
+
+export const getActivityRoutesResponseRoutesItemSnapshotIdMax = 256;
+
+export const getActivityRoutesResponseRoutesItemSnapshotNameMax = 256;
+
+export const getActivityRoutesResponseRoutesItemSnapshotDistanceMin = 0;
+
+export const getActivityRoutesResponseRoutesItemSnapshotElevationGainMin = 0;
+
+export const getActivityRoutesResponseRoutesItemSnapshotTimeTakenMin = 0;
+
+export const getActivityRoutesResponseRoutesItemSnapshotNotesMax = 20000;
+
+export const getActivityRoutesResponseRoutesItemSnapshotTrackPointsItemLatMin =
+  -90;
+export const getActivityRoutesResponseRoutesItemSnapshotTrackPointsItemLatMax = 90;
+
+export const getActivityRoutesResponseRoutesItemSnapshotTrackPointsItemLonMin =
+  -180;
+export const getActivityRoutesResponseRoutesItemSnapshotTrackPointsItemLonMax = 180;
+
+export const getActivityRoutesResponseRoutesItemSnapshotTrackPointsMax = 100000;
+
+export const GetActivityRoutesResponse = zod.object({
+  routes: zod.array(
+    zod.object({
+      owner: zod.string(),
+      hikeId: zod.string(),
+      audience: zod.enum(["public", "followers", "private"]),
+      author: zod.object({
+        name: zod.string(),
+        avatarUrl: zod.string().nullish(),
+      }),
+      source: zod.enum(["user_recording"]),
+      verified: zod.boolean(),
+      snapshot: zod.object({
+        id: zod.string().max(getActivityRoutesResponseRoutesItemSnapshotIdMax),
+        name: zod
+          .string()
+          .max(getActivityRoutesResponseRoutesItemSnapshotNameMax),
+        date: zod
+          .string()
+          .describe(
+            "ISO recording timestamp or legacy YYYY-MM-DD activity date",
+          ),
+        distance: zod
+          .number()
+          .min(getActivityRoutesResponseRoutesItemSnapshotDistanceMin),
+        elevationGain: zod
+          .number()
+          .min(getActivityRoutesResponseRoutesItemSnapshotElevationGainMin),
+        timeTaken: zod
+          .number()
+          .min(getActivityRoutesResponseRoutesItemSnapshotTimeTakenMin),
+        notes: zod
+          .string()
+          .max(getActivityRoutesResponseRoutesItemSnapshotNotesMax),
+        trackPoints: zod
+          .array(
+            zod.object({
+              lat: zod
+                .number()
+                .min(
+                  getActivityRoutesResponseRoutesItemSnapshotTrackPointsItemLatMin,
+                )
+                .max(
+                  getActivityRoutesResponseRoutesItemSnapshotTrackPointsItemLatMax,
+                ),
+              lon: zod
+                .number()
+                .min(
+                  getActivityRoutesResponseRoutesItemSnapshotTrackPointsItemLonMin,
+                )
+                .max(
+                  getActivityRoutesResponseRoutesItemSnapshotTrackPointsItemLonMax,
+                ),
+              alt: zod.number().nullish(),
+              ts: zod.number().optional(),
+              acc: zod.number().nullish(),
+              altAcc: zod.number().nullish(),
+            }),
+          )
+          .max(getActivityRoutesResponseRoutesItemSnapshotTrackPointsMax)
+          .optional(),
+      }),
+    }),
+  ),
+  hasMore: zod.boolean(),
+});
+
+export const GetActivityRouteParams = zod.object({
+  owner: zod.coerce.string(),
+  hikeId: zod.coerce.string(),
+});
+
+export const getActivityRouteResponseRouteSnapshotIdMax = 256;
+
+export const getActivityRouteResponseRouteSnapshotNameMax = 256;
+
+export const getActivityRouteResponseRouteSnapshotDistanceMin = 0;
+
+export const getActivityRouteResponseRouteSnapshotElevationGainMin = 0;
+
+export const getActivityRouteResponseRouteSnapshotTimeTakenMin = 0;
+
+export const getActivityRouteResponseRouteSnapshotNotesMax = 20000;
+
+export const getActivityRouteResponseRouteSnapshotTrackPointsItemLatMin = -90;
+export const getActivityRouteResponseRouteSnapshotTrackPointsItemLatMax = 90;
+
+export const getActivityRouteResponseRouteSnapshotTrackPointsItemLonMin = -180;
+export const getActivityRouteResponseRouteSnapshotTrackPointsItemLonMax = 180;
+
+export const getActivityRouteResponseRouteSnapshotTrackPointsMax = 100000;
+
+export const GetActivityRouteResponse = zod.object({
+  route: zod.object({
+    owner: zod.string(),
+    hikeId: zod.string(),
+    audience: zod.enum(["public", "followers", "private"]),
+    author: zod.object({
+      name: zod.string(),
+      avatarUrl: zod.string().nullish(),
+    }),
+    source: zod.enum(["user_recording"]),
+    verified: zod.boolean(),
+    snapshot: zod.object({
+      id: zod.string().max(getActivityRouteResponseRouteSnapshotIdMax),
+      name: zod.string().max(getActivityRouteResponseRouteSnapshotNameMax),
+      date: zod
+        .string()
+        .describe("ISO recording timestamp or legacy YYYY-MM-DD activity date"),
+      distance: zod
+        .number()
+        .min(getActivityRouteResponseRouteSnapshotDistanceMin),
+      elevationGain: zod
+        .number()
+        .min(getActivityRouteResponseRouteSnapshotElevationGainMin),
+      timeTaken: zod
+        .number()
+        .min(getActivityRouteResponseRouteSnapshotTimeTakenMin),
+      notes: zod.string().max(getActivityRouteResponseRouteSnapshotNotesMax),
+      trackPoints: zod
+        .array(
+          zod.object({
+            lat: zod
+              .number()
+              .min(getActivityRouteResponseRouteSnapshotTrackPointsItemLatMin)
+              .max(getActivityRouteResponseRouteSnapshotTrackPointsItemLatMax),
+            lon: zod
+              .number()
+              .min(getActivityRouteResponseRouteSnapshotTrackPointsItemLonMin)
+              .max(getActivityRouteResponseRouteSnapshotTrackPointsItemLonMax),
+            alt: zod.number().nullish(),
+            ts: zod.number().optional(),
+            acc: zod.number().nullish(),
+            altAcc: zod.number().nullish(),
+          }),
+        )
+        .max(getActivityRouteResponseRouteSnapshotTrackPointsMax)
+        .optional(),
+    }),
+  }),
+  followed: zod.boolean(),
+});
+
+export const SetActivityRouteAudienceParams = zod.object({
+  owner: zod.coerce.string(),
+  hikeId: zod.coerce.string(),
+});
+
+export const SetActivityRouteAudienceBody = zod.object({
+  audience: zod.enum(["public", "followers", "private"]),
+});
+
+export const ActOnRecordedActivityRouteParams = zod.object({
+  owner: zod.coerce.string(),
+  hikeId: zod.coerce.string(),
+});
+
+export const actOnRecordedActivityRouteBodyReasonMax = 1000;
+
+export const ActOnRecordedActivityRouteBody = zod.object({
+  action: zod.enum(["save", "unsave", "report", "suggest"]),
+  reason: zod.string().max(actOnRecordedActivityRouteBodyReasonMax).optional(),
+});
+
+export const FollowActivityAuthorParams = zod.object({
+  owner: zod.coerce.string(),
+});
+
+export const UnfollowActivityAuthorParams = zod.object({
+  owner: zod.coerce.string(),
+});
+
 /**
  * @summary List the signed-in walker's private recorded hike backups
  */

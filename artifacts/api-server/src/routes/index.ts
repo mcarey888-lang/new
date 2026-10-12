@@ -23,6 +23,8 @@ import summitsRouter from "./summits";
 import seededTrailsRouter from "./seeded-trails";
 import trackedRoutesRouter from "./tracked-routes";
 import recordedHikesRouter from "./recorded-hikes";
+import activityCommunityRouter from "./activity-community";
+import profileCoverRouter from "./profile-cover";
 import demoLoadRouter from "./demo-load";
 import mountainVerificationRouter from "./mountain-verification";
 import hillSessionRouter from "./hill-session";
@@ -81,6 +83,8 @@ router.use("/atlas", atlasRouter);
 // Mount before the broad requireAuth() routers so anonymous requests receive
 // a JSON 401 rather than Clerk's browser redirect to the app root.
 router.use(communityRouter);
+router.use(profileCoverRouter);
+router.use(activityCommunityRouter);
 
 // trackedRoutesRouter handles its own per-method auth (DELETE requires auth +
 // ownership; GET/POST are public). Auth is enforced inside the router.

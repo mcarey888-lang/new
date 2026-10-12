@@ -224,7 +224,8 @@ export function launchParamsFor(
       ),
     };
   }
-  return { ...buildFreeHikeLaunchContext(shellMode, activeExpeditionId) } as Record<string, string>;
+  // Recording-only is an explicit choice, not an inferred expedition credit.
+  return { ...buildFreeHikeLaunchContext("training", null) } as Record<string, string>;
 }
 
 /** What the bottom sheet calls this recording. */

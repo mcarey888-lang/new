@@ -237,7 +237,7 @@ it("restores only current or explicitly requested hike checkpoints", () => {
   expect(shouldRestoreCheckpoint(checkpoint, {
     now: 10_000 + 25 * 60 * 60 * 1000,
     restoreRequested: true,
-  })).toBe(false);
+  })).toBe(true);
 });
 
 it("keeps the local activity UUID separate from owner-scoped versioned route identity", () => {

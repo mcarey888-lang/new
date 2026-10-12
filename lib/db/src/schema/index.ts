@@ -1,3 +1,4 @@
+export * from "./activity-sharing";
 export * from "./conversations";
 export * from "./messages";
 export * from "./seeded-trails";

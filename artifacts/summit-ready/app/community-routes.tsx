@@ -8,12 +8,15 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ScrollView,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { T } from "@/constants/theme";
+import { CommunityRecordingLibrary } from "@/components/track/CommunityRecordingLibrary";
+import { useAuth } from "@clerk/expo";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -109,7 +112,31 @@ function RouteCard({ route, index }: { route: CommunityRoute; index: number }) {
   );
 }
 
-export default function CommunityRoutes() {
+export default function CommunityRoutes(){
+  const insets=useSafeAreaInsets();
+  const[legacy,setLegacy]=useState(false);
+  if(legacy)return <View style={{flex:1,backgroundColor:T.bg}}>
+    <TouchableOpacity accessibilityRole="button" onPress={()=>setLegacy(false)} style={{padding:16,paddingTop:insets.top+12,minHeight:48}}>
+      <Text style={{color:T.green}}>Back to member recordings</Text>
+    </TouchableOpacity>
+    <LegacyCommunityRoutes/>
+  </View>;
+  return <LinearGradient colors={T.bgGrad} style={{flex:1}}>
+    <ScrollView contentContainerStyle={{paddingTop:Platform.OS==="web"?24:insets.top+8,paddingBottom:40}}>
+      <TouchableOpacity accessibilityRole="button" onPress={()=>router.back()} style={{padding:16,minHeight:48}}>
+        <Text style={{color:T.green}}>Back</Text>
+      </TouchableOpacity>
+      <CommunityRecordingLibrary/>
+      <CommunityRecordingLibrary saved/>
+      <TouchableOpacity accessibilityRole="button" onPress={()=>setLegacy(true)} style={{padding:16,minHeight:48}}>
+        <Text style={{color:T.green}}>Earlier shared recordings (unverified)</Text>
+        <Text style={{color:T.textMuted}}>Unknown historic sharing intent stays owner-only. Earlier merged geometry cannot be treated as an original GPS trace.</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  </LinearGradient>;
+}
+function LegacyCommunityRoutes() {
+  const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
   const [routes, setRoutes] = useState<CommunityRoute[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,7 +146,9 @@ export default function CommunityRoutes() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/tracked-routes`);
+      const token = await getToken({ skipCache: true });
+      if (!token) throw new Error("Sign in to load member routes");
+      const res = await fetch(`${API_BASE}/tracked-routes`,{ headers:{Authorization:`Bearer ${token}`} });
       if (!res.ok) throw new Error("Server error");
       const data = await res.json() as { routes: CommunityRoute[] };
       setRoutes(data.routes);
@@ -128,7 +157,7 @@ export default function CommunityRoutes() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getToken]);
 
   useEffect(() => { loadRoutes(); }, [loadRoutes]);
 

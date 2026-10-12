@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 export const trackedRoutes = pgTable("tracked_routes", {
   id:                text("id").primaryKey(),
   createdBy:         text("created_by"),               // Clerk userId of route creator
+  audience:          text("audience", { enum: ["public", "followers", "private"] }),
   name:              text("name").notNull(),
   location:          text("location").notNull().default("GPS Tracked Route"),
   distanceKm:        real("distance_km").notNull(),

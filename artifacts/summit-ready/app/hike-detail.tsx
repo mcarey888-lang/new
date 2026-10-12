@@ -1,13 +1,15 @@
 import {
   Clock, Gauge, HardDrive, Map, Route, TrendingUp,
 } from "lucide-react-native";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  Pressable,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -19,6 +21,11 @@ import {
 } from "@/components/ui";
 import { formatDuration, formatPace } from "@/utils/readinessEvidencePresentation";
 import { RecordedHikeRecoveryPanel } from "@/components/track/RecordedHikeRecoveryPanel";
+import { RecordedTracePreview } from "@/components/track/RecordedTracePreview";
+import { ActivityAudiencePicker } from "@/components/track/ActivityAudiencePicker";
+import { elevationQuality } from "@/utils/elevationQuality";
+import { exportRecordedGpx, shareRecordedRoute } from "@/utils/recordedHikeExport";
+import { useAuth } from "@clerk/expo";
 
 function buildMapHtml(points: Array<{ lat: number; lon: number }>): string {
   const coords = points.map(p => [p.lat, p.lon] as [number, number]);
@@ -88,7 +95,10 @@ function Stat({ icon, value, label }: {
 export default function HikeDetail() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { exploreHikes } = useApp();
+  const { exploreHikes, updateExploreHike } = useApp();
+  const { userId,getToken } = useAuth();
+  const [showBasemap, setShowBasemap] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const hike = useMemo(() => exploreHikes.find(h => h.id === id), [exploreHikes, id]);
 
@@ -162,17 +172,33 @@ export default function HikeDetail() {
             <View style={s.statsGrid}>
               <Stat icon={<Route size={13} color={BASECAMP.accent} />} value={distanceStr} label="Distance" />
               <Stat icon={<TrendingUp size={13} color={BASECAMP.accent} />} value={ascentStr} label="Elevation gain" />
-              <Stat icon={<Clock size={13} color={BASECAMP.accent} />} value={durationStr} label="Moving time" />
+              <Stat icon={<Clock size={13} color={BASECAMP.accent} />} value={durationStr} label="Recording time" />
               <Stat icon={<Gauge size={13} color={BASECAMP.accent} />} value={paceStr} label="Average pace" />
             </View>
           </SRPanel>
+          <Text style={s.notesText}>{hike.elevationQuality?.label ?? elevationQuality(hike.trackPoints ?? []).label}</Text>
+          <ActivityAudiencePicker audience={hike.sharingIntentConfirmed ? hike.audience ?? null : null}
+            error={detailError} onChange={audience => {
+              void updateExploreHike(hike.id,{ audience, sharingIntentConfirmed:true })
+                .then(()=>setDetailError(null)).catch(error=>setDetailError(error.message));
+            }} />
+          <Pressable accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={() =>
+            void exportRecordedGpx(hike).catch(error=>Alert.alert("GPX not exported",error.message))}>
+            <Text style={s.notesText}>Export my recorded GPX</Text>
+          </Pressable>
+          {hike.sharingIntentConfirmed && hike.audience !== "private" && userId ?
+            <Pressable accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={() =>
+              void shareRecordedRoute(userId,hike.id,()=>getToken({skipCache:true})).catch(error=>setDetailError(error.message))}>
+              <Text style={s.notesText}>Share member route link · recipient needs sign-in and access</Text>
+            </Pressable> : null}
         </View>
 
         {/* ── Route ────────────────────────────────────────────────── */}
         <View style={s.section}>
           <SRSectionHeader title="Route" />
           <View style={s.mapWrap}>
-            {hasRoute ? (
+            {hasRoute && showBasemap ? (Platform.OS === "web" ?
+              <iframe title="Recorded hike basemap" srcDoc={mapHtml!} style={{border:0,width:"100%",height:"100%"}} /> :
               <WebView
                 source={{ html: mapHtml! }}
                 style={s.map}
@@ -180,8 +206,9 @@ export default function HikeDetail() {
                 javaScriptEnabled
                 originWhitelist={["*"]}
                 allowsInlineMediaPlayback
+                onError={() => {setShowBasemap(false);setDetailError("Basemap unavailable. Your recorded trace remains available offline.");}}
               />
-            ) : (
+            ) : hasRoute ? <RecordedTracePreview points={hike.trackPoints!} /> : (
               <View style={s.mapEmpty}>
                 <SREmptyState
                   testID="activity-no-route"
@@ -196,6 +223,9 @@ export default function HikeDetail() {
               </View>
             )}
           </View>
+          {hasRoute ? <Pressable accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={()=>setShowBasemap(v=>!v)}>
+            <Text style={s.notesText}>{showBasemap?"Show offline trace":"Show online basemap (internet required)"}</Text>
+          </Pressable> : null}
         </View>
 
         {/* ── Notes ────────────────────────────────────────────────── */}

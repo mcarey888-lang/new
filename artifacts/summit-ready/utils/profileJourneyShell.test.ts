@@ -165,7 +165,7 @@ describe("no fabricated social data", () => {
     expect(ACCOUNT_CODE).toMatch(/useCommunity\(!suppliedCommunity && !showSettings && \(tab === "feed" \|\| tab === "photos"\)\)/);
     expect(communityHook).toMatch(/const enabled = visible && isLoaded/);
     expect(communityHook).toMatch(/offset \+= 4/);
-    expect(communityHook).toMatch(/getTokenRef\.current\(\)/);
+    expect(communityHook).toMatch(/getTokenRef\.current\(\{\s*skipCache:\s*true\s*\}\)/);
     expect(communityHook).toMatch(/createCommunityPost\([\s\S]*?authenticatedHeaders\(token\)/);
     expect(hub).toMatch(/status === 401 \|\| status === 403/);
     expect(hub).toMatch(/community-submit-error/);

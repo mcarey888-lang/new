@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { WebView } from "react-native-webview";
+import { activityApiBase as API_BASE } from "@/utils/activityAudience";
 
 /**
  * The map, on the Track screen.
@@ -11,12 +12,6 @@ import { WebView } from "react-native-webview";
  * walking chrome: search and drawing put away, layers and recentre kept.
  */
 
-const API_BASE =
-  process.env.EXPO_PUBLIC_MAP_BASE ??
-  (process.env.EXPO_PUBLIC_DOMAIN
-    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-    : "/api");
-
 export interface TrackMapHandle {
   send(message: unknown): void;
 }
@@ -24,19 +19,26 @@ export interface TrackMapHandle {
 interface Props {
   recording: boolean;
   onMessage?: (message: Record<string, unknown>) => void;
+  onReady?: () => void;
   mapRef?: React.MutableRefObject<TrackMapHandle | null>;
 }
 
-export function TrackMap({ recording, onMessage, mapRef }: Props) {
+export function TrackMap({ recording, onMessage, onReady, mapRef }: Props) {
   const webViewRef = useRef<WebView>(null);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const hostRef = useRef<View>(null);
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const recordingRef = useRef(recording);
+  recordingRef.current = recording;
 
   /* Built once and kept: reloading the page on every state change would throw
      away the recorded track drawn on it. */
-  const url = `${API_BASE}/route-map${recording ? "?recording=1" : ""}`;
+  // A shared-host identity also avoids reusing a fresh cached legacy wrapper page.
+  // Do not disable tile/asset caching: only the application-page URL changes.
+  const url = `${API_BASE}/route-map${recording ? "?recording=1&host=shared-track" : "?host=shared-track"}`;
   const urlRef = useRef(url);
 
   const send = useCallback((message: unknown) => {
@@ -49,6 +51,19 @@ export function TrackMap({ recording, onMessage, mapRef }: Props) {
       `window.dispatchEvent(new MessageEvent("message",{data:${JSON.stringify(text)}}));true;`,
     );
   }, []);
+
+  const receive = useCallback((data: Record<string, unknown>) => {
+    if (data.type === "ready") {
+      // Replay the latest mode after style/page loading, not a lost early message.
+      // An initially normal map may now be drawing a route. Reasserting false
+      // would reopen its search UI over the drawing toolbar on a layer change.
+      if (recordingRef.current || urlRef.current.includes("recording=1")) {
+        send({ type: "recording", on: recordingRef.current });
+      }
+      onReadyRef.current?.();
+    }
+    onMessageRef.current?.(data);
+  }, [send]);
 
   useEffect(() => {
     if (mapRef) mapRef.current = { send };
@@ -73,7 +88,7 @@ export function TrackMap({ recording, onMessage, mapRef }: Props) {
       if (event.source !== iframe.contentWindow) return;
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        if (data && typeof data === "object") onMessageRef.current?.(data as Record<string, unknown>);
+        if (data && typeof data === "object") receive(data as Record<string, unknown>);
       } catch { /* not ours */ }
     };
     window.addEventListener("message", listener);
@@ -82,7 +97,7 @@ export function TrackMap({ recording, onMessage, mapRef }: Props) {
       try { host.removeChild(iframe); } catch { /* already gone */ }
       frameRef.current = null;
     };
-  }, []);
+  }, [receive]);
 
   if (Platform.OS === "web") {
     return <View ref={hostRef} style={StyleSheet.absoluteFill} collapsable={false} />;
@@ -103,7 +118,7 @@ export function TrackMap({ recording, onMessage, mapRef }: Props) {
       onMessage={event => {
         try {
           const data = JSON.parse(event.nativeEvent.data);
-          if (data && typeof data === "object") onMessageRef.current?.(data);
+          if (data && typeof data === "object") receive(data);
         } catch { /* not ours */ }
       }}
     />

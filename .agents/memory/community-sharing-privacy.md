@@ -9,6 +9,18 @@ Member sharing is an opt-in, per-post audience choice between Only me and all si
 
 **How to apply:** Preserve private defaults on all new posting surfaces, isolate cached private posts and photo URLs by active account on shared devices, strip photo metadata before storing, and enforce member/owner checks on every media read.
 
+Recorded-hike audiences are a separate policy: the first use requires an explicit Public / Followers / Only me choice, remembered for future recordings with a per-recording override. Public means signed-in members, not anonymous visitors. Followers must be backed by a genuine following relationship. Unknown legacy intent stays owner-private until reviewed.
+
+**Why:** The repair package explicitly defines this model; a posting default is not permission to publish a hike, and historical uploads do not establish consent.
+
+**How to apply:** Never retroactively apply a new default to existing records. Keep posts and photos separately opt-in, isolate unfinished drafts and recording state across account changes, and re-check access whenever a saved reference is opened.
+
+Only the created route actually walked qualifies for an offer to share, not every planned route after one completion. A saved community route is a reference; following it requires a new GPS recording. Community recordings and proposed trails are unverified until an independent review approves them.
+
+**Why:** The user chose completion of each route and an explicit share prompt, rather than automatic publication or crowd averages being treated as verified routes.
+
+**How to apply:** Preserve original recorded geometry and keep moderation, personal planning, recording evidence, and canonical catalogue approval separate.
+
 Sample member stories are presentation-only examples, visibly labeled as fictional. Never seed them into the member API or mix sample achievements into personal progress; show them separately when the real feed is empty or unavailable, and do not let them conceal a feed error.
 
 **Why:** The user wanted to see what a populated community could look like before real members post. Treating fictional members as live accounts would misrepresent social activity and blur the user's private achievement totals.

@@ -1,17 +1,23 @@
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
 import { db, trackedRoutes, routeContributions } from "@workspace/db";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
+const visibleTo = (viewer: string) => or(eq(trackedRoutes.createdBy, viewer),
+  eq(trackedRoutes.audience, "public"),
+  and(eq(trackedRoutes.audience, "followers"), sql`EXISTS(SELECT 1 FROM activity_follows f WHERE f.follower=${viewer} AND f.followed=${trackedRoutes.createdBy})`));
+router.use("/tracked-routes", requireAuth({ json: true }));
 
 const trackPointSchema = z.object({
-  lat: z.number(),
-  lon: z.number(),
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180),
   alt: z.number().nullable(),
   ts:  z.number(),
+  acc: z.number().nullable().optional(),
+  altAcc: z.number().nullable().optional(),
 });
 
 const submitSchema = z.object({
@@ -27,6 +33,8 @@ const submitSchema = z.object({
   startLng:      z.number().nullable().optional(),
   trackPoints:   z.array(trackPointSchema).default([]),
   notes:         z.string().default(""),
+  audience: z.enum(["public", "followers", "private"]).optional(),
+  sharingIntentConfirmed: z.boolean().optional(),
 });
 
 // ── Refinement helpers ────────────────────────────────────────────────────────
@@ -92,9 +100,10 @@ router.post("/tracked-routes", requireAuth({ json: true }), async (req, res) => 
   }
 
   try {
-    await db.insert(trackedRoutes).values({
+    const inserted = await db.insert(trackedRoutes).values({
       id:            d.id,
       createdBy:     userId,
+      audience: d.sharingIntentConfirmed ? d.audience ?? "private" : null,
       name:          d.name,
       location:      d.location,
       distanceKm:    d.distanceKm,
@@ -106,7 +115,16 @@ router.post("/tracked-routes", requireAuth({ json: true }), async (req, res) => 
       startLng:      d.startLng ?? null,
       trackPoints:   d.trackPoints,
       notes:         d.notes,
-    }).onConflictDoNothing();
+    }).onConflictDoNothing().returning({ id: trackedRoutes.id });
+
+    if (!inserted.length) {
+      const [existing] = await db.select({ createdBy: trackedRoutes.createdBy })
+        .from(trackedRoutes).where(eq(trackedRoutes.id, d.id)).limit(1);
+      if (existing?.createdBy !== userId) {
+        res.status(409).json({ error: "Route identity conflict" });
+        return;
+      }
+    }
 
     req.log.info({ id: d.id, name: d.name }, "Tracked route saved");
     res.status(201).json({ ok: true, id: d.id });
@@ -135,6 +153,7 @@ router.get("/tracked-routes", async (req, res) => {
         submittedAt:       trackedRoutes.submittedAt,
       })
       .from(trackedRoutes)
+      .where(visibleTo(getAuth(req).userId!))
       .orderBy(desc(trackedRoutes.submittedAt))
       .limit(200);
 
@@ -171,6 +190,7 @@ router.get("/tracked-routes/nearby", async (req, res) => {
         submittedAt:       trackedRoutes.submittedAt,
       })
       .from(trackedRoutes)
+      .where(visibleTo(getAuth(req).userId!))
       .orderBy(desc(trackedRoutes.submittedAt))
       .limit(200);
 
@@ -197,7 +217,7 @@ router.get("/tracked-routes/:id", async (req, res) => {
     const rows = await db
       .select()
       .from(trackedRoutes)
-      .where(eq(trackedRoutes.id, id))
+      .where(and(eq(trackedRoutes.id, String(id)), visibleTo(getAuth(req).userId!)))
       .limit(1);
     if (rows.length === 0) { res.status(404).json({ error: "Not found" }); return; }
     res.json({ route: rows[0] });
@@ -240,7 +260,7 @@ router.post("/tracked-routes/:id/contribute", requireAuth({ json: true }), async
       const rows = await tx
         .select()
         .from(trackedRoutes)
-        .where(eq(trackedRoutes.id, id))
+        .where(and(eq(trackedRoutes.id, id), visibleTo(userId)))
         .limit(1);
 
       if (rows.length === 0) {
@@ -275,25 +295,15 @@ router.post("/tracked-routes/:id/contribute", requireAuth({ json: true }), async
         durationSecs:     d.durationSecs,
       });
 
-      const canonicalPts = canonical.trackPoints as LatLon[];
-      const newPts        = d.trackPoints as LatLon[];
-      const merged        = mergeCanonical(canonicalPts, newPts, canonical.contributionCount);
-
       const n    = canonical.contributionCount + 1;
-      const wNew = 1 / (n + 1);
       await tx
         .update(trackedRoutes)
         .set({
-          trackPoints:       merged,
           contributionCount: sql`contribution_count + 1`,
-          distanceKm:        canonical.distanceKm * (1 - wNew) + d.distanceKm * wNew,
-          elevationGain:     Math.round(canonical.elevationGain * (1 - wNew) + d.elevationGain * wNew),
-          elevationLoss:     Math.round(canonical.elevationLoss * (1 - wNew) + d.elevationLoss * wNew),
-          durationSecs:      Math.round(canonical.durationSecs  * (1 - wNew) + d.durationSecs  * wNew),
         })
         .where(eq(trackedRoutes.id, id));
 
-      req.log.info({ id, contributions: n }, "Route contribution merged");
+      req.log.info({ id, contributions: n }, "Route contribution stored separately; reference geometry unchanged");
       res.status(200).json({ ok: true, contributions: n });
     });
   } catch (err) {

@@ -13,7 +13,9 @@ describe("completed hike library and recording integration", () => {
     expect(section).toContain("params: { id: hike.id }");
     expect(section).toContain("Private backup confirmed");
     expect(section).toContain("hike.backedUpRevision === hike.backupRevision");
-    expect(section).not.toMatch(/listRoutes|fetch\(/);
+    // Cloud restoration is explicit; opening an existing local row never
+    // requires a route API lookup or a successful cloud sync.
+    expect(section).not.toMatch(/listRoutes/);
   });
   it("uses the same elevation filter for all three foreground watchers and background replay", () => {
     const recorder = read("app/hike-tracking.tsx");

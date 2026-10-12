@@ -1,5 +1,6 @@
 import { ChevronRight, Settings, UserRound } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState,useRef } from "react";
+import {tokenBelongsToUser} from "@/utils/authRequest";
 import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,6 +9,11 @@ import { SRUnderlineTabs } from "@/components/ui";
 import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import type { RankRequirementResult } from "@/utils/rankDomain";
+import { useAuth } from "@clerk/expo";
+import { router } from "expo-router";
+import { Platform } from "react-native";
+import { activityApiBase } from "@/utils/activityAudience";
+import { CommunityRecordingLibrary } from "@/components/track/CommunityRecordingLibrary";
 
 export type PrimaryProfileTab = "feed" | "saved" | "profile" | "achievements" | "photos" | "stats";
 
@@ -57,6 +63,27 @@ export function PrimaryProfilePresentation({
   topInset,
 }: Props) {
   const [approvedCoverUri, setApprovedCoverUri] = useState<string | null>(null);
+  const { userId, getToken } = useAuth();
+  const coverTokenRef=useRef(getToken);coverTokenRef.current=getToken;
+  const [personalCoverState, setPersonalCover] = useState<{ownerUserId:string;uri:string;headers?:Record<string,string>}|null>(null);
+  const personalCover=personalCoverState?.ownerUserId===userId?personalCoverState:null;
+  useEffect(()=>{
+    let active=true;let objectUrl:string|null=null;setPersonalCover(null);
+    const load=async()=>{
+      if(!userId)return;
+      const token=await coverTokenRef.current({skipCache:true});if(!token || !tokenBelongsToUser(token,userId))return;
+      const uri=`${activityApiBase}/activity-community/profile-cover`;
+      if(Platform.OS!=="web"){if(active)setPersonalCover({ownerUserId:userId,uri,headers:{Authorization:`Bearer ${token}`}});return;}
+      const response=await fetch(uri,{headers:{Authorization:`Bearer ${token}`}});
+      if(!response.ok)return;
+      const blob=await response.blob();if(!active)return;
+      if(objectUrl)URL.revokeObjectURL(objectUrl);
+      objectUrl=URL.createObjectURL(blob);setPersonalCover({ownerUserId:userId,uri:objectUrl});
+    };
+    void load().catch(()=>{});
+    const interval=setInterval(()=>void load().catch(()=>{}),30_000);
+    return()=>{active=false;clearInterval(interval);if(objectUrl)URL.revokeObjectURL(objectUrl);};
+  },[userId]);
   const ascentProgress = nextRankAscent?.availability === "available" && nextRankAscent.remaining !== null
     ? nextRankAscent.remaining > 0
       ? `+${nextRankAscent.remaining.toLocaleString("en-GB")} m eligible ascent to go`
@@ -79,13 +106,17 @@ export function PrimaryProfilePresentation({
     <>
       <View style={styles.hero}>
         <View style={styles.cover}>
-          {approvedCoverUri ? (
-            <ImageBackground
-              source={{ uri: approvedCoverUri }}
-              onError={() => setApprovedCoverUri(null)}
+          {personalCover || approvedCoverUri ? (
+            personalCover?<ExpoImage
+              source={personalCover} cachePolicy="none" contentFit="cover"
+              style={StyleSheet.absoluteFill} onError={()=>setPersonalCover(null)}
+              accessibilityLabel="Your private profile cover"
+            />:<ImageBackground
+              source={personalCover ?? { uri: approvedCoverUri! }}
+              onError={() => {if(personalCover)setPersonalCover(null);else setApprovedCoverUri(null);}}
               resizeMode="cover"
               style={StyleSheet.absoluteFill}
-              accessibilityLabel="Approved SummitReady profile cover artwork"
+              accessibilityLabel={personalCover?"Your private profile cover":"Approved SummitReady profile cover artwork"}
             />
           ) : (
             <View style={StyleSheet.absoluteFill}>
@@ -173,12 +204,21 @@ export function PrimaryProfilePresentation({
           </View>
         </View>
       </View>
+      {isSignedIn ? <View style={{flexDirection:"row",flexWrap:"wrap",paddingHorizontal:16}}>
+        <TouchableOpacity accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={()=>router.push("/edit-profile" as never)}>
+          <Text style={{color:BASECAMP.accent}}>Edit profile</Text>
+        </TouchableOpacity>
+        <TouchableOpacity accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={()=>router.push("/community-routes" as never)}>
+          <Text style={{color:BASECAMP.accent}}>Discover member routes</Text>
+        </TouchableOpacity>
+      </View>:null}
       <SRUnderlineTabs
         options={PRIMARY_PROFILE_TABS}
         value={selectedTab}
         onChange={onTabChange}
         style={styles.tabs}
       />
+      {selectedTab==="saved" ? <CommunityRecordingLibrary saved /> : null}
     </>
   );
 }

@@ -115,11 +115,15 @@ describe("the offline-first architecture is intact", () => {
     /* The planned line the recorded track is compared against. Renamed when
        recording moved onto the shared MapLibre map, whose own "route" and
        "clear" already meant the drawn route. */
-    expect(TRACK_CODE).toMatch(/JSON\.stringify\(\{ type: "recPlanned", points \}\)/);
-    expect(TRACK_CODE).toMatch(/target\.postMessage\(msg, "\*"\)/);
-    expect(TRACK_CODE).toMatch(/webViewRef\.current\.postMessage\(msg\)/);
-    expect(TRACK_CODE.match(/setMapReady\(true\)/g) ?? []).toHaveLength(2);
-    expect(TRACK_CODE.match(/trackPoints\.current\.length > 0\) replayTrackOnMap\(\)/g) ?? []).toHaveLength(2);
+    expect(TRACK_CODE).toMatch(/recordingMapRef\.current\.send\(\{ type: "recPlanned", points \}\)/);
+    const map = code(read("components/track/TrackMap.tsx"));
+    expect(map).toContain('contentWindow?.postMessage(text, "*")');
+    expect(map).toContain("injectJavaScript");
+    // One shared ready callback replaces separate native and browser on-load paths.
+    expect(TRACK_CODE.match(/setMapReady\(true\)/g) ?? []).toHaveLength(1);
+    expect(TRACK_CODE).toContain("onReady={handleRecordingMapReady}");
+    expect(TRACK_CODE).toContain("replayTrackOnMap()");
+    expect(TRACK_CODE).toContain("if (points.length === 0) return;");
   });
 
   it("shows optional route start metadata as route facts, not current GPS altitude", () => {
@@ -130,7 +134,8 @@ describe("the offline-first architecture is intact", () => {
   });
 
   it("isolates canonical intent from community tracked-route fetches and picker", () => {
-    expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent\) return;[\s\S]*?fetch\(`\$\{API_BASE\}\/tracked-routes\/\$\{routeId\}`\)/);
+    expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent\) return;[\s\S]*?\/tracked-routes\/\$\{encodeURIComponent\(routeId\)\}/);
+    expect(TRACK_CODE).toMatch(/communityOwner/);
     expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent\) return;[\s\S]*?tracked-routes\/nearby/);
     expect(TRACK_CODE).toMatch(/\{!canonicalRouteIntent \? \([\s\S]*?Pick a nearby route/);
     expect(TRACK_CODE).toMatch(/visible=\{nearbyPickerOpen && !canonicalRouteIntent\}/);
@@ -142,8 +147,8 @@ describe("the offline-first architecture is intact", () => {
   });
 
   it("resolves restored canonical identity before mounting the map", () => {
-    expect(TRACK_CODE).toMatch(/if \(restoreCheckpointPending\) return;/);
-    expect(TRACK_CODE).toMatch(/restoreCheckpointPending \? \([\s\S]*?<WebView/);
+    expect(TRACK_CODE).toMatch(/restoreCheckpointPending \? \([\s\S]*?<TrackMap/);
+    expect(TRACK_CODE).not.toContain("<WebView");
     expect(TRACK_CODE).toMatch(/setRestoredCanonicalRouteIntent\(true\)/);
   });
 

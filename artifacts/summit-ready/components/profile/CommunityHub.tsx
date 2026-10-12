@@ -2,6 +2,7 @@ import { Camera, ChevronDown, Flag, ImagePlus, RefreshCw, Send, Trash2, LockKeyh
 import * as ImagePicker from "expo-image-picker";
 import { Image as ExpoImage } from "expo-image";
 import React, { useEffect, useState } from "react";
+import {useAuth} from "@clerk/expo";
 import { Alert, Image, type ImageSourcePropType, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
 import { DemoCommunityPreview } from "@/components/profile/DemoCommunityPreview";
@@ -52,6 +53,10 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
   const [kind, setKind] = useState<CommunityCreate["kind"]>("story");
   const [text, setText] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const {userId: draftOwner}=useAuth();
+  useEffect(()=>{
+    setText("");setPhotoUri(null);setAudience("private");setComposing(false);
+  },[draftOwner]);
   const [audience, setAudience] = useState<"private" | "members">("private");
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -115,6 +120,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
       setAudience("private");
       setSubmitError(null);
       setComposing(false);
+      if (audience === "private") setView("mine");
     } catch (error) {
       const status = error && typeof error === "object" && "status" in error ? error.status : null;
       const message = status === 401 || status === 403

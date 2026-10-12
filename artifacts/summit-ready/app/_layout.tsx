@@ -36,7 +36,7 @@ SplashScreen.preventAutoHideAsync();
 // Point the API client at the production API for native builds.
 // Relative paths work automatically in web/preview; this is a no-op there.
 const apiDomain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
-setBaseUrl(`https://${apiDomain}`);
+setBaseUrl(process.env.EXPO_PUBLIC_MAP_BASE?.replace(/\/api\/?$/, "") ?? `https://${apiDomain}`);
 
 const queryClient = new QueryClient();
 

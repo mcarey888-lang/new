@@ -164,10 +164,10 @@ describe("handing the recorder its params", () => {
     expect(params["expeditionId"]).toBeUndefined();
   });
 
-  it("carries the expedition id on a free hike inside an expedition", () => {
+  it("does not silently credit an expedition when recording-only was selected", () => {
     const params = launchParamsFor(FREE_HIKE, "expedition", "exp-1");
     expect(params["trackingMode"]).toBe("freehike");
-    expect(params["expeditionId"]).toBe("exp-1");
+    expect(params["expeditionId"]).toBeUndefined();
   });
 });
 

@@ -21,9 +21,22 @@ export function CompletedHikesSection() {
     const originalOwner = userId;
     setRestoring(true); setRestoreMessage(null);
     try {
-      const result = await listRecordedHikeBackups({ headers: authenticatedJsonHeaders(await getToken({ skipCache: true })) });
+      const backups: Array<{hikeId:string;snapshot:unknown}> = [];
+      let cursor:string|null=null;
+      for(let page=0;page<200;page++){
+        const response=await fetch(`${process.env.EXPO_PUBLIC_MAP_BASE ?? `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk"}/api`}/recorded-hikes${cursor?`?cursor=${encodeURIComponent(cursor)}`:""}`,
+          {headers:authenticatedJsonHeaders(await getToken({skipCache:true}))});
+        if(!response.ok)throw new Error("Private backup page could not load");
+        const result=await response.json() as {backups:Array<{hikeId:string;snapshot:unknown}>;nextCursor?:string|null};
+        if(owner.current!==originalOwner)return;
+        backups.push(...result.backups);
+        if(!result.nextCursor){cursor=null;break;}
+        if(result.nextCursor===cursor)throw new Error("Private backup pagination did not advance");
+        cursor=result.nextCursor;
+      }
+      if(cursor)throw new Error("More than 20,000 hikes require another restore batch");
       let restored = 0;
-      for (const item of result.backups) {
+      for (const item of backups) {
         if (owner.current !== originalOwner) return;
         if (exploreHikes.some(h => h.id === item.hikeId)) continue;
         const snapshot = item.snapshot as unknown as ExploreHike;

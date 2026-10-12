@@ -9,7 +9,7 @@ export function syncOutboxKey(userId: string): string {
   return `${LEGACY_SYNC_OUTBOX_KEY}_${userId}`;
 }
 
-export type SyncOutboxKind = "hill-session" | "community-route" | "private-hike" | "private-hike-delete";
+export type SyncOutboxKind = "hill-session" | "community-route" | "private-hike" | "private-hike-delete" | "activity-preference" | "canonical-activity";
 export interface SyncOutboxItem {
   ownerUserId: string;
   id: string;
@@ -18,6 +18,7 @@ export interface SyncOutboxItem {
   method: "POST" | "PUT" | "DELETE";
   shareConsent?: boolean;
   lastError?: string;
+  permanentFailure?: boolean;
   generation?: string;
   body: unknown;
   state: "pending" | "failed";
@@ -117,14 +118,16 @@ export async function retrySyncOutbox(
     });
     if (current.length === 0) return;
 
-    const outcomes = new Map<string, { updatedAt: number; generation?: string; succeeded: boolean; error?: string; deletedHikeId?: string; receipt?: { hikeId: string; revision: string } }>();
+    const outcomes = new Map<string, { updatedAt: number; generation?: string; succeeded: boolean; error?: string; deletedHikeId?: string; receipt?: { hikeId: string; revision: string }; permanentFailure?:boolean }>();
     for (const item of current) {
+      if(item.permanentFailure) continue;
       // Legacy auto-publication is not permission to share a private GPS trace.
       if (item.kind === "community-route" && !item.shareConsent) continue;
       let succeeded = false;
       let error: string | undefined;
       let receipt: { hikeId: string; revision: string } | undefined;
       let deletedHikeId: string | undefined;
+      let permanentFailure = false;
       try {
         const token = await getToken();
         if (!token) throw new Error("Authentication required");
@@ -145,10 +148,16 @@ export async function retrySyncOutbox(
             redirect: "error",
           });
           if (!res.ok) {
+            permanentFailure=[400,403,409,413,422].includes(res.status);
             const body = await res.json().catch(() => ({})) as { error?: string };
             throw new Error(res.status === 401
               ? "Your sign-in could not be verified. Sign in again, then retry."
               : body.error ?? `Backup failed (HTTP ${res.status})`);
+          }
+          if(item.kind==="canonical-activity") {
+            const result=await res.json() as {status?:string;canonicalActivityId?:string};
+            if(result.status==="disabled")throw new Error("Canonical account/elevation processing is disabled on this server. The private backup is independent.");
+            if(!result.canonicalActivityId)throw new Error("Canonical account processing was not acknowledged.");
           }
           const acknowledgement = res.status === 204 ? null : await res.json();
           if (item.kind === "private-hike-delete") {
@@ -172,7 +181,7 @@ export async function retrySyncOutbox(
         succeeded = false;
         error = caught instanceof Error ? caught.message : "Backup failed. Your phone copy is unchanged.";
       }
-      outcomes.set(item.id, { updatedAt: item.updatedAt, generation: item.generation, succeeded, error, receipt, deletedHikeId });
+      outcomes.set(item.id, { updatedAt: item.updatedAt, generation: item.generation, succeeded, error, receipt, deletedHikeId, permanentFailure });
     }
 
     // Reconcile under the lock. Never remove an item that was replaced with a
@@ -201,6 +210,7 @@ export async function retrySyncOutbox(
           attempts: item.attempts + 1,
           updatedAt: Date.now(),
           lastError: outcome.error,
+          permanentFailure: outcome.permanentFailure,
         }];
       });
       await AsyncStorage.setItem(syncOutboxKey(userId), JSON.stringify(next));

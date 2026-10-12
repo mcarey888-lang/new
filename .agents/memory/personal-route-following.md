@@ -30,3 +30,15 @@ message vocabulary while updating the community and canonical overlays.
 **How to apply:** Preserve the owner-scoped following hook and recovery snapshot.
 Check personal, community and canonical overlay handoffs against the new map
 protocol; never replace actual GPS with planned geometry to make a line appear.
+
+All tracking and resume entry points must use the same current map experience:
+Explore, mountain routes, training sessions, saved/community routes and
+expeditions are not separate recording layouts.
+
+**Why:** The user found Explore tracking appeared to open an older layout and
+explicitly requested consistent tracking throughout the app.
+
+**How to apply:** Remove obsolete application wrappers/launch targets while
+preserving actual GPS, owned recovery, route references and attribution
+clearance. This does not authorize deleting historic records or the retained
+server rollback page.

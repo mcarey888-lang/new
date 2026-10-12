@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import express, { Router, type IRouter, type Request, type Response } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
@@ -66,11 +66,15 @@ function postResponse(post: typeof communityPosts.$inferSelect, author: { name: 
 }
 
 async function getAuthor(userId: string): Promise<{ name: string; avatarUrl: string | null }> {
-  const user = await clerkClient.users.getUser(userId);
-  const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
-    || user.username
-    || "SummitReady member";
-  return { name, avatarUrl: user.imageUrl || null };
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
+      || user.username || "SummitReady member";
+    return { name, avatarUrl: user.imageUrl || null };
+  } catch {
+    // A durable post and everyone else's feed must survive profile outages.
+    return { name: "SummitReady member", avatarUrl: null };
+  }
 }
 
 async function buildPostResponse(post: typeof communityPosts.$inferSelect) {
@@ -88,7 +92,7 @@ async function buildPostResponses(posts: readonly (typeof communityPosts.$inferS
   });
 }
 
-function privateObjectLocation(storedPath: string) {
+export function privateObjectLocation(storedPath: string) {
   const privateDir = objectStorage.getPrivateObjectDir().replace(/\/+$/, "");
   if (!storedPath.startsWith(`${privateDir}/`)) {
     throw new Error("Community photo path is outside the private object directory");
@@ -124,15 +128,26 @@ router.post("/community/posts", postWriteLimiter, async (req, res) => {
   const safeVisibility: CommunityVisibility = kind === "photo"
     ? "private"
     : requestedVisibility as CommunityVisibility;
-  const [post] = await db.insert(communityPosts).values({
-    id: randomUUID(),
+  const requestId = req.get("X-Idempotency-Key");
+  if (requestId && !/^[A-Za-z0-9_-]{8,128}$/.test(requestId)) {
+    res.status(400).json({ error: "Invalid post request ID" }); return;
+  }
+  const id = requestId ? `post_${createHash("sha256").update(`${userId}:${requestId}`).digest("hex")}` : randomUUID();
+  const [inserted] = await db.insert(communityPosts).values({
+    id,
     ownerUserId: userId,
     kind: kind as CommunityKind,
     text: text as string,
     badgeId: badgeId as string | null,
     badgeTitle: badgeTitle as string | null,
     visibility: safeVisibility,
-  }).returning();
+  }).onConflictDoNothing().returning();
+  const post = inserted ?? (await db.select().from(communityPosts).where(and(
+    eq(communityPosts.id, id), eq(communityPosts.ownerUserId, userId),
+  )).limit(1))[0];
+  if (post && (post.kind !== kind || post.text !== text || post.badgeId !== badgeId || post.badgeTitle !== badgeTitle)) {
+    res.status(409).json({ error: "This post request was already used for different content." }); return;
+  }
   if (!post) {
     res.status(500).json({ error: "Could not create community post" });
     return;

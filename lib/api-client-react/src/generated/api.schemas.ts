@@ -5,6 +5,57 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type ActivityRouteActionInputAction =
+  (typeof ActivityRouteActionInputAction)[keyof typeof ActivityRouteActionInputAction];
+
+export const ActivityRouteActionInputAction = {
+  save: "save",
+  unsave: "unsave",
+  report: "report",
+  suggest: "suggest",
+} as const;
+
+export interface ActivityRouteActionInput {
+  action: ActivityRouteActionInputAction;
+  /** @maxLength 1000 */
+  reason?: string;
+}
+
+export type ActivityAudienceInputAudience =
+  (typeof ActivityAudienceInputAudience)[keyof typeof ActivityAudienceInputAudience];
+
+export const ActivityAudienceInputAudience = {
+  public: "public",
+  followers: "followers",
+  private: "private",
+} as const;
+
+export interface ActivityAudienceInput {
+  audience: ActivityAudienceInputAudience;
+}
+
+export type ActivityCommunityRouteAudience =
+  (typeof ActivityCommunityRouteAudience)[keyof typeof ActivityCommunityRouteAudience];
+
+export const ActivityCommunityRouteAudience = {
+  public: "public",
+  followers: "followers",
+  private: "private",
+} as const;
+
+export type ActivityCommunityRouteAuthor = {
+  name: string;
+  /** @nullable */
+  avatarUrl?: string | null;
+};
+
+export type ActivityCommunityRouteSource =
+  (typeof ActivityCommunityRouteSource)[keyof typeof ActivityCommunityRouteSource];
+
+export const ActivityCommunityRouteSource = {
+  user_recording: "user_recording",
+} as const;
+
 export type PrivateRecordedHikeSnapshotTrackPointsItem = {
   /**
    * @minimum -90
@@ -44,6 +95,16 @@ export interface PrivateRecordedHikeSnapshot {
   /** @maxItems 100000 */
   trackPoints?: PrivateRecordedHikeSnapshotTrackPointsItem[];
   [key: string]: unknown;
+}
+
+export interface ActivityCommunityRoute {
+  owner: string;
+  hikeId: string;
+  audience: ActivityCommunityRouteAudience;
+  author: ActivityCommunityRouteAuthor;
+  source: ActivityCommunityRouteSource;
+  verified: boolean;
+  snapshot: PrivateRecordedHikeSnapshot;
 }
 
 export interface PrivateRecordedHikeBackupInput {
@@ -493,6 +554,70 @@ export interface CanonicalHistoryResponse {
   reason: string | null;
   items: CanonicalHistoryItem[];
 }
+
+/**
+ * @nullable
+ */
+export type GetActivityAudiencePreference200Audience =
+  | (typeof GetActivityAudiencePreference200Audience)[keyof typeof GetActivityAudiencePreference200Audience]
+  | null;
+
+export const GetActivityAudiencePreference200Audience = {
+  public: "public",
+  followers: "followers",
+  private: "private",
+} as const;
+
+export type GetActivityAudiencePreference200 = {
+  /** @nullable */
+  audience?: GetActivityAudiencePreference200Audience;
+  publicAccess?: string;
+};
+
+export type GetActivityRoutesParams = {
+  /**
+   * @maxLength 120
+   */
+  q?: string;
+  /**
+   * @minimum 0
+   * @maximum 1000
+   */
+  page?: number;
+  saved?: GetActivityRoutesSaved;
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  lat?: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  lng?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  radiusKm?: number;
+};
+
+export type GetActivityRoutesSaved =
+  (typeof GetActivityRoutesSaved)[keyof typeof GetActivityRoutesSaved];
+
+export const GetActivityRoutesSaved = {
+  NUMBER_1: "1",
+} as const;
+
+export type GetActivityRoutes200 = {
+  routes: ActivityCommunityRoute[];
+  hasMore: boolean;
+};
+
+export type GetActivityRoute200 = {
+  route: ActivityCommunityRoute;
+  followed: boolean;
+};
 
 export type ListRecordedHikeBackups200BackupsItem = {
   hikeId: string;

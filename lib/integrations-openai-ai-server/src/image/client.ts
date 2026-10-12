@@ -31,6 +31,7 @@ export async function generateImageBuffer(
     ...(options.transparent ? { background: "transparent" } : {}),
     ...(options.outputFormat ? { output_format: options.outputFormat } : {}),
   } as Parameters<typeof openai.images.generate>[0]);
+  if (!("data" in response)) throw new Error("Streaming image responses are not supported by this image-file helper");
   const base64 = response.data?.[0]?.b64_json ?? "";
   const buffer = Buffer.from(base64, "base64");
   if (buffer.length === 0) throw new Error("OpenAI image generation returned an empty image");
@@ -59,6 +60,7 @@ export async function editImages(
     ...(options.transparent ? { background: "transparent" } : {}),
   } as Parameters<typeof openai.images.edit>[0]);
 
+  if (!("data" in response)) throw new Error("Streaming image responses are not supported by this image-file helper");
   const imageBase64 = response.data?.[0]?.b64_json ?? "";
   const imageBytes = Buffer.from(imageBase64, "base64");
   if (imageBytes.length === 0) throw new Error("OpenAI image edit returned an empty image");

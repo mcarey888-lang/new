@@ -17,6 +17,8 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  ActivityAudienceInput,
+  ActivityRouteActionInput,
   ArtworkApproveResult,
   ArtworkClearResult,
   ArtworkGenerateResult,
@@ -32,6 +34,10 @@ import type {
   ElevationBankResponse,
   ElevationBankUnavailable,
   GenerateArtworkInput,
+  GetActivityAudiencePreference200,
+  GetActivityRoute200,
+  GetActivityRoutes200,
+  GetActivityRoutesParams,
   GetCanonicalHistoryParams,
   GetCommunityPosts200,
   GetCommunityPostsParams,
@@ -60,6 +66,822 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getGetPersonalProfileCoverUrl = () => {
+  return `/api/activity-community/profile-cover`;
+};
+
+export const getPersonalProfileCover = async (
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetPersonalProfileCoverUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPersonalProfileCoverQueryKey = () => {
+  return [`/api/activity-community/profile-cover`] as const;
+};
+
+export const getGetPersonalProfileCoverQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPersonalProfileCover>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPersonalProfileCover>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPersonalProfileCoverQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPersonalProfileCover>>
+  > = ({ signal }) => getPersonalProfileCover({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPersonalProfileCover>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPersonalProfileCoverQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPersonalProfileCover>>
+>;
+export type GetPersonalProfileCoverQueryError = ErrorType<void>;
+
+export function useGetPersonalProfileCover<
+  TData = Awaited<ReturnType<typeof getPersonalProfileCover>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPersonalProfileCover>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPersonalProfileCoverQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getUploadPersonalProfileCoverUrl = () => {
+  return `/api/activity-community/profile-cover`;
+};
+
+export const uploadPersonalProfileCover = async (
+  uploadPersonalProfileCoverBody: Blob,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getUploadPersonalProfileCoverUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "image/jpeg", ...options?.headers },
+    body: JSON.stringify(uploadPersonalProfileCoverBody),
+  });
+};
+
+export const getUploadPersonalProfileCoverMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadPersonalProfileCover>>,
+    TError,
+    { data: BodyType<Blob> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadPersonalProfileCover>>,
+  TError,
+  { data: BodyType<Blob> },
+  TContext
+> => {
+  const mutationKey = ["uploadPersonalProfileCover"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadPersonalProfileCover>>,
+    { data: BodyType<Blob> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return uploadPersonalProfileCover(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadPersonalProfileCoverMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadPersonalProfileCover>>
+>;
+export type UploadPersonalProfileCoverMutationBody = BodyType<Blob>;
+export type UploadPersonalProfileCoverMutationError = ErrorType<void>;
+
+export const useUploadPersonalProfileCover = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadPersonalProfileCover>>,
+    TError,
+    { data: BodyType<Blob> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadPersonalProfileCover>>,
+  TError,
+  { data: BodyType<Blob> },
+  TContext
+> => {
+  return useMutation(getUploadPersonalProfileCoverMutationOptions(options));
+};
+
+export const getGetActivityAudiencePreferenceUrl = () => {
+  return `/api/activity-community/preferences`;
+};
+
+export const getActivityAudiencePreference = async (
+  options?: RequestInit,
+): Promise<GetActivityAudiencePreference200> => {
+  return customFetch<GetActivityAudiencePreference200>(
+    getGetActivityAudiencePreferenceUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetActivityAudiencePreferenceQueryKey = () => {
+  return [`/api/activity-community/preferences`] as const;
+};
+
+export const getGetActivityAudiencePreferenceQueryOptions = <
+  TData = Awaited<ReturnType<typeof getActivityAudiencePreference>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getActivityAudiencePreference>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetActivityAudiencePreferenceQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getActivityAudiencePreference>>
+  > = ({ signal }) =>
+    getActivityAudiencePreference({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getActivityAudiencePreference>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetActivityAudiencePreferenceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getActivityAudiencePreference>>
+>;
+export type GetActivityAudiencePreferenceQueryError = ErrorType<unknown>;
+
+export function useGetActivityAudiencePreference<
+  TData = Awaited<ReturnType<typeof getActivityAudiencePreference>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getActivityAudiencePreference>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetActivityAudiencePreferenceQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSetActivityAudiencePreferenceUrl = () => {
+  return `/api/activity-community/preferences`;
+};
+
+export const setActivityAudiencePreference = async (
+  activityAudienceInput: ActivityAudienceInput,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getSetActivityAudiencePreferenceUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(activityAudienceInput),
+  });
+};
+
+export const getSetActivityAudiencePreferenceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setActivityAudiencePreference>>,
+    TError,
+    { data: BodyType<ActivityAudienceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setActivityAudiencePreference>>,
+  TError,
+  { data: BodyType<ActivityAudienceInput> },
+  TContext
+> => {
+  const mutationKey = ["setActivityAudiencePreference"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setActivityAudiencePreference>>,
+    { data: BodyType<ActivityAudienceInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return setActivityAudiencePreference(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetActivityAudiencePreferenceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setActivityAudiencePreference>>
+>;
+export type SetActivityAudiencePreferenceMutationBody =
+  BodyType<ActivityAudienceInput>;
+export type SetActivityAudiencePreferenceMutationError = ErrorType<unknown>;
+
+export const useSetActivityAudiencePreference = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setActivityAudiencePreference>>,
+    TError,
+    { data: BodyType<ActivityAudienceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setActivityAudiencePreference>>,
+  TError,
+  { data: BodyType<ActivityAudienceInput> },
+  TContext
+> => {
+  return useMutation(getSetActivityAudiencePreferenceMutationOptions(options));
+};
+
+/**
+ * @summary Signed-in community recordings, never verified trails; audience enforced server-side
+ */
+export const getGetActivityRoutesUrl = (params?: GetActivityRoutesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/activity-community?${stringifiedParams}`
+    : `/api/activity-community`;
+};
+
+export const getActivityRoutes = async (
+  params?: GetActivityRoutesParams,
+  options?: RequestInit,
+): Promise<GetActivityRoutes200> => {
+  return customFetch<GetActivityRoutes200>(getGetActivityRoutesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetActivityRoutesQueryKey = (
+  params?: GetActivityRoutesParams,
+) => {
+  return [`/api/activity-community`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetActivityRoutesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getActivityRoutes>>,
+  TError = ErrorType<void>,
+>(
+  params?: GetActivityRoutesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActivityRoutes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetActivityRoutesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getActivityRoutes>>
+  > = ({ signal }) => getActivityRoutes(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getActivityRoutes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetActivityRoutesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getActivityRoutes>>
+>;
+export type GetActivityRoutesQueryError = ErrorType<void>;
+
+/**
+ * @summary Signed-in community recordings, never verified trails; audience enforced server-side
+ */
+
+export function useGetActivityRoutes<
+  TData = Awaited<ReturnType<typeof getActivityRoutes>>,
+  TError = ErrorType<void>,
+>(
+  params?: GetActivityRoutesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActivityRoutes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetActivityRoutesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetActivityRouteUrl = (owner: string, hikeId: string) => {
+  return `/api/activity-community/${owner}/${hikeId}`;
+};
+
+export const getActivityRoute = async (
+  owner: string,
+  hikeId: string,
+  options?: RequestInit,
+): Promise<GetActivityRoute200> => {
+  return customFetch<GetActivityRoute200>(
+    getGetActivityRouteUrl(owner, hikeId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetActivityRouteQueryKey = (owner: string, hikeId: string) => {
+  return [`/api/activity-community/${owner}/${hikeId}`] as const;
+};
+
+export const getGetActivityRouteQueryOptions = <
+  TData = Awaited<ReturnType<typeof getActivityRoute>>,
+  TError = ErrorType<void>,
+>(
+  owner: string,
+  hikeId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActivityRoute>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetActivityRouteQueryKey(owner, hikeId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getActivityRoute>>
+  > = ({ signal }) =>
+    getActivityRoute(owner, hikeId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(owner && hikeId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getActivityRoute>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetActivityRouteQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getActivityRoute>>
+>;
+export type GetActivityRouteQueryError = ErrorType<void>;
+
+export function useGetActivityRoute<
+  TData = Awaited<ReturnType<typeof getActivityRoute>>,
+  TError = ErrorType<void>,
+>(
+  owner: string,
+  hikeId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActivityRoute>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetActivityRouteQueryOptions(owner, hikeId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSetActivityRouteAudienceUrl = (
+  owner: string,
+  hikeId: string,
+) => {
+  return `/api/activity-community/${owner}/${hikeId}/audience`;
+};
+
+export const setActivityRouteAudience = async (
+  owner: string,
+  hikeId: string,
+  activityAudienceInput: ActivityAudienceInput,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getSetActivityRouteAudienceUrl(owner, hikeId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(activityAudienceInput),
+  });
+};
+
+export const getSetActivityRouteAudienceMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setActivityRouteAudience>>,
+    TError,
+    { owner: string; hikeId: string; data: BodyType<ActivityAudienceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setActivityRouteAudience>>,
+  TError,
+  { owner: string; hikeId: string; data: BodyType<ActivityAudienceInput> },
+  TContext
+> => {
+  const mutationKey = ["setActivityRouteAudience"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setActivityRouteAudience>>,
+    { owner: string; hikeId: string; data: BodyType<ActivityAudienceInput> }
+  > = (props) => {
+    const { owner, hikeId, data } = props ?? {};
+
+    return setActivityRouteAudience(owner, hikeId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetActivityRouteAudienceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setActivityRouteAudience>>
+>;
+export type SetActivityRouteAudienceMutationBody =
+  BodyType<ActivityAudienceInput>;
+export type SetActivityRouteAudienceMutationError = ErrorType<void>;
+
+export const useSetActivityRouteAudience = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setActivityRouteAudience>>,
+    TError,
+    { owner: string; hikeId: string; data: BodyType<ActivityAudienceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setActivityRouteAudience>>,
+  TError,
+  { owner: string; hikeId: string; data: BodyType<ActivityAudienceInput> },
+  TContext
+> => {
+  return useMutation(getSetActivityRouteAudienceMutationOptions(options));
+};
+
+export const getActOnRecordedActivityRouteUrl = (
+  owner: string,
+  hikeId: string,
+) => {
+  return `/api/activity-community/${owner}/${hikeId}/action`;
+};
+
+export const actOnRecordedActivityRoute = async (
+  owner: string,
+  hikeId: string,
+  activityRouteActionInput: ActivityRouteActionInput,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getActOnRecordedActivityRouteUrl(owner, hikeId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(activityRouteActionInput),
+  });
+};
+
+export const getActOnRecordedActivityRouteMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof actOnRecordedActivityRoute>>,
+    TError,
+    { owner: string; hikeId: string; data: BodyType<ActivityRouteActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof actOnRecordedActivityRoute>>,
+  TError,
+  { owner: string; hikeId: string; data: BodyType<ActivityRouteActionInput> },
+  TContext
+> => {
+  const mutationKey = ["actOnRecordedActivityRoute"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof actOnRecordedActivityRoute>>,
+    { owner: string; hikeId: string; data: BodyType<ActivityRouteActionInput> }
+  > = (props) => {
+    const { owner, hikeId, data } = props ?? {};
+
+    return actOnRecordedActivityRoute(owner, hikeId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ActOnRecordedActivityRouteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof actOnRecordedActivityRoute>>
+>;
+export type ActOnRecordedActivityRouteMutationBody =
+  BodyType<ActivityRouteActionInput>;
+export type ActOnRecordedActivityRouteMutationError = ErrorType<void>;
+
+export const useActOnRecordedActivityRoute = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof actOnRecordedActivityRoute>>,
+    TError,
+    { owner: string; hikeId: string; data: BodyType<ActivityRouteActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof actOnRecordedActivityRoute>>,
+  TError,
+  { owner: string; hikeId: string; data: BodyType<ActivityRouteActionInput> },
+  TContext
+> => {
+  return useMutation(getActOnRecordedActivityRouteMutationOptions(options));
+};
+
+export const getFollowActivityAuthorUrl = (owner: string) => {
+  return `/api/activity-community/follows/${owner}`;
+};
+
+export const followActivityAuthor = async (
+  owner: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getFollowActivityAuthorUrl(owner), {
+    ...options,
+    method: "PUT",
+  });
+};
+
+export const getFollowActivityAuthorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof followActivityAuthor>>,
+    TError,
+    { owner: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof followActivityAuthor>>,
+  TError,
+  { owner: string },
+  TContext
+> => {
+  const mutationKey = ["followActivityAuthor"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof followActivityAuthor>>,
+    { owner: string }
+  > = (props) => {
+    const { owner } = props ?? {};
+
+    return followActivityAuthor(owner, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type FollowActivityAuthorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof followActivityAuthor>>
+>;
+
+export type FollowActivityAuthorMutationError = ErrorType<unknown>;
+
+export const useFollowActivityAuthor = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof followActivityAuthor>>,
+    TError,
+    { owner: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof followActivityAuthor>>,
+  TError,
+  { owner: string },
+  TContext
+> => {
+  return useMutation(getFollowActivityAuthorMutationOptions(options));
+};
+
+export const getUnfollowActivityAuthorUrl = (owner: string) => {
+  return `/api/activity-community/follows/${owner}`;
+};
+
+export const unfollowActivityAuthor = async (
+  owner: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getUnfollowActivityAuthorUrl(owner), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getUnfollowActivityAuthorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unfollowActivityAuthor>>,
+    TError,
+    { owner: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unfollowActivityAuthor>>,
+  TError,
+  { owner: string },
+  TContext
+> => {
+  const mutationKey = ["unfollowActivityAuthor"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unfollowActivityAuthor>>,
+    { owner: string }
+  > = (props) => {
+    const { owner } = props ?? {};
+
+    return unfollowActivityAuthor(owner, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnfollowActivityAuthorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unfollowActivityAuthor>>
+>;
+
+export type UnfollowActivityAuthorMutationError = ErrorType<unknown>;
+
+export const useUnfollowActivityAuthor = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unfollowActivityAuthor>>,
+    TError,
+    { owner: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unfollowActivityAuthor>>,
+  TError,
+  { owner: string },
+  TContext
+> => {
+  return useMutation(getUnfollowActivityAuthorMutationOptions(options));
+};
 
 /**
  * @summary List the signed-in walker's private recorded hike backups
