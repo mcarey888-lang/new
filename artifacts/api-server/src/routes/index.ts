@@ -24,6 +24,7 @@ import seededTrailsRouter from "./seeded-trails";
 import trackedRoutesRouter from "./tracked-routes";
 import recordedHikesRouter from "./recorded-hikes";
 import activityCommunityRouter from "./activity-community";
+import activityReviewRouter from "./activity-review";
 import profileCoverRouter from "./profile-cover";
 import demoLoadRouter from "./demo-load";
 import mountainVerificationRouter from "./mountain-verification";
@@ -85,6 +86,7 @@ router.use("/atlas", atlasRouter);
 router.use(communityRouter);
 router.use(profileCoverRouter);
 router.use(activityCommunityRouter);
+router.use(activityReviewRouter);
 
 // trackedRoutesRouter handles its own per-method auth (DELETE requires auth +
 // ownership; GET/POST are public). Auth is enforced inside the router.

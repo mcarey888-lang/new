@@ -8,6 +8,7 @@
 import type { ActivityCommunityRouteAudience } from "./activityCommunityRouteAudience";
 import type { ActivityCommunityRouteAuthor } from "./activityCommunityRouteAuthor";
 import type { ActivityCommunityRouteSource } from "./activityCommunityRouteSource";
+import type { ActivityCommunityRouteStartPoint } from "./activityCommunityRouteStartPoint";
 import type { PrivateRecordedHikeSnapshot } from "./privateRecordedHikeSnapshot";
 
 export interface ActivityCommunityRoute {
@@ -17,5 +18,7 @@ export interface ActivityCommunityRoute {
   author: ActivityCommunityRouteAuthor;
   source: ActivityCommunityRouteSource;
   verified: boolean;
+  /** @nullable */
+  startPoint?: ActivityCommunityRouteStartPoint;
   snapshot: PrivateRecordedHikeSnapshot;
 }

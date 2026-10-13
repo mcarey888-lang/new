@@ -3,6 +3,9 @@ import { privateRecordedHikeBackup } from "../utils/recordedHikeRecovery";
 import { enqueueSyncPending, retrySyncOutbox } from "../utils/syncOutbox";
 import { queueRecordedHikeSync } from "../utils/recordedHikeSync";
 import { serializeRecordedHikeWrite } from "../utils/recordedHikeWrites";
+import { deletedRecordingIds, rememberRecordingDeletion } from "../utils/recordedHikeDeletion";
+import { readPrivateHikeReceipts } from "../utils/syncOutbox";
+import { reconcileBackupReceipts } from "../utils/backupReceiptReconciliation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
@@ -378,6 +381,8 @@ export interface ExploreHike {
   timeTaken: number;
   notes: string;
   trackPoints?: import("../utils/recordedHikeRecovery").RecordedHikePoint[];
+  rawGPSFixes?: import("../utils/recordingEvidence").RawRecordingFix[];
+  recordingEvents?: import("../utils/recordingEvidence").RecordingEvent[];
   elevationLoss?: number;
   elevationCorrection?: import("../utils/recordedHikeRecovery").ElevationCorrection;
   backupRevision?: string;
@@ -1845,6 +1850,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return existing.id;
     }
     const id = hike.activityId ?? Date.now().toString() + Math.random().toString(36).slice(2, 8);
+    if ((await deletedRecordingIds(_uid)).has(id)) throw new Error("This recording was deleted. An older backup cannot restore it.");
     const newHike: ExploreHike = { ...hike, id, sharingRevision:hike.sharingRevision??(hike.sharingIntentConfirmed?new Date().toISOString():undefined),
       backupRevision: new Date().toISOString(), syncState: userId ? "queued" : "local_only" };
     const result = upsertByActivityId(exploreHikesRef.current, newHike);
@@ -1877,6 +1883,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const deleteExploreHike = useCallback(async (id: string) => serializeRecordedHikeWrite(EXPLORE_HIKES_KEY, async () => {
     if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed. Reopen your recording.");
+    await rememberRecordingDeletion(_uid, id);
     if (userId) {
       await enqueueSyncPending(userId, {
         id: `private-hike:${id}`, kind: "private-hike-delete", method: "DELETE",
@@ -1909,6 +1916,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     if (summitGoal) setReadinessScore(calculateReadiness(summitGoal, trainingPlan, sessions, { sessionReps, assignedHills, completedGoals, exploreHikes: updated }));
   }), [_uid, EXPLORE_HIKES_KEY, summitGoal, trainingPlan, sessions, sessionReps, assignedHills, completedGoals, userId, getToken]);
+
+  useEffect(() => {
+    if (!userId) return;
+    let active = true;
+    const reconcile = () => serializeRecordedHikeWrite(EXPLORE_HIKES_KEY, async () => {
+      if (!active || hikeStorageOwnerRef.current !== _uid) return;
+      const receipts = await readPrivateHikeReceipts(userId);
+      if (!active || hikeStorageOwnerRef.current !== _uid) return;
+      const next = reconcileBackupReceipts(exploreHikesRef.current, receipts);
+      if (next === exploreHikesRef.current) return;
+      // This is local receipt metadata, not an activity edit. No new revision
+      // or upload is enqueued, and canonical credit remains independently pending.
+      await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(next));
+      if (!active || hikeStorageOwnerRef.current !== _uid) return;
+      exploreHikesRef.current = next;
+      setExploreHikes(next);
+    });
+    void reconcile().catch(() => {});
+    const timer = setInterval(() => { void reconcile().catch(() => {}); }, 15_000);
+    return () => { active = false; clearInterval(timer); };
+  }, [userId, _uid, EXPLORE_HIKES_KEY]);
 
   const saveTrail = useCallback(async (id: string) => {
     const updated = savedTrailIds.includes(id) ? savedTrailIds : [...savedTrailIds, id];

@@ -146,12 +146,13 @@ describe("VX admin endpoints — auth guard", () => {
   let app: express.Express;
 
   beforeAll(async () => {
-    process.env.VIRTUAL_ENGINE_ADMIN_KEY = "test-admin-key-12345";
+    vi.stubEnv("ADMIN_API_KEY", "test-admin-key-12345");
+    vi.stubEnv("VIRTUAL_ENGINE_ADMIN_KEY", "test-admin-key-12345");
     app = await buildApp();
-  });
+  }, 30_000);
 
   afterAll(() => {
-    delete process.env.VIRTUAL_ENGINE_ADMIN_KEY;
+    vi.unstubAllEnvs();
   });
 
   it("POST /vx/admin/recalculate-dna returns 401 with no key", async () => {

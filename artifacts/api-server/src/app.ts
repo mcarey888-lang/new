@@ -218,7 +218,9 @@ app.use("/api/atlas/bulk",                   aiLimiter);
 app.use(clerkMiddleware());
 
 app.use("/api/atlas/upload", express.json({ limit: "50mb" }));
-app.use("/api/recorded-hikes", express.json({ limit: "12mb" }));
+// Bounded 100k derived points + 100k independent raw fixes can exceed 12 MB.
+// Other endpoints retain their own smaller limits.
+app.use("/api/recorded-hikes", express.json({ limit: "48mb" }));
 app.use("/api/tracked-routes", express.json({ limit: "12mb" }));
 app.use("/api/hill-sessions", express.json({ limit: "12mb" }));
 app.use("/api/explore-hike", express.json({ limit: "12mb" }));

@@ -64,6 +64,12 @@ export const GetActivityRoutesQueryParams = zod.object({
     .optional(),
 });
 
+export const getActivityRoutesResponseRoutesItemStartPointLatMin = -90;
+export const getActivityRoutesResponseRoutesItemStartPointLatMax = 90;
+
+export const getActivityRoutesResponseRoutesItemStartPointLonMin = -180;
+export const getActivityRoutesResponseRoutesItemStartPointLonMax = 180;
+
 export const getActivityRoutesResponseRoutesItemSnapshotIdMax = 256;
 
 export const getActivityRoutesResponseRoutesItemSnapshotNameMax = 256;
@@ -98,6 +104,20 @@ export const GetActivityRoutesResponse = zod.object({
       }),
       source: zod.enum(["user_recording"]),
       verified: zod.boolean(),
+      startPoint: zod
+        .object({
+          lat: zod
+            .number()
+            .min(getActivityRoutesResponseRoutesItemStartPointLatMin)
+            .max(getActivityRoutesResponseRoutesItemStartPointLatMax)
+            .optional(),
+          lon: zod
+            .number()
+            .min(getActivityRoutesResponseRoutesItemStartPointLonMin)
+            .max(getActivityRoutesResponseRoutesItemStartPointLonMax)
+            .optional(),
+        })
+        .nullish(),
       snapshot: zod.object({
         id: zod.string().max(getActivityRoutesResponseRoutesItemSnapshotIdMax),
         name: zod
@@ -158,6 +178,12 @@ export const GetActivityRouteParams = zod.object({
   hikeId: zod.coerce.string(),
 });
 
+export const getActivityRouteResponseRouteStartPointLatMin = -90;
+export const getActivityRouteResponseRouteStartPointLatMax = 90;
+
+export const getActivityRouteResponseRouteStartPointLonMin = -180;
+export const getActivityRouteResponseRouteStartPointLonMax = 180;
+
 export const getActivityRouteResponseRouteSnapshotIdMax = 256;
 
 export const getActivityRouteResponseRouteSnapshotNameMax = 256;
@@ -189,6 +215,20 @@ export const GetActivityRouteResponse = zod.object({
     }),
     source: zod.enum(["user_recording"]),
     verified: zod.boolean(),
+    startPoint: zod
+      .object({
+        lat: zod
+          .number()
+          .min(getActivityRouteResponseRouteStartPointLatMin)
+          .max(getActivityRouteResponseRouteStartPointLatMax)
+          .optional(),
+        lon: zod
+          .number()
+          .min(getActivityRouteResponseRouteStartPointLonMin)
+          .max(getActivityRouteResponseRouteStartPointLonMax)
+          .optional(),
+      })
+      .nullish(),
     snapshot: zod.object({
       id: zod.string().max(getActivityRouteResponseRouteSnapshotIdMax),
       name: zod.string().max(getActivityRouteResponseRouteSnapshotNameMax),
@@ -261,88 +301,108 @@ export const UnfollowActivityAuthorParams = zod.object({
 /**
  * @summary List the signed-in walker's private recorded hike backups
  */
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotIdMax = 256;
+export const listRecordedHikeBackupsQueryCursorMax = 256;
 
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotNameMax = 256;
+export const ListRecordedHikeBackupsQueryParams = zod.object({
+  cursor: zod.coerce
+    .string()
+    .max(listRecordedHikeBackupsQueryCursorMax)
+    .optional(),
+});
 
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotDistanceMin = 0;
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneIdMax = 256;
 
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotElevationGainMin = 0;
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneNameMax = 256;
 
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotTimeTakenMin = 0;
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneDistanceMin = 0;
 
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotNotesMax = 20000;
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneElevationGainMin = 0;
 
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLatMin =
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneTimeTakenMin = 0;
+
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneNotesMax = 20000;
+
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneTrackPointsItemLatMin =
   -90;
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLatMax = 90;
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneTrackPointsItemLatMax = 90;
 
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLonMin =
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneTrackPointsItemLonMin =
   -180;
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLonMax = 180;
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneTrackPointsItemLonMax = 180;
 
-export const listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsMax = 100000;
+export const listRecordedHikeBackupsResponseBackupsItemSnapshotOneTrackPointsMax = 100000;
 
 export const ListRecordedHikeBackupsResponse = zod.object({
+  nextCursor: zod.string().nullish(),
   backups: zod.array(
     zod.object({
       hikeId: zod.string(),
       revision: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
-      snapshot: zod.object({
-        id: zod
-          .string()
-          .max(listRecordedHikeBackupsResponseBackupsItemSnapshotIdMax),
-        name: zod
-          .string()
-          .max(listRecordedHikeBackupsResponseBackupsItemSnapshotNameMax),
-        date: zod
-          .string()
-          .describe(
-            "ISO recording timestamp or legacy YYYY-MM-DD activity date",
-          ),
-        distance: zod
-          .number()
-          .min(listRecordedHikeBackupsResponseBackupsItemSnapshotDistanceMin),
-        elevationGain: zod
-          .number()
-          .min(
-            listRecordedHikeBackupsResponseBackupsItemSnapshotElevationGainMin,
-          ),
-        timeTaken: zod
-          .number()
-          .min(listRecordedHikeBackupsResponseBackupsItemSnapshotTimeTakenMin),
-        notes: zod
-          .string()
-          .max(listRecordedHikeBackupsResponseBackupsItemSnapshotNotesMax),
-        trackPoints: zod
-          .array(
-            zod.object({
-              lat: zod
-                .number()
-                .min(
-                  listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLatMin,
-                )
-                .max(
-                  listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLatMax,
-                ),
-              lon: zod
-                .number()
-                .min(
-                  listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLonMin,
-                )
-                .max(
-                  listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsItemLonMax,
-                ),
-              alt: zod.number().nullish(),
-              ts: zod.number().optional(),
-              acc: zod.number().nullish(),
-              altAcc: zod.number().nullish(),
-            }),
-          )
-          .max(listRecordedHikeBackupsResponseBackupsItemSnapshotTrackPointsMax)
-          .optional(),
-      }),
+      deletedAt: zod.coerce.date().nullish(),
+      snapshot: zod.union([
+        zod.object({
+          id: zod
+            .string()
+            .max(listRecordedHikeBackupsResponseBackupsItemSnapshotOneIdMax),
+          name: zod
+            .string()
+            .max(listRecordedHikeBackupsResponseBackupsItemSnapshotOneNameMax),
+          date: zod
+            .string()
+            .describe(
+              "ISO recording timestamp or legacy YYYY-MM-DD activity date",
+            ),
+          distance: zod
+            .number()
+            .min(
+              listRecordedHikeBackupsResponseBackupsItemSnapshotOneDistanceMin,
+            ),
+          elevationGain: zod
+            .number()
+            .min(
+              listRecordedHikeBackupsResponseBackupsItemSnapshotOneElevationGainMin,
+            ),
+          timeTaken: zod
+            .number()
+            .min(
+              listRecordedHikeBackupsResponseBackupsItemSnapshotOneTimeTakenMin,
+            ),
+          notes: zod
+            .string()
+            .max(listRecordedHikeBackupsResponseBackupsItemSnapshotOneNotesMax),
+          trackPoints: zod
+            .array(
+              zod.object({
+                lat: zod
+                  .number()
+                  .min(
+                    listRecordedHikeBackupsResponseBackupsItemSnapshotOneTrackPointsItemLatMin,
+                  )
+                  .max(
+                    listRecordedHikeBackupsResponseBackupsItemSnapshotOneTrackPointsItemLatMax,
+                  ),
+                lon: zod
+                  .number()
+                  .min(
+                    listRecordedHikeBackupsResponseBackupsItemSnapshotOneTrackPointsItemLonMin,
+                  )
+                  .max(
+                    listRecordedHikeBackupsResponseBackupsItemSnapshotOneTrackPointsItemLonMax,
+                  ),
+                alt: zod.number().nullish(),
+                ts: zod.number().optional(),
+                acc: zod.number().nullish(),
+                altAcc: zod.number().nullish(),
+              }),
+            )
+            .max(
+              listRecordedHikeBackupsResponseBackupsItemSnapshotOneTrackPointsMax,
+            )
+            .optional(),
+        }),
+        zod.null(),
+      ]),
     }),
   ),
 });

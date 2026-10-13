@@ -44,6 +44,7 @@ import type {
   GetMountainDiscoveryParams,
   HealthStatus,
   ListRecordedHikeBackups200,
+  ListRecordedHikeBackupsParams,
   MountainDiscoveryPage,
   MountainHeroGenerationInput,
   MountainHeroGenerationStarted,
@@ -886,15 +887,30 @@ export const useUnfollowActivityAuthor = <
 /**
  * @summary List the signed-in walker's private recorded hike backups
  */
-export const getListRecordedHikeBackupsUrl = () => {
-  return `/api/recorded-hikes`;
+export const getListRecordedHikeBackupsUrl = (
+  params?: ListRecordedHikeBackupsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/recorded-hikes?${stringifiedParams}`
+    : `/api/recorded-hikes`;
 };
 
 export const listRecordedHikeBackups = async (
+  params?: ListRecordedHikeBackupsParams,
   options?: RequestInit,
 ): Promise<ListRecordedHikeBackups200> => {
   return customFetch<ListRecordedHikeBackups200>(
-    getListRecordedHikeBackupsUrl(),
+    getListRecordedHikeBackupsUrl(params),
     {
       ...options,
       method: "GET",
@@ -902,29 +918,35 @@ export const listRecordedHikeBackups = async (
   );
 };
 
-export const getListRecordedHikeBackupsQueryKey = () => {
-  return [`/api/recorded-hikes`] as const;
+export const getListRecordedHikeBackupsQueryKey = (
+  params?: ListRecordedHikeBackupsParams,
+) => {
+  return [`/api/recorded-hikes`, ...(params ? [params] : [])] as const;
 };
 
 export const getListRecordedHikeBackupsQueryOptions = <
   TData = Awaited<ReturnType<typeof listRecordedHikeBackups>>,
   TError = ErrorType<void>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listRecordedHikeBackups>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListRecordedHikeBackupsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listRecordedHikeBackups>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
   const queryKey =
-    queryOptions?.queryKey ?? getListRecordedHikeBackupsQueryKey();
+    queryOptions?.queryKey ?? getListRecordedHikeBackupsQueryKey(params);
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof listRecordedHikeBackups>>
-  > = ({ signal }) => listRecordedHikeBackups({ signal, ...requestOptions });
+  > = ({ signal }) =>
+    listRecordedHikeBackups(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listRecordedHikeBackups>>,
@@ -945,15 +967,18 @@ export type ListRecordedHikeBackupsQueryError = ErrorType<void>;
 export function useListRecordedHikeBackups<
   TData = Awaited<ReturnType<typeof listRecordedHikeBackups>>,
   TError = ErrorType<void>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listRecordedHikeBackups>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListRecordedHikeBackupsQueryOptions(options);
+>(
+  params?: ListRecordedHikeBackupsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listRecordedHikeBackups>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListRecordedHikeBackupsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

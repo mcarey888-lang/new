@@ -9,7 +9,7 @@ afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
 describe("route API authentication", () => {
   const request = () => ({ headers: { authorization: "Bearer fixture-token" }, log: { warn: vi.fn(), error: vi.fn() } }) as unknown as Request;
   const response = () => {
-    const res = { status: vi.fn(), json: vi.fn() };
+    const res = { status: vi.fn(), json: vi.fn(), getHeader: vi.fn() };
     res.status.mockReturnValue(res);
     return res;
   };

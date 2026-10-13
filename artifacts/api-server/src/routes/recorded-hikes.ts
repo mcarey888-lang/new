@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
-import { and, desc, eq, lte, sql } from "drizzle-orm";
+import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db,activityPublications } from "@workspace/db";
 import { recordedHikeBackups } from "@workspace/db/schema";
@@ -18,6 +18,15 @@ const snapshotSchema = z.object({
   audience: z.enum(["public", "followers", "private"]).optional(),
   sharingRevision: z.string().datetime().optional(),
   sharingIntentConfirmed: z.boolean().optional(),
+  rawGPSFixes: z.array(z.object({
+    lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180),
+    alt: z.number().finite().nullable().optional(), ts: z.number().finite(),
+    acc: z.number().finite().nullable().optional(), altAcc: z.number().finite().nullable().optional(),
+    source: z.enum(["foreground", "background"]), acceptedForTrace: z.boolean(),
+  }).passthrough()).max(100000).optional(),
+  recordingEvents: z.array(z.object({
+    type: z.enum(["start", "pause", "resume", "finish"]), ts: z.number().finite(),
+  })).max(10000).optional(),
   trackPoints: z.array(z.object({
     lat: z.number().min(-90).max(90),
     lon: z.number().min(-180).max(180),
@@ -54,7 +63,7 @@ router.put("/recorded-hikes", requireAuth({ json: true }), async (req, res) => {
     }).onConflictDoUpdate({
       target: [recordedHikeBackups.ownerUserId, recordedHikeBackups.hikeId],
       set: { snapshot: data.snapshot, revision: data.revision, updatedAt: new Date() },
-      setWhere: lte(recordedHikeBackups.revision, data.revision),
+      setWhere: and(isNull(recordedHikeBackups.deletedAt), lte(recordedHikeBackups.revision, data.revision)),
     }).returning({ revision: recordedHikeBackups.revision });
     if (accepted.length && data.snapshot.sharingIntentConfirmed === true && data.snapshot.audience) {
       await tx.execute(sql`INSERT INTO activity_publications(owner,hike_id,audience,audience_revision)
@@ -64,7 +73,7 @@ router.put("/recorded-hikes", requireAuth({ json: true }), async (req, res) => {
     }
     return accepted;
     });
-    if (!saved.length) return res.status(409).json({ error: "A newer backup exists. Your local recording is unchanged." });
+    if (!saved.length) return res.status(409).json({ error: "This recording was deleted or a newer backup exists. Refresh your library; the server copy was not overwritten." });
     return res.json({ ok: true, hikeId: data.hikeId, revision: data.revision });
   } catch (error) {
     if(error instanceof Error && error.message==="SHARING_INTENT_CONFLICT")
@@ -82,12 +91,14 @@ router.get("/recorded-hikes", requireAuth({ json: true }), async (req, res) => {
     const backups = await db.select({
       hikeId: recordedHikeBackups.hikeId, revision: recordedHikeBackups.revision,
       snapshot: recordedHikeBackups.snapshot, updatedAt: recordedHikeBackups.updatedAt,
+      deletedAt: recordedHikeBackups.deletedAt,
     }).from(recordedHikeBackups).where(and(eq(recordedHikeBackups.ownerUserId, userId),
       cursor ? sql`${recordedHikeBackups.hikeId} > ${cursor}` : undefined))
       .orderBy(recordedHikeBackups.hikeId).limit(101);
     const publications=await db.select().from(activityPublications).where(eq(activityPublications.owner,userId));
     const policies=new Map(publications.map(p=>[p.hikeId,p]));
     return res.json({ backups: backups.slice(0,100).map(b=>{
+      if (b.deletedAt) return {...b,snapshot:null};
       const policy=policies.get(b.hikeId);
       return policy?{...b,snapshot:{...b.snapshot,audience:policy.audience,sharingRevision:policy.audienceRevision,sharingIntentConfirmed:true}}:b;
     }), nextCursor: backups.length > 100 ? backups[99].hikeId : null });
@@ -101,10 +112,19 @@ router.delete("/recorded-hikes/:id", requireAuth({ json: true }), async (req, re
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Authentication required" });
   try {
-    await db.delete(recordedHikeBackups).where(and(
-      eq(recordedHikeBackups.ownerUserId, userId),
-      eq(recordedHikeBackups.hikeId, String(req.params.id)),
-    ));
+    const hikeId = String(req.params.id);
+    const now = new Date();
+    await db.transaction(async tx => {
+      // The conflict update also locks the row against an in-flight upload.
+      await tx.insert(recordedHikeBackups).values({ ownerUserId: userId, hikeId,
+        snapshot: {}, revision: now.toISOString(), deletedAt: now })
+        .onConflictDoUpdate({ target: [recordedHikeBackups.ownerUserId, recordedHikeBackups.hikeId],
+          set: { snapshot: {}, revision: now.toISOString(), deletedAt: now, updatedAt: now } });
+      await tx.delete(activityPublications).where(and(eq(activityPublications.owner, userId),
+        eq(activityPublications.hikeId, hikeId)));
+      await tx.execute(sql`DELETE FROM activity_bookmarks WHERE owner=${userId} AND hike_id=${hikeId}`);
+      await tx.execute(sql`DELETE FROM activity_trail_suggestions WHERE owner=${userId} AND hike_id=${hikeId}`);
+    });
     return res.status(204).end();
   } catch (error) {
     req.log.error({ error }, "Private recorded hike backup delete failed");

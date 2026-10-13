@@ -91,7 +91,7 @@ function mergeCanonicalActivities(
     const existing = byId.get(activity.id);
     if (!existing) {
       const links = [...(activity.links ?? [])];
-      const merged = {
+      const merged: CanonicalHistoryProjection = {
         ...activity,
         links,
         matchedContexts: [],

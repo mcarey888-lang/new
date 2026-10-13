@@ -13,19 +13,19 @@ const userRoutesSource = readFileSync(
 describe("protected write route declarations", () => {
   it("keeps tracked-route mutations behind Clerk authentication", () => {
     expect(trackedRoutesSource).toMatch(
-      /router\.post\("\/tracked-routes",\s*requireAuth\(\)/,
+      /router\.post\("\/tracked-routes",\s*requireAuth\(\{ json: true \}\)/,
     );
     expect(trackedRoutesSource).toMatch(
-      /router\.post\("\/tracked-routes\/:id\/contribute",\s*requireAuth\(\)/,
+      /router\.post\("\/tracked-routes\/:id\/contribute",\s*requireAuth\(\{ json: true \}\)/,
     );
     expect(trackedRoutesSource).toMatch(
-      /router\.delete\("\/tracked-routes\/:id",\s*requireAuth\(\)/,
+      /router\.delete\("\/tracked-routes\/:id",\s*requireAuth\(\{ json: true \}\)/,
     );
   });
 
   it("keeps account deletion behind Clerk authentication", () => {
     expect(userRoutesSource).toMatch(
-      /router\.delete\("\/user\/me",\s*requireAuth\(\)/,
+      /router\.delete\("\/user\/me",\s*requireAuth\(\{ json: true \}\)/,
     );
   });
 });

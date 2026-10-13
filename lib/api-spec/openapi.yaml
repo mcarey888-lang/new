@@ -147,6 +147,10 @@ paths:
     get:
       operationId: listRecordedHikeBackups
       summary: List the signed-in walker's private recorded hike backups
+      parameters:
+        - in: query
+          name: cursor
+          schema: { type: string, maxLength: 256 }
       responses:
         "200":
           description: Owner-private backups, newest first
@@ -156,6 +160,7 @@ paths:
                 type: object
                 required: [backups]
                 properties:
+                  nextCursor: { type: [string, "null"] }
                   backups:
                     type: array
                     items:
@@ -165,8 +170,11 @@ paths:
                         hikeId: { type: string }
                         revision: { type: string, format: date-time }
                         updatedAt: { type: string, format: date-time }
+                        deletedAt: { type: [string, "null"], format: date-time }
                         snapshot:
-                          $ref: "#/components/schemas/PrivateRecordedHikeSnapshot"
+                          anyOf:
+                            - $ref: "#/components/schemas/PrivateRecordedHikeSnapshot"
+                            - type: "null"
         "401": { description: Sign-in required; never a browser redirect }
         "503": { description: Private backup storage unavailable }
     put:
@@ -747,6 +755,11 @@ components:
             avatarUrl: { type: ["string", "null"] }
         source: { type: string, enum: [user_recording] }
         verified: { type: boolean }
+        startPoint:
+          type: [object, "null"]
+          properties:
+            lat: { type: number, minimum: -90, maximum: 90 }
+            lon: { type: number, minimum: -180, maximum: 180 }
         snapshot: { $ref: "#/components/schemas/PrivateRecordedHikeSnapshot" }
     PrivateRecordedHikeBackupInput:
       type: object

@@ -8,5 +8,7 @@
 import type { ListRecordedHikeBackups200BackupsItem } from "./listRecordedHikeBackups200BackupsItem";
 
 export type ListRecordedHikeBackups200 = {
+  /** @nullable */
+  nextCursor?: string | null;
   backups: ListRecordedHikeBackups200BackupsItem[];
 };

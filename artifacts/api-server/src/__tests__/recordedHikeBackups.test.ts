@@ -11,21 +11,23 @@ vi.mock("@workspace/db", async () => {
   const db: any = {
     transaction: async (fn:any)=>fn(db),
     execute: async()=>[],
-    insert: () => ({ values: (value: any) => ({ onConflictDoUpdate: () => ({
-      returning: async () => {
+    insert: () => ({ values: (value: any) => ({ onConflictDoUpdate: () => {
+      const save = () => {
         const key = `${value.ownerUserId}:${value.hikeId}`;
         const existing = store.get(key);
-        if (existing && existing.revision > value.revision) return [];
+        if (!value.deletedAt && existing && (existing.deletedAt || existing.revision > value.revision)) return [];
         store.set(key, { ...value, updatedAt: new Date() });
         return [{ revision: value.revision }];
-      },
-    }) }) }),
+      };
+      return { returning: async () => save(), then: (resolve: any) => resolve(save()) };
+    } }) }),
     select: () => ({ from: (table:any) => ({ where: (clause: any) => {
       const { params } = new PgDialect().sqlToQuery(clause);
       const rows=table===schema.activityPublications?[]:[...store.values()].filter(row => row.ownerUserId === params[0]);
       return Object.assign(rows,{limit:async()=>rows,orderBy:()=>({limit:async()=>rows})});
     } }) }),
-    delete: () => ({ where: async (clause: any) => {
+    delete: (table: any) => ({ where: async (clause: any) => {
+      if (table !== schema.recordedHikeBackups) return;
       const { params } = new PgDialect().sqlToQuery(clause);
       store.delete(`${params[0]}:${params[1]}`);
     } }),
@@ -42,7 +44,7 @@ const recording = {
 };
 async function request(method: string, path: string, owner?: string, body?: unknown, selectedRouter = router) {
   const app = express();
-  app.use(express.json()); app.use(selectedRouter);
+  app.use(express.json({limit:"48mb"})); app.use(selectedRouter);
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>(resolve => server.once("listening", resolve));
   try {
@@ -77,7 +79,8 @@ describe("private recorded hike backups", () => {
     expect(list.backups[0].snapshot.name).toBe("Other");
     await request("DELETE", "/recorded-hikes/one", "user-b");
     expect(store.has("user-a:one")).toBe(true);
-    expect(store.has("user-b:one")).toBe(false);
+    expect(store.get("user-b:one").deletedAt).toBeInstanceOf(Date);
+    expect(store.get("user-b:one").snapshot).toEqual({});
   });
   it("refuses stale revisions rather than overwriting a reviewed recording", async () => {
     await request("PUT", "/recorded-hikes", "user-a", recording);
@@ -85,10 +88,34 @@ describe("private recorded hike backups", () => {
     expect(response.status).toBe(409);
     expect(store.get("user-a:one").revision).toBe(recording.revision);
   });
+  it("retains a deletion tombstone and refuses stale AND newer offline resurrection", async () => {
+    await request("PUT", "/recorded-hikes", "user-a", recording);
+    expect((await request("DELETE", "/recorded-hikes/one", "user-a")).status).toBe(204);
+    for (const revision of [recording.revision, "2027-10-11T20:00:00.000Z"]) {
+      expect((await request("PUT", "/recorded-hikes", "user-a", { ...recording, revision })).status).toBe(409);
+    }
+    const data = await (await request("GET", "/recorded-hikes", "user-a")).json() as { backups: any[] };
+    expect(data.backups[0].deletedAt).toBeTruthy();
+    expect(data.backups[0].snapshot).toBeNull();
+  });
   it("rejects identity mismatches and invalid coordinates", async () => {
     expect((await request("PUT", "/recorded-hikes", "user-a", { ...recording, hikeId: "other" })).status).toBe(400);
     expect((await request("PUT", "/recorded-hikes", "user-a", { ...recording, snapshot: { ...recording.snapshot, trackPoints: [{ lat: 99, lon: 0 }] } })).status).toBe(400);
     expect(store.size).toBe(0);
+  });
+  it("accepts a full-day recording with independent raw evidence without truncation or a 12MB rejection", async () => {
+    const points=Array.from({length:43201},(_,i)=>({
+      lat:53.12345678901234,lon:-2.123456789012345,alt:300.1234567890123,
+      ts:1791864000000+i*2000,acc:10.12345678901234,altAcc:5.123456789012345,
+    }));
+    const rawGPSFixes=points.map(point=>({...point,source:"background",acceptedForTrace:true}));
+    const payload={...recording,snapshot:{...recording.snapshot,trackPoints:points,rawGPSFixes}};
+    expect(Buffer.byteLength(JSON.stringify(payload))).toBeGreaterThan(12*1024*1024);
+    expect(Buffer.byteLength(JSON.stringify(payload))).toBeLessThan(48*1024*1024);
+    expect((await request("PUT","/recorded-hikes","user-a",payload)).status).toBe(200);
+    expect(store.get("user-a:one").snapshot.trackPoints).toHaveLength(43201);
+    expect(store.get("user-a:one").snapshot.rawGPSFixes).toHaveLength(43201);
+    expect(store.get("user-a:one").snapshot.elevationGain).toBe(1670);
   });
   it("fails closed when production authentication is not configured", async () => {
     vi.stubEnv("CLERK_SECRET_KEY", "");

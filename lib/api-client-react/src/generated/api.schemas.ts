@@ -56,6 +56,22 @@ export const ActivityCommunityRouteSource = {
   user_recording: "user_recording",
 } as const;
 
+/**
+ * @nullable
+ */
+export type ActivityCommunityRouteStartPoint = {
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  lat?: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  lon?: number;
+} | null;
+
 export type PrivateRecordedHikeSnapshotTrackPointsItem = {
   /**
    * @minimum -90
@@ -104,6 +120,8 @@ export interface ActivityCommunityRoute {
   author: ActivityCommunityRouteAuthor;
   source: ActivityCommunityRouteSource;
   verified: boolean;
+  /** @nullable */
+  startPoint?: ActivityCommunityRouteStartPoint;
   snapshot: PrivateRecordedHikeSnapshot;
 }
 
@@ -619,14 +637,25 @@ export type GetActivityRoute200 = {
   followed: boolean;
 };
 
+export type ListRecordedHikeBackupsParams = {
+  /**
+   * @maxLength 256
+   */
+  cursor?: string;
+};
+
 export type ListRecordedHikeBackups200BackupsItem = {
   hikeId: string;
   revision: string;
   updatedAt: string;
-  snapshot: PrivateRecordedHikeSnapshot;
+  /** @nullable */
+  deletedAt?: string | null;
+  snapshot: PrivateRecordedHikeSnapshot | null;
 };
 
 export type ListRecordedHikeBackups200 = {
+  /** @nullable */
+  nextCursor?: string | null;
   backups: ListRecordedHikeBackups200BackupsItem[];
 };
 

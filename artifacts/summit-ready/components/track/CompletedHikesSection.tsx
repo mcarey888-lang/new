@@ -7,10 +7,12 @@ import { useAuth } from "@clerk/expo";
 import { listRecordedHikeBackups } from "@workspace/api-client-react";
 import { authenticatedJsonHeaders } from "@/utils/authRequest";
 import { BASECAMP, TYPE } from "@/constants/tokens";
+import { activityApiBase, ACTIVITY_AUDIENCES } from "@/utils/activityAudience";
+import { deletedRecordingIds } from "@/utils/recordedHikeDeletion";
 
 /** Local completed activities must remain accessible while server sync is down. */
 export function CompletedHikesSection() {
-  const { exploreHikes, isLoading, logExploreHike } = useApp();
+  const { exploreHikes, isLoading, logExploreHike, deleteExploreHike } = useApp();
   const { userId, getToken } = useAuth();
   const owner = useRef(userId);
   owner.current = userId;
@@ -21,10 +23,10 @@ export function CompletedHikesSection() {
     const originalOwner = userId;
     setRestoring(true); setRestoreMessage(null);
     try {
-      const backups: Array<{hikeId:string;snapshot:unknown}> = [];
+      const backups: Array<{hikeId:string;snapshot:unknown;deletedAt?:string|null}> = [];
       let cursor:string|null=null;
       for(let page=0;page<200;page++){
-        const response=await fetch(`${process.env.EXPO_PUBLIC_MAP_BASE ?? `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk"}/api`}/recorded-hikes${cursor?`?cursor=${encodeURIComponent(cursor)}`:""}`,
+        const response=await fetch(`${activityApiBase}/recorded-hikes${cursor?`?cursor=${encodeURIComponent(cursor)}`:""}`,
           {headers:authenticatedJsonHeaders(await getToken({skipCache:true}))});
         if(!response.ok)throw new Error("Private backup page could not load");
         const result=await response.json() as {backups:Array<{hikeId:string;snapshot:unknown}>;nextCursor?:string|null};
@@ -36,8 +38,14 @@ export function CompletedHikesSection() {
       }
       if(cursor)throw new Error("More than 20,000 hikes require another restore batch");
       let restored = 0;
+      const deleted = await deletedRecordingIds(originalOwner);
       for (const item of backups) {
         if (owner.current !== originalOwner) return;
+        if (item.deletedAt) {
+          if (exploreHikes.some(h => h.id === item.hikeId)) await deleteExploreHike(item.hikeId);
+          continue;
+        }
+        if (deleted.has(item.hikeId)) continue;
         if (exploreHikes.some(h => h.id === item.hikeId)) continue;
         const snapshot = item.snapshot as unknown as ExploreHike;
         const { id, ...recording } = snapshot;
@@ -57,7 +65,7 @@ export function CompletedHikesSection() {
     <View style={styles.section} testID="you-completed-hikes">
       <Text style={styles.kicker}>YOUR RECORDED ACTIVITIES</Text>
       <Text style={styles.title}>Completed hikes</Text>
-      <Text style={styles.message}>Your saved recordings, including hikes waiting to sync. These are private.</Text>
+      <Text style={styles.message}>Your saved recordings, including hikes waiting to sync. Each hike has its own sharing audience.</Text>
       <Pressable accessibilityRole="button" accessibilityLabel="Restore missing recorded hikes from private backups" disabled={restoring}
         onPress={() => { void restoreBackups(); }} style={{ paddingVertical: 12 }}>
         <Text style={{ ...TYPE.body, color: BASECAMP.accent }}>{restoring ? "Restoring…" : "Restore missing hikes from backup"}</Text>
@@ -75,6 +83,7 @@ export function CompletedHikesSection() {
               <Text style={styles.name}>{hike.name}</Text>
               <Text style={styles.meta}>{new Date(hike.date).toLocaleDateString("en-GB")} · {hike.distance.toFixed(2)} km · {Math.round(hike.elevationGain)} m ascent · {hike.timeTaken} min</Text>
               <Text style={styles.meta}>{hike.backupRevision && hike.backedUpRevision === hike.backupRevision ? "Private backup confirmed" : "Saved on this device"}</Text>
+              <Text style={styles.meta}>{hike.sharingIntentConfirmed ? ACTIVITY_AUDIENCES.find(a => a.value === hike.audience)?.label ?? "Only me" : "Only me · legacy sharing choice not confirmed"}</Text>
             </View>
             <ChevronRight size={18} color={BASECAMP.textMuted} />
           </Pressable>

@@ -124,7 +124,7 @@ describe("shared admin-key protection", () => {
 describe("privileged route declarations", () => {
   it("guards every Artwork mutation", () => {
     const declarations = artworkSource.match(/artworkRouter\.(?:post|patch|put|delete)\([^;]+?=> \{/gs) ?? [];
-    expect(declarations).toHaveLength(11);
+    expect(declarations).toHaveLength(16);
     for (const declaration of declarations) {
       expect(declaration).toContain("requireAdminKey");
     }

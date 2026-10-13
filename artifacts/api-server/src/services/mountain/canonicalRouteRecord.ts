@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { executeEngineReadOnly } from "@workspace/db";
-import type { CanonicalRouteRecord } from "../../../../summit-ready/utils/routeIntelligence";
+import type { CanonicalRouteRecord, RouteProvenance, RouteEvidence } from "@workspace/api-zod";
 
 export type CanonicalRouteRecordStatus =
   | "available"
@@ -159,11 +159,11 @@ const ROUTE_RECORD_SQL = sql`
     ) AS geom ON TRUE
 `;
 
-function stableRouteId(identityKey: string, version: string): string {
+function stableRouteId(identityKey: string, version: string): `sde:route:${string}@${string}` {
   return `sde:route:${identityKey}@${version}`;
 }
 
-function stableMountainId(mountainId: string): string {
+function stableMountainId(mountainId: string): `sde:mountain:${string}` {
   return `sde:mountain:${mountainId}`;
 }
 
@@ -203,15 +203,16 @@ export function buildCanonicalRouteRecord(
   }
 
   const reasons = reasonList(row);
-  const provenance = {
+  const provenance: RouteProvenance = {
     provider: row.publisher ?? "Summit Data Engine",
     sourceUrl: row.evidenceUrl,
     attribution: row.evidenceTitle,
-    rightsClassification: row.rightsClassification ?? "unclear",
+    rightsClassification: row.rightsClassification === "reusable_geometry" || row.rightsClassification === "factual_identity_only"
+      ? row.rightsClassification : "unclear",
     provenanceVersion: row.mountainProvenanceVersion ?? row.routeVersion ?? "unknown",
     qaFlags: [],
   };
-  const evidence = {
+  const evidence: RouteEvidence = {
     evidenceId: row.evidenceId ?? "unknown",
     evidenceType: "source",
     ...provenance,
@@ -231,10 +232,10 @@ export function buildCanonicalRouteRecord(
   }));
   const routeId = stableRouteId(row.routeIdentityKey!, row.routeVersion!);
   const mountainId = stableMountainId(row.mountainId!);
-  const record = {
+  const record: CanonicalRouteRecord = {
     mountain: {
       id: mountainId,
-      canonicalName: row.mountainName,
+      canonicalName: row.mountainName!,
       aliases: [],
       verification: {
         engineStatus: "verified",
@@ -243,29 +244,29 @@ export function buildCanonicalRouteRecord(
       },
       provenance,
       routes: [{
-        version: { identityKey: row.routeIdentityKey, version: row.routeVersion, routeId, mountainId },
-        canonicalName: row.routeName,
+        version: { identityKey: row.routeIdentityKey!, version: row.routeVersion!, routeId, mountainId },
+        canonicalName: row.routeName!,
         status: "verified",
         availability: reasons.length ? "degraded" : "available",
       }],
     },
     route: {
-      version: { identityKey: row.routeIdentityKey, version: row.routeVersion, routeId, mountainId },
-      canonicalName: row.routeName,
+      version: { identityKey: row.routeIdentityKey!, version: row.routeVersion!, routeId, mountainId },
+      canonicalName: row.routeName!,
       aliases: row.routeAliases ?? [],
       status: "verified",
       provenance,
     },
     definition: {
       identity: {
-        version: { identityKey: row.routeIdentityKey, version: row.routeVersion, routeId, mountainId },
-        canonicalName: row.routeName,
+        version: { identityKey: row.routeIdentityKey!, version: row.routeVersion!, routeId, mountainId },
+        canonicalName: row.routeName!,
         aliases: row.routeAliases ?? [],
         status: "verified",
         provenance,
       },
-      definitionVersion: row.definitionVersion,
-      definitionKey: row.definitionKey,
+      definitionVersion: row.definitionVersion!,
+      definitionKey: row.definitionKey!,
       description: row.definitionDescription,
       evidence: [evidence],
       status: "verified",
@@ -286,9 +287,9 @@ export function buildCanonicalRouteRecord(
       row.geometryValidationPassed === true &&
       geometrySources.length
       ? {
-          geometryVersion: row.geometryVersion ?? row.definitionVersion,
+          geometryVersion: row.geometryVersion ?? row.definitionVersion!,
           coordinateReferenceSystem: "EPSG:4326",
-          coordinates: row.geometry.coordinates ?? [],
+          coordinates: row.geometry.coordinates as ReadonlyArray<readonly [number, number]>,
           direction: "unknown",
           derivationMethod: row.geometryDerivationMethod ?? "sde",
            sourceMembers: geometrySources,

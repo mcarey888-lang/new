@@ -11,5 +11,7 @@ export type ListRecordedHikeBackups200BackupsItem = {
   hikeId: string;
   revision: Date;
   updatedAt: Date;
-  snapshot: PrivateRecordedHikeSnapshot;
+  /** @nullable */
+  deletedAt?: Date | null;
+  snapshot: PrivateRecordedHikeSnapshot | null;
 };

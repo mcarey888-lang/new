@@ -36,4 +36,6 @@ export const activityTrailSuggestions = pgTable("activity_trail_suggestions", {
   hikeId: text("hike_id").notNull(),
   evidenceRevision: text("evidence_revision").notNull(),
   status: text("status").notNull().default("pending"),
+  reviewNotes: text("review_notes"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
 }, t => [primaryKey({ columns: [t.owner, t.hikeId] })]);

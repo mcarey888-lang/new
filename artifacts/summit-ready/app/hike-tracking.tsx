@@ -37,7 +37,7 @@ import {
 import { TrackMap, type TrackMapHandle } from "@/components/track/TrackMap";
 import { logHillSessionStarted, logHillSessionCompleted, logHikeTracked } from "@/lib/analytics";
 import { ActivityAudiencePicker } from "@/components/track/ActivityAudiencePicker";
-import { readActivityAudience, saveActivityAudience, type ActivityAudience } from "@/utils/activityAudience";
+import { loadActivityAudience, saveActivityAudience, type ActivityAudience } from "@/utils/activityAudience";
 import { elevationQuality } from "@/utils/elevationQuality";
 import Animated, {
   FadeIn,
@@ -63,6 +63,7 @@ import { usePersonalRouteTracking } from "@/hooks/usePersonalRouteTracking";
 import { describeRoute } from "@/utils/plannedRouteApi";
 import { TrackProgressPanel } from "@/components/track/TrackProgressPanel";
 import { RecordingElevationSpark } from "@/components/track/RecordingElevationSpark";
+import { appendRawFix, rawFixKey, type RawRecordingFix, type RecordingEvent } from "@/utils/recordingEvidence";
 import { LogHikeModal } from "@/components/LogHikeModal";
 import { recordingFailureNote } from "@/utils/recordingOutcome";
 import type { PlanSession, SavedExpedition } from "@/context/AppContext";
@@ -251,7 +252,6 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
     if (!active.routeId || active.status !== "tracking") return;
     const points: TrackPoint[] = [];
     for (const loc of locations) {
-      if (loc.coords.accuracy != null && loc.coords.accuracy > GPS_MAX_ACCURACY_M) continue;
       points.push({
         lat: loc.coords.latitude,
         lon: loc.coords.longitude,
@@ -290,7 +290,7 @@ function HikeTrackingScreenBody() {
     let active = true;
     audienceTouchedRef.current=false;
     setActivityAudience(null); setAudienceDefault(null);
-    if (userId) void Promise.all([readActivityAudience(userId),readActiveHike<HikeCheckpoint>(userId)]).then(([audience,checkpoint]) => {
+    if (userId) void Promise.all([loadActivityAudience(userId, () => getToken({ skipCache: true })),readActiveHike<HikeCheckpoint>(userId)]).then(([audience,checkpoint]) => {
       if (active && !audienceTouchedRef.current) { setActivityAudience(checkpoint?checkpoint.activityAudience??null:audience); setAudienceDefault(audience); }
     }).catch(() => { if (active) setAudienceError("Your sharing default could not be loaded. Choose an audience before saving."); });
     return () => { active = false; };
@@ -519,6 +519,12 @@ function HikeTrackingScreenBody() {
   ]);
 
   const trackPoints    = useRef<TrackPoint[]>([]);
+  const rawGPSFixes = useRef<RawRecordingFix[]>([]);
+  const rawFixKeys = useRef(new Set<string>());
+  const recordingEvents = useRef<RecordingEvent[]>([]);
+  const checkpointWriter = useRef<() => Promise<boolean>>(async () => false);
+  const retainRawFix = (point: TrackPoint, source: RawRecordingFix["source"], acceptedForTrace: boolean) =>
+    appendRawFix(rawGPSFixes.current, rawFixKeys.current, { ...point, source, acceptedForTrace });
   const lastAltRef     = useRef<number | null>(null);
   const elevationFilterRef = useRef(createRecordedElevation());
   const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -897,6 +903,10 @@ function HikeTrackingScreenBody() {
       }
       const pts = trackPoints.current;
       const lastTs = pts.length > 0 ? pts[pts.length - 1].ts : 0;
+      for (const point of newPts) {
+        retainRawFix(point, "background", point.ts > lastTs &&
+          isPlausiblePoint(point.lat, point.lon, point.ts, point.acc ?? null, pts));
+      }
       const fresh = newPts.filter(p => p.ts > lastTs);
       let addedAny = false;
       for (const p of fresh) {
@@ -916,8 +926,11 @@ function HikeTrackingScreenBody() {
       if (addedAny) replayTrackOnMap();
       // Immutable per-callback keys make this an exact acknowledgement: a
       // producer writing concurrently creates a different key and survives.
-      await AsyncStorage.multiRemove(processedKeys);
-    } catch { /* ignore */ }
+      // Never acknowledge the OS queue before its evidence is durable.
+      if (await checkpointWriter.current()) await AsyncStorage.multiRemove(processedKeys);
+    } catch {
+      setCheckpointError("Background GPS evidence could not be saved. Keep the app open and retry the recovery checkpoint.");
+    }
   }, [replayTrackOnMap]);
   const drainBgPoints = useCallback(async () => {
     // stopLocationUpdatesAsync prevents new callbacks, but a callback already
@@ -957,6 +970,8 @@ function HikeTrackingScreenBody() {
         routeName,
         status: statusRef.current as "tracking" | "paused" | "finished",
         trackPoints: trackPoints.current,
+        rawGPSFixes: rawGPSFixes.current,
+        recordingEvents: recordingEvents.current,
         distanceKm: distanceRef.current,
         elevGainM: elevGainRef.current,
         elevLossM: elevLossRef.current,
@@ -1013,6 +1028,7 @@ function HikeTrackingScreenBody() {
       hillMeta.objectiveType, userId, isOffline, canonicalRouteContext,
       params.routeHandoffId, params.canonicalRouteId, params.canonicalRouteIdentityKey,
       params.canonicalRouteVersion, params.canonicalMountainId, personalRoute.context,activityAudience]);
+  checkpointWriter.current = saveActiveSession;
 
   useEffect(() => {
     if (status !== "tracking" && status !== "paused" && status!=="finished") return;
@@ -1062,6 +1078,9 @@ function HikeTrackingScreenBody() {
           ? (session.pauseStartMs || Date.now())
           : 0;
         trackPoints.current = session.trackPoints ?? [];
+        rawGPSFixes.current = session.rawGPSFixes ?? [];
+        rawFixKeys.current = new Set(rawGPSFixes.current.map(rawFixKey));
+        recordingEvents.current = session.recordingEvents ?? [];
         distanceRef.current = session.distanceKm ?? 0;
         elevGainRef.current = session.elevGainM ?? 0;
         elevLossRef.current = session.elevLossM ?? 0;
@@ -1178,6 +1197,9 @@ function HikeTrackingScreenBody() {
                 if (statusRef.current !== "tracking") return;
                 const { latitude, longitude, altitude, speed, accuracy } = loc.coords;
                 const pts = trackPoints.current;
+                retainRawFix({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp, acc: accuracy,
+                  altAcc: loc.coords.altitudeAccuracy, speed }, "foreground",
+                  isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts));
                 if (!isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts)) return;
                 if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
                 consumeAltitude(altitude, loc.timestamp, loc.coords.altitudeAccuracy);
@@ -1234,6 +1256,7 @@ function HikeTrackingScreenBody() {
     statusRef.current = "tracking";
     setStatus("tracking");
     trackStartMsRef.current = Date.now();
+    recordingEvents.current.push({ type: "start", ts: trackStartMsRef.current });
     totalPausedMsRef.current = 0;
     if (!await saveActiveSession()) {
       Alert.alert("Cannot start safely", "This phone could not store the recording recovery checkpoint. Free up storage and try Start again.");
@@ -1335,6 +1358,9 @@ function HikeTrackingScreenBody() {
           if (statusRef.current !== "tracking") return;
           const { latitude, longitude, altitude, speed, accuracy } = loc.coords;
           const pts = trackPoints.current;
+          retainRawFix({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp, acc: accuracy,
+            altAcc: loc.coords.altitudeAccuracy, speed }, "foreground",
+            isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts));
           if (!isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts)) return;
           if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
           consumeAltitude(altitude, loc.timestamp, loc.coords.altitudeAccuracy);
@@ -1377,6 +1403,7 @@ function HikeTrackingScreenBody() {
     pauseTogglingRef.current = true;
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const pausedAt = Date.now();
+    recordingEvents.current.push({ type: "pause", ts: pausedAt });
     // Stop every producer first, then drain and acknowledge its exact batches.
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
@@ -1410,6 +1437,7 @@ function HikeTrackingScreenBody() {
     statusRef.current = "tracking";
     setStatus("tracking");
     // Never clear queue storage here: an OS callback may have landed after the
+    recordingEvents.current.push({ type: "resume", ts: Date.now() });
     // pause drain. Merge it before producers resume.
     await drainBgPoints();
 
@@ -1441,6 +1469,9 @@ function HikeTrackingScreenBody() {
           if (statusRef.current !== "tracking") return;
           const { latitude, longitude, altitude, speed, accuracy } = loc.coords;
           const pts = trackPoints.current;
+          retainRawFix({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp, acc: accuracy,
+            altAcc: loc.coords.altitudeAccuracy, speed }, "foreground",
+            isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts));
           if (!isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts)) return;
           if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
           consumeAltitude(altitude, loc.timestamp, loc.coords.altitudeAccuracy);
@@ -1476,6 +1507,7 @@ function HikeTrackingScreenBody() {
     await drainBgPoints();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     statusRef.current = "finished";
+    recordingEvents.current.push({ type: "finish", ts: Date.now() });
     setStatus("finished");
     // Keep a finished checkpoint until Save acknowledges the local activity and
     // any selected-stage consequence. This makes Finish crash-safe offline.
@@ -1559,6 +1591,8 @@ function HikeTrackingScreenBody() {
         timeTaken: Math.round(elapsedSecs / 60),   // store in minutes
         notes: `GPS tracked hike. Elevation loss: ${elevLoss} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
         trackPoints: trackPoints.current,
+        rawGPSFixes: rawGPSFixes.current,
+        recordingEvents: recordingEvents.current,
         activityId: routeId,
         expeditionId: hillMeta.expeditionId ?? undefined,
         canonicalRouteId: canonicalRouteContext?.routeId,

@@ -885,10 +885,35 @@ function flyover() {
   leg();
 }
 
+var communityPins = [];
+function showCommunityPins(routes) {
+  communityPins.forEach(function (pin) { pin.remove(); });
+  communityPins = [];
+  var bounds = new maplibregl.LngLatBounds();
+  routes.slice(0, 100).forEach(function (route) {
+    var p = route.startPoint;
+    if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lon) ||
+      Math.abs(p.lat) > 90 || Math.abs(p.lon) > 180 ||
+      typeof route.owner !== "string" || typeof route.hikeId !== "string") return;
+    var button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Walk";
+    button.setAttribute("aria-label", "Open member recording " + (route.name || "Hike"));
+    button.style.cssText = "border:2px solid #24efa4;background:#071313;color:white;border-radius:18px;padding:7px;font:600 12px system-ui";
+    button.onclick = function (event) {
+      event.stopPropagation();
+      post({type:"communityRouteSelected",owner:route.owner,hikeId:route.hikeId});
+    };
+    communityPins.push(new maplibregl.Marker({element:button}).setLngLat([p.lon,p.lat]).addTo(map));
+    bounds.extend([p.lon,p.lat]);
+  });
+  if (communityPins.length) map.fitBounds(bounds, {padding:60,maxZoom:12,duration:0});
+}
 function handleMsg(ev) {
   var msg;
   try { msg = JSON.parse(ev.data); } catch (err) { return; }
   if (!msg || !msg.type) return;
+  if (msg.type === "communityPins" && Array.isArray(msg.routes)) { showCommunityPins(msg.routes); return; }
 
   if (msg.type === "route" && Array.isArray(msg.points)) {
     /* A route handed in by the host counts as surveyed unless it says

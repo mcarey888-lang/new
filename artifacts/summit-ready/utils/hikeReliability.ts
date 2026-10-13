@@ -24,6 +24,8 @@ export interface HikeCheckpoint {
   routeName: string;
   status: "tracking" | "paused" | "finished";
   trackPoints: DurableTrackPoint[];
+  rawGPSFixes?: import("./recordingEvidence").RawRecordingFix[];
+  recordingEvents?: import("./recordingEvidence").RecordingEvent[];
   distanceKm: number;
   elevGainM: number;
   elevLossM: number;

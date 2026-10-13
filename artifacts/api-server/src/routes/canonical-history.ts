@@ -114,6 +114,7 @@ export function createCanonicalHistoryHandler(
       const projection = projectCanonicalActivityHistory(
         activities.map((activity) => ({
           ...activity,
+          primaryContext: z.enum(["training", "expedition", "free_hike", "mountain_simulation"]).parse(activity.primaryContext),
           links: (linksByActivity.get(activity.id) ?? []).map((link) => ({
             linkType: link.linkType as CanonicalActivityLinkInput["linkType"],
             targetId: link.targetId,

@@ -45,8 +45,8 @@ function activity(
 describe("canonical history read boundary", () => {
   const previousNode = process.env.NODE_ENV;
   const previousFlag = process.env.CANONICAL_HISTORY_PROJECTION_ENABLED;
-  let readActivities: ReturnType<typeof vi.fn>;
-  let readLinks: ReturnType<typeof vi.fn>;
+  let readActivities: ReturnType<typeof vi.fn<CanonicalHistoryRouteDependencies["readActivities"]>>;
+  let readLinks: ReturnType<typeof vi.fn<CanonicalHistoryRouteDependencies["readLinks"]>>;
   let dependencies: CanonicalHistoryRouteDependencies;
 
   beforeEach(() => {

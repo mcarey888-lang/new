@@ -32,7 +32,12 @@ async function getApiKey() {
     }
   )
     .then((res) => res.json())
-    .then((data) => data.items?.[0]);
+    .then((data: unknown) => {
+      if (!data || typeof data !== "object" || !("items" in data) || !Array.isArray(data.items)) {
+        throw new Error("RevenueCat connector returned an invalid response");
+      }
+      return data.items[0];
+    });
 
   const accessToken =
     connectionSettings?.settings?.access_token ||

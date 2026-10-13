@@ -123,7 +123,9 @@ describe("UI asset family workflow safety seams", () => {
     const family = manifest.families.find((item) => item.familyId === "RANKS")!;
     const make = (id: string, version: number, status: "SELECTED" | "APPROVED_ASSET") => ({
       candidateId: id, assetKey: id, familyId: "RANKS" as const, version, prompt: "", negativePrompt: "",
-      model: "gpt-image-1", referenceAssets: [], status, generatedAt: "", paths: { objectPaths: { master: `expedition-artwork/review-batches/ui-asset-family-workflow/${id}/master.png` } },
+      model: "gpt-image-1", referenceAssets: [], status, generatedAt: "", paths: {
+        masterPath: "", heroPath: "", cardPath: "", thumbnailPath: "",
+        objectPaths: { master: `expedition-artwork/review-batches/ui-asset-family-workflow/${id}/master.png` } },
     });
     const master = make("master", 1, "APPROVED_ASSET");
     const refinement = make("refine", 1, "SELECTED");

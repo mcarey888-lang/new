@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import ArtworkManager from './pages/ArtworkManager';
 import MountainQueue from './pages/MountainQueue';
+import ActivityReview from './pages/ActivityReview';
 import { Toaster } from '@/components/ui/sonner';
 
 const UiAssetsPage = lazy(() => import('./pages/UiAssetsPage'));
@@ -53,6 +54,7 @@ function Router() {
     <Switch>
       <Route path="/" component={ArtworkManager} />
       <Route path="/mountains" component={MountainQueue} />
+      <Route path="/activity-review" component={ActivityReview} />
       <Route path="/ui-assets" component={UiAssetsRoute} />
       {import.meta.env.DEV && <Route path="/assets" component={DevAssetGalleryRoute} />}
       <Route component={NotFound} />

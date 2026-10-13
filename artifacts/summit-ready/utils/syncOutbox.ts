@@ -26,12 +26,15 @@ export interface SyncOutboxItem {
   updatedAt: number;
 }
 
-async function readOutbox(userId: string): Promise<SyncOutboxItem[]> {
+export async function readOutbox(userId: string): Promise<SyncOutboxItem[]> {
   const raw = await AsyncStorage.getItem(syncOutboxKey(userId));
   return raw ? JSON.parse(raw) as SyncOutboxItem[] : [];
 }
 
 const receiptKey = (userId: string) => `summitready_private_hike_receipts_v1_${userId}`;
+export async function readPrivateHikeReceipts(userId: string): Promise<Record<string,string>> {
+  return JSON.parse(await AsyncStorage.getItem(receiptKey(userId)) ?? "{}") as Record<string,string>;
+}
 export async function privateHikeBackupStatus(userId: string, hikeId: string, revision: string) {
   const receipts = JSON.parse(await AsyncStorage.getItem(receiptKey(userId)) ?? "{}") as Record<string, string>;
   if (receipts[hikeId] === revision) return { state: "synced" as const };
@@ -85,6 +88,7 @@ export async function enqueueSyncPending(
     state: "pending",
     attempts: existing?.attempts ?? 0,
     updatedAt: Date.now(),
+    generation: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
   };
   await AsyncStorage.setItem(
     syncOutboxKey(userId),

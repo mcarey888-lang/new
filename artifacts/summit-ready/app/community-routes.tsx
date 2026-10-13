@@ -17,10 +17,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { T } from "@/constants/theme";
 import { CommunityRecordingLibrary } from "@/components/track/CommunityRecordingLibrary";
 import { useAuth } from "@clerk/expo";
+import { activityApiBase } from "@/utils/activityAudience";
 
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : "/api";
+const API_BASE = activityApiBase;
 
 interface CommunityRoute {
   id: string;
@@ -196,7 +195,7 @@ function LegacyCommunityRoutes() {
           <Map size={32} color={T.textDim} />
           <Text style={{ color: T.text, fontSize: 15, fontFamily: "Inter_700Bold" }}>No community routes yet</Text>
           <Text style={{ color: T.textMuted, fontSize: 13, textAlign: "center" }}>
-            Complete a tracked hike and it'll appear here for others to follow.
+            Recordings appear for others only when their owner has chosen an audience that permits sharing.
           </Text>
         </View>
       ) : (

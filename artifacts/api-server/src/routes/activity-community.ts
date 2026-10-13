@@ -25,9 +25,14 @@ async function response(row: Row, geometry: boolean) {
     author = { name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || author.name, avatarUrl: user.imageUrl };
   } catch { /* Optional enrichment cannot invalidate an acknowledged read. */ }
   const snapshot = safeSnapshot(row.snapshot);
+  const trace = snapshot.trackPoints;
+  const first = Array.isArray(trace) ? trace.find(point =>
+    point && typeof point.lat === "number" && Number.isFinite(point.lat) && Math.abs(point.lat) <= 90 &&
+    typeof point.lon === "number" && Number.isFinite(point.lon) && Math.abs(point.lon) <= 180) : undefined;
   if (!geometry) delete snapshot.trackPoints;
   return { owner: row.owner, hikeId: row.hike_id, audience: row.audience,
-    author, source: "user_recording", verified: false, snapshot };
+    author, source: "user_recording", verified: false, snapshot,
+    startPoint: first ? { lat: first.lat, lon: first.lon } : null };
 }
 function handler(fn: (req: Request, res: Response, viewer: string) => Promise<void>) {
   return async (req: Request, res: Response) => {
@@ -121,7 +126,11 @@ router.post("/activity-community/:owner/:hikeId/action", handler(async (req, res
   }
   if (action === "suggest") {
     if (viewer !== d.owner) { res.status(403).json({ error: "Only the author can suggest their original route" }); return; }
-    await db.execute(sql`INSERT INTO activity_trail_suggestions(owner,hike_id,evidence_revision) VALUES(${viewer},${d.hikeId},${data[0].revision}) ON CONFLICT DO NOTHING`);
+    await db.execute(sql`INSERT INTO activity_trail_suggestions(owner,hike_id,evidence_revision)
+      VALUES(${viewer},${d.hikeId},${data[0].revision})
+      ON CONFLICT(owner,hike_id) DO UPDATE SET evidence_revision=excluded.evidence_revision,
+        status='pending',review_notes=NULL,reviewed_at=NULL
+      WHERE activity_trail_suggestions.evidence_revision<>excluded.evidence_revision`);
   }
   res.json({ ok: true, ...(action === "suggest" ? { status: "pending", verified: false } : {}) });
 }));

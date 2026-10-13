@@ -201,7 +201,7 @@ describe("what hiding the old panel could have broken", () => {
     /* Hidden with the panel and absent from the rail, the feature was simply
        gone — no error, no button, nothing calling it. */
     const s = script();
-    expect(s).toContain('fly.textContent = "Fly the route"');
+    expect(s).toContain('var fly = sheetButton("Fly the route")');
     expect(s).toContain('mirror("ctlFly", "fly")');
   });
 
@@ -223,8 +223,11 @@ describe("what hiding the old panel could have broken", () => {
     expect(s).toContain('window.addEventListener("resize", placeRouteBar)');
   });
 
-  it("keeps the drawing bar clear of the host screen's own chips", () => {
-    expect(script()).toContain('drawBar.style.top = "64px"');
+  it("starts the drawing bar inside the map below the external host header", () => {
+    // SharedTrackScreen reserves the header above the map. The former 64px
+    // workaround was for a header drawn on top of the map.
+    expect(script()).toContain('drawBar.style.top = "12px"');
+    expect(script()).toContain('drawBar.style.right = "68px"');
   });
 });
 

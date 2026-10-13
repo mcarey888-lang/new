@@ -6,7 +6,8 @@ type ArtworkAdminSection =
   | "signatures"
   | "mountains"
   | "ui-assets"
-  | "assets";
+  | "assets"
+  | "activity-review";
 
 interface ArtworkAdminHeaderProps {
   activeSection: ArtworkAdminSection;
@@ -21,6 +22,7 @@ const NAV_LINKS: Array<{
 }> = [
   { section: "signatures", href: "/", label: "Signatures" },
   { section: "mountains", href: "/mountains", label: "Mountain Heroes" },
+  { section: "activity-review", href: "/activity-review", label: "Activity Review" },
   { section: "ui-assets", href: "/ui-assets", label: "UI Asset System" },
   { section: "assets", href: "/assets", label: "Assets (DEV)", devOnly: true },
 ];

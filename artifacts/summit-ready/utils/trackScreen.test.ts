@@ -344,9 +344,10 @@ describe("the recorded line only contains fixes that passed the filter", () => {
   it("keeps both rejection rules", () => {
     expect(REC_CODE).toMatch(/GPS_MAX_ACCURACY_M\s*=\s*25/);
     expect(REC_CODE).toMatch(/GPS_MAX_SPEED_KMH\s*=\s*20/);
-    /* The background task applies the accuracy cap on its own, because its
-       points never pass through the foreground watchers. */
-    expect(REC_CODE).toMatch(/loc\.coords\.accuracy > GPS_MAX_ACCURACY_M\) continue;/);
+    /* Raw OS fixes must survive rejection. The drain applies the same
+       plausibility gate before a fix reaches the derived line. */
+    expect(REC_CODE).toContain('retainRawFix(point, "background"');
+    expect(REC_CODE).toContain("if (!isPlausiblePoint(p.lat, p.lon, p.ts, p.acc ?? null, pts)) continue;");
   });
 });
 

@@ -6,5 +6,6 @@ export const recordedHikeBackups = pgTable("recorded_hike_backups", {
   hikeId: text("hike_id").notNull(),
   snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
   revision: text("revision").notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, t => [primaryKey({ columns: [t.ownerUserId, t.hikeId] })]);

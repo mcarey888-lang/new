@@ -151,7 +151,8 @@ artworkRouter.post("/ui-assets/families/:familyId/lock", requireAdminKey, async 
 artworkRouter.get("/ui-assets/candidates/:candidateId/v:version/:crop", requireAdminKey, async (req, res) => {
   try {
     const candidate = await validateUiAssetCandidate(param(req.params.candidateId), Number(param(req.params.version)), param(req.params.crop));
-    const objectPath = candidate.paths.objectPaths?.[param(req.params.crop)];
+    const objectPaths = candidate.paths.objectPaths;
+    const objectPath = typeof objectPaths === "object" ? objectPaths?.[param(req.params.crop)] : undefined;
     if (!objectPath) return res.status(404).json({ error: "UI asset image not found" });
     await streamReviewObject(objectPath, res);
     return;

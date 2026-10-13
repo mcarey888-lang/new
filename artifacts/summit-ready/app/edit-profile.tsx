@@ -6,7 +6,7 @@ import {router} from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import {SRScreenHeader} from "@/components/ui";
 import {ActivityAudiencePicker} from "@/components/track/ActivityAudiencePicker";
-import {readActivityAudience,refreshActivityAudience,saveActivityAudience,activityApiBase,type ActivityAudience} from "@/utils/activityAudience";
+import {loadActivityAudience,saveActivityAudience,activityApiBase,type ActivityAudience} from "@/utils/activityAudience";
 import {BASECAMP} from "@/constants/tokens";
 export default function EditProfile(){
   const{user}=useUser();const{userId,getToken}=useAuth();
@@ -16,7 +16,7 @@ export default function EditProfile(){
   const[audience,setAudience]=useState<ActivityAudience|null>(null);
   useEffect(()=>{let active=true;
     setAvatar(null);setCover(null);setMessage(null);setError(null);
-    if(userId)void readActivityAudience(userId).then(a=>{if(active)setAudience(a);});
+    if(userId)void loadActivityAudience(userId,()=>getToken({skipCache:true})).then(a=>{if(active)setAudience(a);});
     return()=>{active=false;};
   },[userId]);
   useEffect(()=>{if(user?.firstName)setName(user.firstName);},[user?.firstName]);

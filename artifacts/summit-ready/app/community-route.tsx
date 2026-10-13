@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View,Text,ScrollView,Pressable,TextInput,ActivityIndicator } from "react-native";
-import { router,useLocalSearchParams } from "expo-router";
+import { View,Text,ScrollView,Pressable,TextInput,ActivityIndicator,AppState } from "react-native";
+import { router,useLocalSearchParams,useFocusEffect } from "expo-router";
 import { useAuth } from "@clerk/expo";
 import { getActivityRoute,actOnRecordedActivityRoute,followActivityAuthor,unfollowActivityAuthor,type ActivityCommunityRoute } from "@workspace/api-client-react";
 import { authenticatedHeaders } from "@/utils/authRequest";
@@ -9,6 +9,7 @@ import { TrackMap,type TrackMapHandle } from "@/components/track/TrackMap";
 import { shareRecordedRoute } from "@/utils/recordedHikeExport";
 import { BASECAMP } from "@/constants/tokens";
 import { SRScreenHeader } from "@/components/ui";
+import { RecordingElevationSpark } from "@/components/track/RecordingElevationSpark";
 
 export default function CommunityRouteDetail() {
   const {owner,hikeId}=useLocalSearchParams<{owner:string;hikeId:string}>();
@@ -16,6 +17,18 @@ export default function CommunityRouteDetail() {
   const [route,setRoute]=useState<ActivityCommunityRoute|null>(null),[followed,setFollowed]=useState(false);
   const [error,setError]=useState<string|null>(null),[message,setMessage]=useState<string|null>(null),[reason,setReason]=useState("");
   const [attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false),[basemap,setBasemap]=useState(false);
+  useFocusEffect(React.useCallback(()=>{
+    setAttempt(a=>a+1);
+    return()=>{setRoute(null);setBasemap(false);};
+  },[owner,hikeId,userId]));
+  useEffect(()=>{
+    const sub=AppState.addEventListener("change",state=>{
+      setRoute(null);setBasemap(false);
+      if(state==="active")setAttempt(a=>a+1);
+    });
+    const timer=setInterval(()=>{setRoute(null);setBasemap(false);setAttempt(a=>a+1);},60_000);
+    return()=>{sub.remove();clearInterval(timer);};
+  },[]);
   const mapRef=useRef<TrackMapHandle|null>(null);
   useEffect(()=>{
     let active=true;setRoute(null);setError(null);
@@ -32,7 +45,7 @@ export default function CommunityRouteDetail() {
       const token=await getToken({skipCache:true}); if(!token)throw new Error("Sign in again to continue.");
       await actOnRecordedActivityRoute(owner,hikeId,{action:kind,...(kind==="report"?{reason}:{})},{headers:authenticatedHeaders(token)});
       setMessage(kind==="suggest"?"Suggested for trail review · pending, not approved or verified":kind==="report"?"Reported and hidden from your discovery feed":kind==="save"?"Route reference saved. No hike was recorded or credited.":"Route reference removed.");
-    }catch(e){setError(e instanceof Error?e.message:"This action could not be completed.");}finally{setBusy(false);}
+    }catch(e){setRoute(null);setBasemap(false);setError(e instanceof Error?e.message:"This action could not be completed.");}finally{setBusy(false);}
   }
   const points=(route?.snapshot.trackPoints??[]) as Array<{lat:number;lon:number}>;
   const button=(label:string,onPress:()=>void)=><Pressable accessibilityRole="button" disabled={busy}
@@ -47,6 +60,9 @@ export default function CommunityRouteDetail() {
       <Text style={{color:BASECAMP.textMuted}}>{route.author.name} · {route.snapshot.distance} km · {route.snapshot.elevationGain} m recorded ascent · {route.snapshot.timeTaken} min recording time</Text>
       <Text style={{color:BASECAMP.textMuted}}>Member recording, not a verified trail. {route.snapshot.date}</Text>
       {points.length>1?<RecordedTracePreview points={points}/>:<Text style={{color:BASECAMP.textMuted}}>No GPS route was recorded.</Text>}
+      <Text style={{color:BASECAMP.textMuted}}>Recorded altitude profile · GPS readings, not a verified trail survey</Text>
+      <RecordingElevationSpark samples={(route.snapshot.trackPoints??[]).flatMap(point=>
+        typeof point.ts==="number" && Number.isFinite(point.ts) ? [{ts:point.ts,alt:point.alt??null}] : [])} />
       {points.length>1?button(basemap?"Hide online map":"View on online map",()=>setBasemap(v=>!v)):null}
       {basemap?<View style={{height:340}}><TrackMap mapRef={mapRef} recording={false} onMessage={msg=>{
         if(msg.type==="ready"){mapRef.current?.send({type:"recPlanned",points:points.map(p=>[p.lat,p.lon])});mapRef.current?.send({type:"locate",lat:points[0].lat,lng:points[0].lon,zoom:13});}

@@ -19,7 +19,7 @@ Only the created route actually walked qualifies for an offer to share, not ever
 
 **Why:** The user chose completion of each route and an explicit share prompt, rather than automatic publication or crowd averages being treated as verified routes.
 
-**How to apply:** Preserve original recorded geometry and keep moderation, personal planning, recording evidence, and canonical catalogue approval separate.
+**How to apply:** Preserve original recorded geometry and keep moderation, personal planning, recording evidence, and canonical catalogue approval separate. Approving an app-owned trail suggestion is a reviewed candidate, never permission to insert or verify engine catalogue records.
 
 Sample member stories are presentation-only examples, visibly labeled as fictional. Never seed them into the member API or mix sample achievements into personal progress; show them separately when the real feed is empty or unavailable, and do not let them conceal a feed error.
 
@@ -37,7 +37,7 @@ Users should retain their own saved routes and be able to share created routes s
 
 **Why:** The user requested an AllTrails-like shared route library and selected immediate publication.
 
-**How to apply:** Keep private saved plans separate from public community copies. Publication must be an explicit route-sharing action, never an automatic consequence of recording a hike or saving a private plan. This choice does not relax the existing photo, activity or location-history privacy boundaries.
+**How to apply:** Keep private saved plans separate from public community copies. Publishing a custom planned route requires its explicit sharing action. Recorded hikes follow the separate first-use audience policy above: choosing Public permits future recordings to be discoverable after sync without an extra Publish action. Legacy hikes and photos do not inherit that consent.
 
 Only the specific route actually completed is eligible for community sharing.
 Ask the walker to share each eligible route; do not publish automatically or

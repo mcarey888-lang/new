@@ -1,11 +1,12 @@
 import React, { useEffect, useState,useRef } from "react";
-import { View, Text, TextInput, Pressable, ActivityIndicator } from "react-native";
-import { router } from "expo-router";
+import { View, Text, TextInput, Pressable, ActivityIndicator, AppState } from "react-native";
+import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "@clerk/expo";
 import * as Location from "expo-location";
 import { getActivityRoutes, type ActivityCommunityRoute } from "@workspace/api-client-react";
 import { authenticatedHeaders,tokenBelongsToUser } from "@/utils/authRequest";
 import { BASECAMP } from "@/constants/tokens";
+import { TrackMap, type TrackMapHandle } from "./TrackMap";
 
 export function CommunityRecordingLibrary({ saved=false }: { saved?: boolean }) {
   const { userId, getToken }=useAuth();
@@ -17,6 +18,20 @@ export function CommunityRecordingLibrary({ saved=false }: { saved?: boolean }) 
   const [dataOwner,setDataOwner]=useState<string|null>(null);
   const data=dataOwner===userId?dataRaw:[];
   const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null);
+  const [mapView,setMapView]=useState(false);
+  const mapRef=useRef<TrackMapHandle|null>(null);
+  const sendPins=()=>mapRef.current?.send({type:"communityPins",routes:data.map(route=>({
+    owner:route.owner,hikeId:route.hikeId,name:route.snapshot.name,startPoint:route.startPoint,
+  }))});
+  useEffect(()=>{sendPins();},[dataRaw,dataOwner,userId,mapView]);
+  useFocusEffect(React.useCallback(()=>{setPage(0);setAttempt(a=>a+1);},[userId]));
+  useEffect(()=>{
+    const sub=AppState.addEventListener("change",state=>{
+      setData([]);setMore(false);
+      if(state==="active"){setPage(0);setAttempt(a=>a+1);}
+    });
+    return()=>sub.remove();
+  },[]);
   useEffect(()=>{setPage(0);setData([]);setMore(false);setNearby(null);},[userId]);
   useEffect(()=>{
     let active=true; setLoading(true);setError(null);
@@ -27,7 +42,7 @@ export function CommunityRecordingLibrary({ saved=false }: { saved?: boolean }) 
       const result=await getActivityRoutes({q:query,page,...(saved?{saved:"1" as const}:{}),...nearby},
         {headers:authenticatedHeaders(token)});
       if(active && ownerRef.current===userId){setData(old=>page===0?result.routes:[...old,...result.routes]);setDataOwner(userId);setMore(result.hasMore);}
-    })().catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);}),250);
+    })().catch(e=>{if(active){setData([]);setMore(false);setError(e.message);}}).finally(()=>{if(active)setLoading(false);}),250);
     return()=>{active=false;clearTimeout(timer);};
   },[userId,query,page,nearby,saved,attempt]);
   async function findNearby() {
@@ -49,6 +64,16 @@ export function CommunityRecordingLibrary({ saved=false }: { saved?: boolean }) 
     <Pressable accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={nearby?()=>{setNearby(null);setPage(0);}:findNearby}>
       <Text style={{color:BASECAMP.accent}}>{nearby?"Clear nearby filter (25 km)":"Find recordings near me"}</Text>
     </Pressable>
+    <Pressable accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={()=>setMapView(value=>!value)}>
+      <Text style={{color:BASECAMP.accent}}>{mapView?"Hide member route map":"Show member recordings on map"}</Text>
+    </Pressable>
+    {mapView?<View style={{height:320}}>
+      <TrackMap recording mapRef={mapRef} onReady={sendPins} onMessage={message=>{
+        if(message.type!=="communityRouteSelected")return;
+        const route=data.find(item=>item.owner===message.owner&&item.hikeId===message.hikeId);
+        if(route)router.push({pathname:"/community-route",params:{owner:route.owner,hikeId:route.hikeId}} as never);
+      }}/>
+    </View>:null}
     {loading?<ActivityIndicator color={BASECAMP.accent}/>:null}
     {error?<><Text accessibilityRole="alert" style={{color:BASECAMP.textStrong}}>{error}</Text>
       <Pressable accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={()=>setAttempt(a=>a+1)}><Text style={{color:BASECAMP.accent}}>Retry routes</Text></Pressable></>:null}

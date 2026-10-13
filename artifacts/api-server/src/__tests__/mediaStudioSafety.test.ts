@@ -98,10 +98,12 @@ describe("Media Studio curation safety", () => {
 
   it("fences manifest writes and confirms exact approvals", () => {
     expect(storageSource).toContain("preconditionOpts: { ifGenerationMatch: expectedGeneration }");
-    expect(storageSource).toContain("await renew()");
+    // Renewal is serialized now, so an assert cannot race the heartbeat.
+    expect(storageSource).toContain("await queueRenewal()");
+    expect(storageSource).toContain("if (lostError) throw new Error");
     expect(gallerySource).toContain("Approve this exact version?");
     expect(gallerySource).toContain("It will not be published");
-    expect(mountainPageSource).toContain("Approve “${candidate.title}” as the exact hero");
+    expect(mountainPageSource).toContain("window.confirm(`Approve “${candidate.title}” as the hero artwork");
   });
 
   it("caps bulk generation at 25 explicit targets and requires count confirmation", () => {

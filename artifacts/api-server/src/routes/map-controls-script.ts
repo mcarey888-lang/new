@@ -169,11 +169,15 @@ function buildLayersSheet() {
       var b = sheetButton(layer.label);
       b.dataset.layer = layer.id;
       b.className = "ctlLayer";
-      b.onclick = function () { setLayer(layer.id); syncControls(); closeLayersSheet(); };
+      b.onclick = function () { setLayer(layer.id); post({ type: "layerChanged", id: layer.id }); syncControls(); closeLayersSheet(); };
       layersSheet.appendChild(b);
     })(LAYERS[i]);
   }
   document.body.appendChild(layersSheet);
+  var fly = sheetButton("Fly the route");
+  fly.id = "ctlFly";
+  layersSheet.appendChild(fly);
+  mirror("ctlFly", "fly");
   window.addEventListener("resize", placeLayersSheet);
   window.addEventListener("orientationchange", placeLayersSheet);
   window.addEventListener("resize", placeMapNavigation);
