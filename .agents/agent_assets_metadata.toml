@@ -662,3 +662,17 @@ mtime_ms = 1791846215186
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/0539f29a-ce3a-4881-8b0e-3ba841414438/8c89c3d8-c51b-4a94-a87f-d5ced0f4bfb3"
 storage_version_token = "1791846248182865"
 content_type = "text/html"
+
+[[outputs]]
+id = "sWkcGC5TeL7ZINBwtd8kf"
+uri = "file://reports/SummitReady-followup-evidence-2026-10-13.html"
+type = "html"
+title = "SummitReady — F01–F22 repair evidence"
+description = "Each finding’s status, changed-code evidence, test results, protected-release safeguards and remaining production/device gates."
+logical_id = "f7bb8590-c478-472d-99e0-6c2b8711ce93"
+content_hash = "sha256:1e03127df402b7196de12c772b198b7ca4a7c35bfc7eb958dc080a9b172cbb5c"
+size = 16045
+mtime_ms = 1791869909515
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/f7bb8590-c478-472d-99e0-6c2b8711ce93/ad5daca6-f52a-457d-ae3a-9b26d76355e6"
+storage_version_token = "1791869950856132"
+content_type = "text/html"
