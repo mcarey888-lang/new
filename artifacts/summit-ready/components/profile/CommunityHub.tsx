@@ -2,6 +2,7 @@ import { Camera, ChevronDown, Flag, ImagePlus, RefreshCw, Send, Trash2, LockKeyh
 import * as ImagePicker from "expo-image-picker";
 import { Image as ExpoImage } from "expo-image";
 import React, { useEffect, useState } from "react";
+import { randomUUID } from "expo-crypto";
 import {useAuth} from "@clerk/expo";
 import { Alert, Image, type ImageSourcePropType, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
@@ -22,6 +23,7 @@ export type CommunityPost = {
 };
 
 export type CommunityCreate = {
+  draftId?: string;
   kind: "story" | "badge" | "photo";
   text: string;
   badgeId?: string;
@@ -52,12 +54,16 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
   const [composing, setComposing] = useState(false);
   const [kind, setKind] = useState<CommunityCreate["kind"]>("story");
   const [text, setText] = useState("");
+  const [draftId,setDraftId] = useState(()=>randomUUID());
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const {userId: draftOwner}=useAuth();
   useEffect(()=>{
     setText("");setPhotoUri(null);setAudience("private");setComposing(false);
   },[draftOwner]);
   const [audience, setAudience] = useState<"private" | "members">("private");
+  // Changed content/audience is a new draft revision, not a retry of bytes
+  // whose previous response may have been lost. Unchanged retries keep the ID.
+  useEffect(()=>setDraftId(randomUUID()),[kind,text,photoUri,audience,draftBadge?.nonce]);
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -108,6 +114,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
     setSubmitting(true);
     try {
       await onCreate({
+        draftId,
         kind: photoUri ? "photo" : kind,
         text: text.trim(),
         ...(kind === "badge" && draftBadge && !photoUri ? { badgeId: draftBadge.id, badgeTitle: draftBadge.title } : {}),
@@ -115,6 +122,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
         visibility: audience,
       });
       setText("");
+      setDraftId(randomUUID());
       setPhotoUri(null);
       setKind("story");
       setAudience("private");

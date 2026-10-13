@@ -17,7 +17,7 @@ const routeSource = readFileSync(
 const hillSessionSource = readFileSync(
   new URL("../routes/hill-session.ts", import.meta.url),
   "utf8",
-);
+) + readFileSync(new URL("../routes/hill-session-contract.ts",import.meta.url),"utf8");
 const userRouteSource = readFileSync(
   new URL("../routes/user.ts", import.meta.url),
   "utf8",

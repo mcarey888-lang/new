@@ -4,8 +4,9 @@ import { enqueueSyncPending, retrySyncOutbox } from "../utils/syncOutbox";
 import { queueRecordedHikeSync } from "../utils/recordedHikeSync";
 import { serializeRecordedHikeWrite } from "../utils/recordedHikeWrites";
 import { deletedRecordingIds, rememberRecordingDeletion } from "../utils/recordedHikeDeletion";
-import { readPrivateHikeReceipts } from "../utils/syncOutbox";
-import { reconcileBackupReceipts } from "../utils/backupReceiptReconciliation";
+import { backUpCurrentRecording, reconcileRecordingBackups, type RecordingBackupStore } from "../utils/recordedHikeBackupActions";
+import { useMemo } from "react";
+import { activityApiBase } from "../utils/activityAudience";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
@@ -391,6 +392,7 @@ export interface ExploreHike {
   sharingIntentConfirmed?: boolean;
   sharingRevision?: string;
   elevationQuality?: import("../utils/elevationQuality").ElevationQuality;
+  recordingDurationSeconds?: number;
   activityId?: string;
   expeditionId?: string;
   /** Canonical SDE route identity is independent of local activity and community IDs. */
@@ -456,6 +458,7 @@ interface AppState {
   logExploreHike: (hike: Omit<ExploreHike, "id">) => Promise<string>;
   updateExploreHike: (id: string, patch: Partial<Pick<ExploreHike, "elevationGain" | "elevationLoss" | "notes" | "elevationCorrection" | "backupRevision" | "backedUpRevision" | "syncState" | "audience" | "sharingIntentConfirmed">>) => Promise<void>;
   deleteExploreHike: (id: string) => Promise<void>;
+  backUpExploreHike: (id: string) => Promise<boolean>;
   savedTrailIds: string[];
   completedTrailIds: string[];
   customRoutes: Trail[];
@@ -547,6 +550,7 @@ const AppContext = createContext<AppState>({
   logExploreHike: async () => "",
   updateExploreHike: async () => {},
   deleteExploreHike: async () => {},
+  backUpExploreHike: async () => false,
   savedTrailIds: [],
   completedTrailIds: [],
   customRoutes: [],
@@ -1887,7 +1891,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (userId) {
       await enqueueSyncPending(userId, {
         id: `private-hike:${id}`, kind: "private-hike-delete", method: "DELETE",
-        url: `${API_BASE}/recorded-hikes/${encodeURIComponent(id)}`, body: { hikeId: id },
+        url: `${activityApiBase}/recorded-hikes/${encodeURIComponent(id)}`, body: { hikeId: id },
       });
     }
     const updated = exploreHikesRef.current.filter(h => h.id !== id);
@@ -1911,32 +1915,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const changed = updated.find(h => h.id === id);
     if (userId && changed) {
       await enqueueSyncPending(userId, { id: `private-hike:${id}`, kind: "private-hike", method: "PUT",
-        url: `${API_BASE}/recorded-hikes`, body: privateRecordedHikeBackup(changed) });
+        url: `${activityApiBase}/recorded-hikes`, body: privateRecordedHikeBackup(changed) });
       void retrySyncOutbox(userId, () => getToken({ skipCache: true })).catch(() => {});
     }
     if (summitGoal) setReadinessScore(calculateReadiness(summitGoal, trainingPlan, sessions, { sessionReps, assignedHills, completedGoals, exploreHikes: updated }));
   }), [_uid, EXPLORE_HIKES_KEY, summitGoal, trainingPlan, sessions, sessionReps, assignedHills, completedGoals, userId, getToken]);
 
+  const recordingBackupStore = useMemo<RecordingBackupStore>(() => ({
+    exclusive: operation => serializeRecordedHikeWrite(EXPLORE_HIKES_KEY, operation),
+    assertOwner: () => {
+      if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed. Reopen the recording.");
+    },
+    read: () => exploreHikesRef.current,
+    write: async next => {
+      if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed. Reopen the recording.");
+      await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(next));
+      if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed while saving.");
+      exploreHikesRef.current = next;
+      setExploreHikes(next);
+    },
+  }), [_uid, EXPLORE_HIKES_KEY]);
+  const backUpExploreHike = useCallback(async (id: string) => {
+    if (!userId) throw new Error("Sign in to back up your recording.");
+    return backUpCurrentRecording(userId, id, recordingBackupStore, () => getToken({skipCache:true}));
+  }, [userId, recordingBackupStore, getToken]);
+
   useEffect(() => {
     if (!userId) return;
     let active = true;
-    const reconcile = () => serializeRecordedHikeWrite(EXPLORE_HIKES_KEY, async () => {
-      if (!active || hikeStorageOwnerRef.current !== _uid) return;
-      const receipts = await readPrivateHikeReceipts(userId);
-      if (!active || hikeStorageOwnerRef.current !== _uid) return;
-      const next = reconcileBackupReceipts(exploreHikesRef.current, receipts);
-      if (next === exploreHikesRef.current) return;
-      // This is local receipt metadata, not an activity edit. No new revision
-      // or upload is enqueued, and canonical credit remains independently pending.
-      await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(next));
-      if (!active || hikeStorageOwnerRef.current !== _uid) return;
-      exploreHikesRef.current = next;
-      setExploreHikes(next);
-    });
+    const reconcile = () => active ? reconcileRecordingBackups(userId,recordingBackupStore) : Promise.resolve();
     void reconcile().catch(() => {});
     const timer = setInterval(() => { void reconcile().catch(() => {}); }, 15_000);
     return () => { active = false; clearInterval(timer); };
-  }, [userId, _uid, EXPLORE_HIKES_KEY]);
+  }, [userId, recordingBackupStore]);
 
   const saveTrail = useCallback(async (id: string) => {
     const updated = savedTrailIds.includes(id) ? savedTrailIds : [...savedTrailIds, id];
@@ -2410,7 +2421,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitWeekSessions, hillsInPlan, addHillToPlan, myHills, addToMyHills, removeFromMyHills, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, sessionDayOverrides, setSessionDayOverride, clearSessionDayOverride, updatePlanSession,
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,
       completedGoals,
-      appMode, exploreHikes, setAppMode, logExploreHike, updateExploreHike, deleteExploreHike,
+      appMode, exploreHikes, setAppMode, logExploreHike, updateExploreHike, deleteExploreHike, backUpExploreHike,
       savedTrailIds, completedTrailIds, customRoutes,
       saveTrail, unsaveTrail, completeTrail, uncompleteTrail, addCustomRoute, deleteCustomRoute,
       reloadApp,

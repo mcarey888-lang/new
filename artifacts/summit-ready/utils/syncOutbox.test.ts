@@ -4,7 +4,7 @@ vi.mock("@react-native-async-storage/async-storage", () => ({ default: {
   getItem: vi.fn(async (key: string) => storage.get(key) ?? null),
   setItem: vi.fn(async (key: string, value: string) => { storage.set(key, value); }),
 } }));
-import { enqueueSyncPending, privateHikeBackupStatus, retrySyncOutbox } from "./syncOutbox";
+import { enqueueSyncPending, privateHikeBackupStatus, retrySyncOutbox, readOutbox } from "./syncOutbox";
 const token = (owner: string) => `header.${btoa(JSON.stringify({ sub: owner }))}.signature`;
 const body = { hikeId: "recorded-hike", revision: "2026-10-11T20:00:00.000Z", snapshot: { id: "recorded-hike" } };
 const item = { id: "private-hike:recorded-hike", kind: "private-hike" as const, method: "PUT" as const, url: "/api/recorded-hikes", body };
@@ -57,5 +57,45 @@ describe("private recorded hike upload acknowledgements", () => {
     await enqueueSyncPending("user-a", { ...item, kind: "private-hike-delete", method: "DELETE" });
     await retrySyncOutbox("user-a", async () => token("user-a"));
     expect((await privateHikeBackupStatus("user-a", body.hikeId, body.revision)).state).toBe("not_queued");
+  });
+});
+
+describe("canonical one-shot acknowledgement contract",()=>{
+  beforeEach(()=>{storage.clear();vi.unstubAllGlobals();});
+  const canonical={id:"canonical-activity:recorded-hike",kind:"canonical-activity" as const,method:"POST" as const,
+    url:"/api/explore-hike/canonicalize",body:{exploreHikeId:"recorded-hike"}};
+  it.each(["created","deduplicated","reused","ingested"])("accepts one-shot %s without re-reading the body",async status=>{
+    const response=new Response(JSON.stringify({status,canonicalActivityId:"canonical-1"}));
+    vi.stubGlobal("fetch",vi.fn(async()=>response));
+    await enqueueSyncPending("user-a",canonical);
+    await retrySyncOutbox("user-a",async()=>token("user-a"));
+    expect(response.bodyUsed).toBe(true);
+    expect(await readOutbox("user-a")).toEqual([]);
+  });
+  it("keeps disabled canonical processing distinct from a successful private backup",async()=>{
+    vi.stubGlobal("fetch",vi.fn(async(url:string)=>new Response(JSON.stringify(url.endsWith("/canonicalize")?
+      {status:"disabled"}:{ok:true,hikeId:body.hikeId,revision:body.revision}))));
+    await enqueueSyncPending("user-a",item);
+    await enqueueSyncPending("user-a",canonical);
+    await retrySyncOutbox("user-a",async()=>token("user-a"));
+    expect((await privateHikeBackupStatus("user-a",body.hikeId,body.revision)).state).toBe("synced");
+    expect(await readOutbox("user-a")).toEqual([expect.objectContaining({kind:"canonical-activity",state:"failed",lastError:expect.stringContaining("disabled")})]);
+  });
+  it.each([
+    {status:"conflict",canonicalActivityId:"canonical-1"},
+    {status:"created",canonicalActivityId:""},
+    {status:"created",canonicalActivityId:"canonical-1",exploreHikeId:"other"},
+    {status:"created",canonicalActivityId:"canonical-1",ownerUserId:"user-b"},
+  ])("refuses wrong or incomplete canonical identities %#",async ack=>{
+    vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify(ack))));
+    await enqueueSyncPending("user-a",canonical);
+    await retrySyncOutbox("user-a",async()=>token("user-a"));
+    expect((await readOutbox("user-a"))[0].state).toBe("failed");
+  });
+  it("rejects a reused canonical ID different from the requested known identity",async()=>{
+    vi.stubGlobal("fetch",vi.fn(async()=>new Response('{"status":"reused","canonicalActivityId":"wrong"}')));
+    await enqueueSyncPending("user-a",{...canonical,body:{exploreHikeId:"recorded-hike",existingCanonicalActivityId:"expected"}});
+    await retrySyncOutbox("user-a",async()=>token("user-a"));
+    expect((await readOutbox("user-a"))[0].state).toBe("failed");
   });
 });

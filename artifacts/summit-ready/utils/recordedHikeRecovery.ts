@@ -1,4 +1,5 @@
 import { createRecordedElevation, recordElevation } from "./recordedElevation";
+import { recordedHikeElevationQuality } from "./elevationQuality";
 
 export interface RecordedHikePoint {
   lat: number; lon: number;
@@ -67,10 +68,11 @@ export function applyRecordedAltitudeReview<T extends ReviewableHike>(hike: T, a
   };
 }
 
-export function privateRecordedHikeBackup<T extends { id: string; backupRevision?: string; backedUpRevision?: string; syncState?: string }>(
+export function privateRecordedHikeBackup<T extends { id: string; backupRevision?: string; backedUpRevision?: string; syncState?: string } & Parameters<typeof recordedHikeElevationQuality>[0]>(
   hike: T, revision = hike.backupRevision ?? new Date().toISOString(),
 ) {
   // Status on a particular phone is not evidence that the server accepted it.
   const { backedUpRevision: _backedUp, syncState: _sync, ...snapshot } = hike;
-  return { hikeId: hike.id, revision, snapshot: { ...snapshot, backupRevision: revision } };
+  return { hikeId: hike.id, revision, snapshot: { ...snapshot, backupRevision: revision,
+    elevationQuality: recordedHikeElevationQuality(snapshot) } };
 }

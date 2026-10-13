@@ -22,3 +22,17 @@ claim a certainty that the GPS readings do not support.
 **How to apply:** Use explicit preview and confirmation, with an original-value
 audit. Keep private device backups separate from the canonical activity/evidence
 ledger: a backup or retry must not create another credited activity.
+
+Quality coverage requires known active recording duration and usable readings
+throughout the active segments; missing duration is never complete coverage.
+Do not infer coverage merely from the first and last timestamps or trust a
+previously cached “reliable” label when reprocessing or uploading evidence.
+
+**Why:** Independent verification found that two accurate readings ten seconds
+apart could label a six-hour recording reliable despite a passing test suite.
+Accurate individual fixes do not establish the coverage of an entire hike.
+
+**How to apply:** Use the same duration-aware evidence assessment at live,
+finish, save, detail/restore and upload boundaries; exclude deliberate pauses
+without filling in missing GPS readings. Preserve original evidence and keep
+historical qualified-credit corrections as a separate protected transaction.

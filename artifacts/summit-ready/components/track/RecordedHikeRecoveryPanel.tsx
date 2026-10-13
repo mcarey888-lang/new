@@ -4,15 +4,14 @@ import { useAuth } from "@clerk/expo";
 import { useApp, type ExploreHike } from "@/context/AppContext";
 import { BASECAMP, TYPE } from "@/constants/tokens";
 import { SRPanel, SRSectionHeader } from "@/components/ui";
-import { applyRecordedAltitudeReview, privateRecordedHikeBackup, reviewRecordedAltitude } from "@/utils/recordedHikeRecovery";
-import { enqueueSyncPending, privateHikeBackupStatus, retrySyncOutbox } from "@/utils/syncOutbox";
+import { applyRecordedAltitudeReview, reviewRecordedAltitude } from "@/utils/recordedHikeRecovery";
+import { privateHikeBackupStatus } from "@/utils/syncOutbox";
 
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api` : "/api";
 const actionStyle = { padding: 14, borderRadius: 8, backgroundColor: BASECAMP.accent, marginTop: 10 };
 
 export function RecordedHikeRecoveryPanel({ hike }: { hike: ExploreHike }) {
-  const { userId, getToken } = useAuth();
-  const { updateExploreHike } = useApp();
+  const { userId } = useAuth();
+  const { updateExploreHike, backUpExploreHike } = useApp();
   const owner = useRef(userId);
   owner.current = userId;
   const [busy, setBusy] = useState(false);
@@ -36,18 +35,10 @@ export function RecordedHikeRecoveryPanel({ hike }: { hike: ExploreHike }) {
   async function backup(recording: ExploreHike) {
     const originalOwner = userId;
     if (!originalOwner) throw new Error("Sign in to back up your recording.");
-    const payload = privateRecordedHikeBackup(recording);
-    await updateExploreHike(recording.id, { backupRevision: payload.revision, syncState: "queued" });
-    if (owner.current !== originalOwner) throw new Error("Your account changed. Reopen the recording.");
-    await enqueueSyncPending(originalOwner, {
-      id: `private-hike:${recording.id}`, kind: "private-hike",
-      url: `${API_BASE}/recorded-hikes`, method: "PUT", body: payload,
-    });
-    await retrySyncOutbox(originalOwner, () => getToken({ skipCache: true }));
+    setConfirmed(false);
+    const acknowledged = await backUpExploreHike(recording.id);
     if (owner.current !== originalOwner) return;
-    const status = await privateHikeBackupStatus(originalOwner, recording.id, payload.revision);
-    if (status.state !== "synced") throw new Error(status.error ?? "Backup is queued. Your phone copy is safe; retry when connected.");
-    await updateExploreHike(recording.id, { backedUpRevision: payload.revision, syncState: "synced" });
+    if (!acknowledged) throw new Error("Backup has not been confirmed for the current version. Your phone copy is safe; retry when connected.");
     setConfirmed(true);
   }
 
@@ -83,17 +74,18 @@ export function RecordedHikeRecoveryPanel({ hike }: { hike: ExploreHike }) {
           <SRPanel radius={12}>
             <Text accessibilityRole="header" style={{ ...TYPE.title, color: BASECAMP.text }}>Apply filtered GPS estimate?</Text>
             <Text style={{ ...TYPE.body, color: BASECAMP.textMuted, marginTop: 12 }}>Change ascent from {Math.round(hike.elevationGain)} m to {review.available ? review.gain : "—"} m? This is an estimate from saved GPS altitude, not verified elevation. Your original figures and GPS points will be preserved.</Text>
+            <Text style={{ ...TYPE.caption, color: BASECAMP.textMuted, marginTop: 10 }}>This reviews the saved device recording and its backup only. Qualified elevation credits and canonical expedition records are not recalculated by this action.</Text>
             <Pressable accessibilityRole="button" accessibilityLabel="Cancel elevation correction" style={actionStyle} onPress={() => setConfirmOpen(false)}><Text style={{ ...TYPE.body, color: BASECAMP.ink }}>Cancel</Text></Pressable>
             <Pressable testID="confirm-altitude-review" accessibilityRole="button" accessibilityLabel="Apply elevation estimate and preserve original recording" style={actionStyle} onPress={() => { setConfirmOpen(false); void run(correct); }}><Text style={{ ...TYPE.body, color: BASECAMP.ink }}>Apply estimate</Text></Pressable>
           </SRPanel>
         </View>
       </Modal>
-      <SRSectionHeader title="Private backup" />
+      <SRSectionHeader title="Account backup" />
       <SRPanel radius={8} style={{ marginTop: 10 }}>
-        <Text style={{ ...TYPE.body, color: BASECAMP.text }}>{confirmed ? "This version is backed up privately to your account." : "Saved on this phone. A server backup has not been confirmed for this version."}</Text>
-        <Text style={{ ...TYPE.caption, color: BASECAMP.textMuted, marginTop: 6 }}>Backing up does not share your route with other members.</Text>
+        <Text style={{ ...TYPE.body, color: BASECAMP.text }}>{confirmed ? "This version is backed up to your account." : "Saved on this phone. A server backup has not been confirmed for this version."}</Text>
+        <Text style={{ ...TYPE.caption, color: BASECAMP.textMuted, marginTop: 6 }}>Community access follows this activity’s selected audience. Only me stays private; Public and Followers only become available to that audience after sync.</Text>
         {error && <Text accessibilityRole="alert" style={{ ...TYPE.body, color: BASECAMP.textMuted, marginTop: 8 }}>{error}</Text>}
-        <Pressable testID="backup-recorded-hike" disabled={busy} accessibilityRole="button" accessibilityLabel="Back up recorded hike privately" onPress={() => { void run(() => backup(hike)); }} style={actionStyle}>
+        <Pressable testID="backup-recorded-hike" disabled={busy} accessibilityRole="button" accessibilityLabel="Back up recorded hike to your account" onPress={() => { void run(() => backup(hike)); }} style={actionStyle}>
           <Text style={{ ...TYPE.body, color: BASECAMP.ink }}>{busy ? "Working…" : confirmed ? "Check backup again" : "Back up / retry"}</Text>
         </Pressable>
       </SRPanel>

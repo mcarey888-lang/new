@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { activityApiBase } from "./activityServiceOrigin";
 import { tokenBelongsToUser } from "./authRequest";
 
 export const LEGACY_SYNC_OUTBOX_KEY = "summitready_sync_outbox_v1";
@@ -37,11 +38,12 @@ export async function readPrivateHikeReceipts(userId: string): Promise<Record<st
 }
 export async function privateHikeBackupStatus(userId: string, hikeId: string, revision: string) {
   const receipts = JSON.parse(await AsyncStorage.getItem(receiptKey(userId)) ?? "{}") as Record<string, string>;
-  if (receipts[hikeId] === revision) return { state: "synced" as const };
   const item = (await readOutbox(userId)).find(entry =>
     entry.kind === "private-hike" && (entry.body as { hikeId?: string; revision?: string }).hikeId === hikeId &&
     (entry.body as { revision?: string }).revision === revision);
-  return { state: item?.state ?? "not_queued", error: item?.lastError };
+  if (item) return {state:item.state,error:item.lastError};
+  if (receipts[hikeId] === revision) return { state: "synced" as const };
+  return { state:"not_queued" as const };
 }
 
 export function serializeOutboxMutation<T>(userId: string, operation: () => Promise<T>): Promise<T> {
@@ -141,7 +143,13 @@ export async function retrySyncOutbox(
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 8_000);
         try {
-          const res = await fetch(item.url, {
+          const ownedPaths: Partial<Record<SyncOutboxKind,string>> = {
+            "private-hike": "/recorded-hikes",
+            "private-hike-delete": `/recorded-hikes/${encodeURIComponent((item.body as {hikeId:string}).hikeId)}`,
+            "activity-preference": "/activity-community/preferences",
+            "canonical-activity": "/explore-hike/canonicalize",
+          };
+          const res = await fetch(ownedPaths[item.kind] ? `${activityApiBase}${ownedPaths[item.kind]}` : item.url, {
             method: item.method,
             headers: {
               "Content-Type": "application/json",
@@ -158,11 +166,6 @@ export async function retrySyncOutbox(
               ? "Your sign-in could not be verified. Sign in again, then retry."
               : body.error ?? `Backup failed (HTTP ${res.status})`);
           }
-          if(item.kind==="canonical-activity") {
-            const result=await res.json() as {status?:string;canonicalActivityId?:string};
-            if(result.status==="disabled")throw new Error("Canonical account/elevation processing is disabled on this server. The private backup is independent.");
-            if(!result.canonicalActivityId)throw new Error("Canonical account processing was not acknowledged.");
-          }
           const acknowledgement = res.status === 204 ? null : await res.json();
           if (item.kind === "private-hike-delete") {
             if (res.status !== 204) throw new Error("Private backup deletion was not acknowledged");
@@ -173,6 +176,17 @@ export async function retrySyncOutbox(
             if (acknowledgement?.ok !== true || acknowledgement.hikeId !== body.hikeId ||
                 acknowledgement.revision !== body.revision) throw new Error("Private backup was not acknowledged");
             receipt = { hikeId: body.hikeId, revision: body.revision };
+          } else if (item.kind === "canonical-activity") {
+            if (acknowledgement?.status === "disabled")
+              throw new Error("Canonical account/elevation processing is disabled on this server. The private backup is independent.");
+            const request = item.body as { exploreHikeId?: string; existingCanonicalActivityId?: string };
+            if (!["created", "deduplicated", "reused", "ingested"].includes(acknowledgement?.status) ||
+                typeof acknowledgement?.canonicalActivityId !== "string" || !acknowledgement.canonicalActivityId.trim() ||
+                !request.exploreHikeId || item.id !== `canonical-activity:${request.exploreHikeId}` ||
+                (request.existingCanonicalActivityId && request.existingCanonicalActivityId !== acknowledgement.canonicalActivityId) ||
+                (acknowledgement.exploreHikeId !== undefined && acknowledgement.exploreHikeId !== request.exploreHikeId) ||
+                (acknowledgement.ownerUserId !== undefined && acknowledgement.ownerUserId !== userId))
+              throw new Error("Canonical account processing was not acknowledged for this recording.");
           } else if (acknowledgement?.ok !== true && !acknowledgement?.id &&
                      !acknowledgement?.activityId && !acknowledgement?.session) {
             throw new Error("The server did not acknowledge the recording");

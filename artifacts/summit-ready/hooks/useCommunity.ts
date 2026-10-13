@@ -16,6 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import { authenticatedHeaders, responseError } from "@/utils/authRequest";
 import type { CommunityCreate, CommunityHubProps, CommunityPost } from "@/components/profile/CommunityHub";
+import { CommunityDraftAttempt } from "@/utils/communityDraftAttempt";
 
 const BASE_URL = process.env.EXPO_PUBLIC_MAP_BASE?.replace(/\/api\/?$/,"") ?? `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk"}`;
 
@@ -27,7 +28,7 @@ export function useCommunity(visible = true): CommunityHubProps {
   const enabled = visible && isLoaded && Boolean(isSignedIn && userId);
   const [busy, setBusy] = useState(false);
   const [imageToken, setImageToken] = useState<{ userId: string; token: string } | null>(null);
-  const postRequest = useRef<{ fingerprint: string; id: string } | null>(null);
+  const postRequest = useRef(new CommunityDraftAttempt(randomUUID));
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
   const previousUserId = useRef<string | null>(null);
@@ -47,6 +48,7 @@ export function useCommunity(visible = true): CommunityHubProps {
       queryClient.removeQueries({ queryKey: [...getGetCommunityPostsQueryKey({ scope: "members" }), formerUser], exact: true });
     }
     previousUserId.current = userId ?? null;
+    postRequest.current.reset();
   }, [queryClient, userId]);
 
   const minePosts = useMemo(() => enabled ? (mine.data?.posts ?? []) as CommunityPost[] : [], [enabled, mine.data]);
@@ -142,19 +144,19 @@ export function useCommunity(visible = true): CommunityHubProps {
     const isPhoto = input.kind === "photo";
     // Photos remain private until their bytes are safely stored. Visibility is
     // changed only AFTER the upload succeeds, and only when explicitly chosen.
-    const fingerprint = JSON.stringify({ owner: userId, ...input });
-    if (postRequest.current?.fingerprint !== fingerprint) postRequest.current = { fingerprint, id: randomUUID() };
+    const attemptId = postRequest.current.acquire(userId,input.draftId??"legacy-composer");
     const created = await createCommunityPost({
       kind: input.kind,
       text: input.text,
       ...(input.badgeId ? { badgeId: input.badgeId } : {}),
       ...(input.badgeTitle ? { badgeTitle: input.badgeTitle } : {}),
       visibility: isPhoto ? "private" : input.visibility,
-    }, { headers: { ...authenticatedHeaders(token), "X-Idempotency-Key": postRequest.current.id } });
-    if (!isPhoto) return;
+    }, { headers: { ...authenticatedHeaders(token), "X-Idempotency-Key": attemptId } });
+    if (!isPhoto) { postRequest.current.acknowledge(attemptId); return; }
     try {
       if(created.post.hasPhoto) {
         if(input.visibility==="members")await updateCommunityPostVisibility(created.post.id,{visibility:"members"});
+        postRequest.current.acknowledge(attemptId);
         return;
       }
       if (!input.photoUri) throw new Error("Select a photo before posting.");
@@ -173,6 +175,7 @@ export function useCommunity(visible = true): CommunityHubProps {
       if (input.visibility === "members") {
         await updateCommunityPostVisibility(created.post.id, { visibility: "members" });
       }
+      postRequest.current.acknowledge(attemptId);
     } catch (error) {
       // Keep an owned private draft for an idempotent retry. A lost response
       // is not evidence that the upload failed; never delete a committed photo.

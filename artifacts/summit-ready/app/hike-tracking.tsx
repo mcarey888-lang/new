@@ -38,7 +38,7 @@ import { TrackMap, type TrackMapHandle } from "@/components/track/TrackMap";
 import { logHillSessionStarted, logHillSessionCompleted, logHikeTracked } from "@/lib/analytics";
 import { ActivityAudiencePicker } from "@/components/track/ActivityAudiencePicker";
 import { loadActivityAudience, saveActivityAudience, type ActivityAudience } from "@/utils/activityAudience";
-import { elevationQuality } from "@/utils/elevationQuality";
+import { recordedHikeElevationQuality } from "@/utils/elevationQuality";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -1582,7 +1582,8 @@ function HikeTrackingScreenBody() {
       await logExploreHike({
         audience: activityAudience,
         sharingIntentConfirmed: true,
-        elevationQuality: elevationQuality(trackPoints.current),
+        recordingDurationSeconds: elapsedSecs,
+        elevationQuality: recordedHikeElevationQuality({trackPoints:trackPoints.current,rawGPSFixes:rawGPSFixes.current,recordingEvents:recordingEvents.current,recordingDurationSeconds:elapsedSecs}),
         name,
         date: new Date().toISOString(),
         distance: distKm,
@@ -1775,7 +1776,7 @@ function HikeTrackingScreenBody() {
       <View style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
           {checkpointError ? <Text accessibilityRole="alert" style={s.msgBody}>{checkpointError}</Text> : null}
-          <Text style={s.msgBody}>{elevationQuality(trackPoints.current).label}</Text>
+          <Text style={s.msgBody}>{recordedHikeElevationQuality({trackPoints:trackPoints.current,rawGPSFixes:rawGPSFixes.current,recordingEvents:recordingEvents.current,recordingDurationSeconds:elapsedSecs}).label}</Text>
           <ActivityAudiencePicker audience={activityAudience} onChange={chooseAudience} error={audienceError} />
           <ActivityCompleteView
             completionPresentation={completionPresentation}
@@ -2313,7 +2314,7 @@ function HikeTrackingScreenBody() {
             {checkpointError ? <Text accessibilityRole="alert" style={s.trackOfflineNote}>{checkpointError}</Text> : null}
             {checkpointError ? <TouchableOpacity accessibilityRole="button" style={{minHeight:44,padding:8}}
               onPress={()=>void saveActiveSession()}><Text style={s.trackOfflineNote}>Retry recovery checkpoint</Text></TouchableOpacity> : null}
-            <Text style={s.trackOfflineNote}>{elevationQuality(trackPoints.current,elapsedSecs).label}</Text>
+            <Text style={s.trackOfflineNote}>{recordedHikeElevationQuality({trackPoints:trackPoints.current,rawGPSFixes:rawGPSFixes.current,recordingEvents:recordingEvents.current,recordingDurationSeconds:elapsedSecs}).label}</Text>
             {/* The three read at arm's length, in gloves, in rain. Figure
                 large, unit small beneath it — the arrangement every walking
                 recorder uses, because the number is what is being read and

@@ -1,4 +1,5 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import { mountRequestBodyParsers } from "./lib/requestBodyParsers";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
@@ -217,14 +218,7 @@ app.use("/api/atlas/bulk",                   aiLimiter);
 // requireAuth() is applied per-router in routes/index.ts for protected routes.
 app.use(clerkMiddleware());
 
-app.use("/api/atlas/upload", express.json({ limit: "50mb" }));
-// Bounded 100k derived points + 100k independent raw fixes can exceed 12 MB.
-// Other endpoints retain their own smaller limits.
-app.use("/api/recorded-hikes", express.json({ limit: "48mb" }));
-app.use("/api/tracked-routes", express.json({ limit: "12mb" }));
-app.use("/api/hill-sessions", express.json({ limit: "12mb" }));
-app.use("/api/explore-hike", express.json({ limit: "12mb" }));
-app.use(express.json());
+mountRequestBodyParsers(app);
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);

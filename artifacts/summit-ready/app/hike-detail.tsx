@@ -23,7 +23,7 @@ import { formatDuration, formatPace } from "@/utils/readinessEvidencePresentatio
 import { RecordedHikeRecoveryPanel } from "@/components/track/RecordedHikeRecoveryPanel";
 import { RecordedTracePreview } from "@/components/track/RecordedTracePreview";
 import { ActivityAudiencePicker } from "@/components/track/ActivityAudiencePicker";
-import { elevationQuality } from "@/utils/elevationQuality";
+import { recordedHikeElevationQuality } from "@/utils/elevationQuality";
 import { exportRecordedGpx, shareRecordedRoute } from "@/utils/recordedHikeExport";
 import { useAuth } from "@clerk/expo";
 
@@ -176,7 +176,7 @@ export default function HikeDetail() {
               <Stat icon={<Gauge size={13} color={BASECAMP.accent} />} value={paceStr} label="Average pace" />
             </View>
           </SRPanel>
-          <Text style={s.notesText}>{hike.elevationQuality?.label ?? elevationQuality(hike.trackPoints ?? []).label}</Text>
+          <Text style={s.notesText}>{recordedHikeElevationQuality(hike).label}</Text>
           <ActivityAudiencePicker audience={hike.sharingIntentConfirmed ? hike.audience ?? null : null}
             error={detailError} onChange={audience => {
               void updateExploreHike(hike.id,{ audience, sharingIntentConfirmed:true })

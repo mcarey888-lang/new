@@ -2,14 +2,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getActivityAudiencePreference } from "@workspace/api-client-react";
 import { enqueueSyncPending, retrySyncOutbox, readOutbox } from "./syncOutbox";
 import { authenticatedHeaders } from "./authRequest";
+import { activityApiBase } from "./activityServiceOrigin";
+export { activityApiBase } from "./activityServiceOrigin";
 
 export type ActivityAudience = "public" | "followers" | "private";
 export const ACTIVITY_AUDIENCES: Array<{ value: ActivityAudience; label: string }> = [
   { value: "public", label: "Public" }, { value: "followers", label: "Followers only" }, { value: "private", label: "Only me" },
 ];
 const key = (owner: string) => `activity-audience:${encodeURIComponent(owner)}`;
-export const activityApiBase = process.env.EXPO_PUBLIC_MAP_BASE ??
-  (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api` : "/api");
 export async function readActivityAudience(owner: string): Promise<ActivityAudience | null> {
   const value = await AsyncStorage.getItem(key(owner));
   return value === "public" || value === "followers" || value === "private" ? value : null;
