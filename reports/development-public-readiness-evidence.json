@@ -1,0 +1,69 @@
+{
+  "origin": "https://c845fd48-4223-49a2-a54f-cbec8cb8f5c3-00-32e0r8ryvemws.spock.replit.dev",
+  "checkedAt": "2026-10-13T13:50:25.606Z",
+  "readOnly": true,
+  "checks": [
+    {
+      "name": "health",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "map-code-revalidation",
+      "passed": true,
+      "status": 200,
+      "cacheControl": "no-cache",
+      "hasEtag": true,
+      "conditionalStatus": 304
+    },
+    {
+      "name": "/api/summits/search?q=Tryfan",
+      "passed": true,
+      "status": 200,
+      "count": 6,
+      "error": null
+    },
+    {
+      "name": "/api/summits?bbox=-4.05,53.05,-3.9,53.15&zoom=12",
+      "passed": true,
+      "status": 200,
+      "count": 40,
+      "error": null
+    },
+    {
+      "name": "anonymous:/api/recorded-hikes",
+      "passed": true,
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "redirects": false
+    },
+    {
+      "name": "anonymous:/api/planned-routes",
+      "passed": true,
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "redirects": false
+    },
+    {
+      "name": "anonymous:/api/activity-community/preferences",
+      "passed": true,
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "redirects": false
+    },
+    {
+      "name": "anonymous:/api/activities",
+      "passed": true,
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "redirects": false
+    },
+    {
+      "name": "anonymous:/api/canonical-history",
+      "passed": true,
+      "status": 401,
+      "contentType": "application/json; charset=utf-8",
+      "redirects": false
+    }
+  ]
+}

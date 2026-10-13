@@ -1,0 +1,69 @@
+{
+  "origin": "https://summitready.uk",
+  "checkedAt": "2026-10-13T13:50:27.079Z",
+  "readOnly": true,
+  "checks": [
+    {
+      "name": "health",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "map-code-revalidation",
+      "passed": false,
+      "status": 200,
+      "cacheControl": "private, max-age=3600",
+      "hasEtag": true,
+      "conditionalStatus": 304
+    },
+    {
+      "name": "/api/summits/search?q=Tryfan",
+      "passed": false,
+      "status": 503,
+      "count": null,
+      "error": "summit_catalogue_unavailable"
+    },
+    {
+      "name": "/api/summits?bbox=-4.05,53.05,-3.9,53.15&zoom=12",
+      "passed": false,
+      "status": 503,
+      "count": null,
+      "error": "summit_catalogue_unavailable"
+    },
+    {
+      "name": "anonymous:/api/recorded-hikes",
+      "passed": false,
+      "status": 302,
+      "contentType": "text/plain; charset=utf-8",
+      "redirects": true
+    },
+    {
+      "name": "anonymous:/api/planned-routes",
+      "passed": false,
+      "status": 302,
+      "contentType": "text/plain; charset=utf-8",
+      "redirects": true
+    },
+    {
+      "name": "anonymous:/api/activity-community/preferences",
+      "passed": false,
+      "status": 302,
+      "contentType": "text/plain; charset=utf-8",
+      "redirects": true
+    },
+    {
+      "name": "anonymous:/api/activities",
+      "passed": false,
+      "status": 302,
+      "contentType": "text/plain; charset=utf-8",
+      "redirects": true
+    },
+    {
+      "name": "anonymous:/api/canonical-history",
+      "passed": false,
+      "status": 302,
+      "contentType": "text/plain; charset=utf-8",
+      "redirects": true
+    }
+  ]
+}

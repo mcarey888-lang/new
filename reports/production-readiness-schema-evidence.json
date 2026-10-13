@@ -1,0 +1,99 @@
+{
+  "checkedDate": "2026-10-13",
+  "readOnly": true,
+  "migrationDiff": {
+    "columnsToRemove": [],
+    "hasDiff": true,
+    "hasStructuralDataLoss": false,
+    "matViewsToRemove": [],
+    "maybeNonBackwardsCompatible": false,
+    "schemasToRemove": [],
+    "statementsToExecute": [
+      "CREATE TABLE \"activity_preferences\" (\n\t\"owner\" text PRIMARY KEY NOT NULL,\n\t\"audience\" text,\n\t\"cover_path\" text,\n\tCONSTRAINT \"activity_preferences_audience_check\" CHECK (audience = ANY (ARRAY['public'::text, 'followers'::text, 'private'::text]))\n);\n",
+      "CREATE TABLE \"activity_follows\" (\n\t\"follower\" text NOT NULL,\n\t\"followed\" text NOT NULL,\n\tCONSTRAINT \"activity_follows_pkey\" PRIMARY KEY(\"follower\",\"followed\"),\n\tCONSTRAINT \"activity_follows_check\" CHECK (follower <> followed)\n);\n",
+      "CREATE TABLE \"activity_bookmarks\" (\n\t\"viewer\" text NOT NULL,\n\t\"owner\" text NOT NULL,\n\t\"hike_id\" text NOT NULL,\n\tCONSTRAINT \"activity_bookmarks_pkey\" PRIMARY KEY(\"viewer\",\"owner\",\"hike_id\")\n);\n",
+      "CREATE TABLE \"activity_route_reports\" (\n\t\"reporter\" text NOT NULL,\n\t\"owner\" text NOT NULL,\n\t\"hike_id\" text NOT NULL,\n\t\"reason\" text NOT NULL,\n\tCONSTRAINT \"activity_route_reports_pkey\" PRIMARY KEY(\"reporter\",\"owner\",\"hike_id\")\n);\n",
+      "CREATE TABLE \"activity_publications\" (\n\t\"owner\" text NOT NULL,\n\t\"hike_id\" text NOT NULL,\n\t\"audience\" text NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"audience_revision\" text DEFAULT '1970-01-01T00:00:00.000Z' NOT NULL,\n\tCONSTRAINT \"activity_publications_pkey\" PRIMARY KEY(\"owner\",\"hike_id\"),\n\tCONSTRAINT \"activity_publications_audience_check\" CHECK (audience = ANY (ARRAY['public'::text, 'followers'::text, 'private'::text]))\n);\n",
+      "CREATE TABLE \"recorded_hike_backups\" (\n\t\"owner_user_id\" text NOT NULL,\n\t\"hike_id\" text NOT NULL,\n\t\"snapshot\" jsonb NOT NULL,\n\t\"revision\" text NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"deleted_at\" timestamp with time zone,\n\tCONSTRAINT \"recorded_hike_backups_pkey\" PRIMARY KEY(\"owner_user_id\",\"hike_id\")\n);\n",
+      "CREATE TABLE \"activity_trail_suggestions\" (\n\t\"owner\" text NOT NULL,\n\t\"hike_id\" text NOT NULL,\n\t\"evidence_revision\" text NOT NULL,\n\t\"status\" text DEFAULT 'pending' NOT NULL,\n\t\"review_notes\" text,\n\t\"reviewed_at\" timestamp with time zone,\n\tCONSTRAINT \"activity_trail_suggestions_pkey\" PRIMARY KEY(\"owner\",\"hike_id\")\n);\n",
+      "ALTER TABLE \"tracked_routes\" ADD COLUMN \"audience\" text;",
+      "ALTER TABLE \"activity_publications\" ADD CONSTRAINT \"activity_publications_owner_hike_id_fkey\" FOREIGN KEY (\"owner\",\"hike_id\") REFERENCES \"public\".\"recorded_hike_backups\"(\"owner_user_id\",\"hike_id\") ON DELETE cascade ON UPDATE no action;"
+    ],
+    "success": true,
+    "tablesToRemove": [],
+    "tablesToTruncate": [],
+    "warnings": []
+  },
+  "schemaChecks": [
+    {
+      "environment": "development",
+      "checks": [
+        {
+          "exitCode": 0,
+          "exitReason": null,
+          "output": "table_name,column_name,passed,actual_type,actual_nullable,actual_default\nactivity_bookmarks,hike_id,t,text,NO,\nactivity_bookmarks,owner,t,text,NO,\nactivity_bookmarks,viewer,t,text,NO,\nactivity_follows,followed,t,text,NO,\nactivity_follows,follower,t,text,NO,\nactivity_preferences,audience,t,text,YES,\nactivity_preferences,cover_path,t,text,YES,\nactivity_preferences,owner,t,text,NO,\nactivity_publications,audience,t,text,NO,\nactivity_publications,audience_revision,t,text,NO,'1970-01-01T00:00:00.000Z'::text\nactivity_publications,hike_id,t,text,NO,\nactivity_publications,owner,t,text,NO,\nactivity_publications,updated_at,t,timestamp with time zone,NO,now()\nactivity_route_reports,hike_id,t,text,NO,\nactivity_route_reports,owner,t,text,NO,\nactivity_route_reports,reason,t,text,NO,\nactivity_route_reports,reporter,t,text,NO,\nactivity_trail_suggestions,evidence_revision,t,text,NO,\nactivity_trail_suggestions,hike_id,t,text,NO,\nactivity_trail_suggestions,owner,t,text,NO,\nactivity_trail_suggestions,review_notes,t,text,YES,\nactivity_trail_suggestions,reviewed_at,t,timestamp with time zone,YES,\nactivity_trail_suggestions,status,t,text,NO,'pending'::text\nrecorded_hike_backups,deleted_at,t,timestamp with time zone,YES,\nrecorded_hike_backups,hike_id,t,text,NO,\nrecorded_hike_backups,owner_user_id,t,text,NO,\nrecorded_hike_backups,revision,t,text,NO,\nrecorded_hike_backups,snapshot,t,jsonb,NO,\nrecorded_hike_backups,updated_at,t,timestamp with time zone,NO,now()\ntracked_routes,audience,t,text,YES,\n",
+          "success": true
+        },
+        {
+          "exitCode": 0,
+          "exitReason": null,
+          "output": "table_name,primary_key_and_index_passed\nactivity_bookmarks,t\nactivity_follows,t\nactivity_preferences,t\nactivity_publications,t\nactivity_route_reports,t\nactivity_trail_suggestions,t\nrecorded_hike_backups,t\n",
+          "success": true
+        },
+        {
+          "exitCode": 0,
+          "exitReason": null,
+          "output": "publication_backup_fk_passed\nt\n",
+          "success": true
+        },
+        {
+          "exitCode": 0,
+          "exitReason": null,
+          "output": "table_name,contype,convalidated,definition\nactivity_bookmarks,p,t,\"PRIMARY KEY (viewer, owner, hike_id)\"\nactivity_follows,c,t,CHECK ((follower <> followed))\nactivity_follows,p,t,\"PRIMARY KEY (follower, followed)\"\nactivity_preferences,c,t,\"CHECK ((audience = ANY (ARRAY['public'::text, 'followers'::text, 'private'::text])))\"\nactivity_preferences,p,t,PRIMARY KEY (owner)\nactivity_publications,c,t,\"CHECK ((audience = ANY (ARRAY['public'::text, 'followers'::text, 'private'::text])))\"\nactivity_publications,f,t,\"FOREIGN KEY (owner, hike_id) REFERENCES recorded_hike_backups(owner_user_id, hike_id) ON DELETE CASCADE\"\nactivity_publications,p,t,\"PRIMARY KEY (owner, hike_id)\"\nactivity_route_reports,p,t,\"PRIMARY KEY (reporter, owner, hike_id)\"\nactivity_trail_suggestions,p,t,\"PRIMARY KEY (owner, hike_id)\"\nrecorded_hike_backups,p,t,\"PRIMARY KEY (owner_user_id, hike_id)\"\n",
+          "success": true
+        },
+        {
+          "exitCode": 0,
+          "exitReason": null,
+          "output": "tablename,indexname,indexdef\nactivity_bookmarks,activity_bookmarks_pkey,\"CREATE UNIQUE INDEX activity_bookmarks_pkey ON public.activity_bookmarks USING btree (viewer, owner, hike_id)\"\nactivity_follows,activity_follows_pkey,\"CREATE UNIQUE INDEX activity_follows_pkey ON public.activity_follows USING btree (follower, followed)\"\nactivity_preferences,activity_preferences_pkey,CREATE UNIQUE INDEX activity_preferences_pkey ON public.activity_preferences USING btree (owner)\nactivity_publications,activity_publications_pkey,\"CREATE UNIQUE INDEX activity_publications_pkey ON public.activity_publications USING btree (owner, hike_id)\"\nactivity_route_reports,activity_route_reports_pkey,\"CREATE UNIQUE INDEX activity_route_reports_pkey ON public.activity_route_reports USING btree (reporter, owner, hike_id)\"\nactivity_trail_suggestions,activity_trail_suggestions_pkey,\"CREATE UNIQUE INDEX activity_trail_suggestions_pkey ON public.activity_trail_suggestions USING btree (owner, hike_id)\"\nrecorded_hike_backups,recorded_hike_backups_pkey,\"CREATE UNIQUE INDEX recorded_hike_backups_pkey ON public.recorded_hike_backups USING btree (owner_user_id, hike_id)\"\n",
+          "success": true
+        }
+      ]
+    },
+    {
+      "environment": "production",
+      "checks": [
+        {
+          "exitCode": 0,
+          "exitReason": null,
+          "output": "table_name,column_name,passed,actual_type,actual_nullable,actual_default\nactivity_bookmarks,hike_id,f,,,\nactivity_bookmarks,owner,f,,,\nactivity_bookmarks,viewer,f,,,\nactivity_follows,followed,f,,,\nactivity_follows,follower,f,,,\nactivity_preferences,audience,f,,,\nactivity_preferences,cover_path,f,,,\nactivity_preferences,owner,f,,,\nactivity_publications,audience,f,,,\nactivity_publications,audience_revision,f,,,\nactivity_publications,hike_id,f,,,\nactivity_publications,owner,f,,,\nactivity_publications,updated_at,f,,,\nactivity_route_reports,hike_id,f,,,\nactivity_route_reports,owner,f,,,\nactivity_route_reports,reason,f,,,\nactivity_route_reports,reporter,f,,,\nactivity_trail_suggestions,evidence_revision,f,,,\nactivity_trail_suggestions,hike_id,f,,,\nactivity_trail_suggestions,owner,f,,,\nactivity_trail_suggestions,review_notes,f,,,\nactivity_trail_suggestions,reviewed_at,f,,,\nactivity_trail_suggestions,status,f,,,\nrecorded_hike_backups,deleted_at,f,,,\nrecorded_hike_backups,hike_id,f,,,\nrecorded_hike_backups,owner_user_id,f,,,\nrecorded_hike_backups,revision,f,,,\nrecorded_hike_backups,snapshot,f,,,\nrecorded_hike_backups,updated_at,f,,,\ntracked_routes,audience,f,,,\n",
+          "success": true
+        },
+        {
+          "exitCode": 0,
+          "exitReason": null,
+          "output": "table_name,primary_key_and_index_passed\nactivity_bookmarks,f\nactivity_follows,f\nactivity_preferences,f\nactivity_publications,f\nactivity_route_reports,f\nactivity_trail_suggestions,f\nrecorded_hike_backups,f\n",
+          "success": true
+        },
+        {
+          "exitCode": 0,
+          "exitReason": null,
+          "output": "publication_backup_fk_passed\nf\n",
+          "success": true
+        },
+        {
+          "exitCode": 0,
+          "exitReason": null,
+          "output": "table_name,contype,convalidated,definition\n",
+          "success": true
+        },
+        {
+          "exitCode": 0,
+          "exitReason": null,
+          "output": "tablename,indexname,indexdef\n",
+          "success": true
+        }
+      ]
+    }
+  ]
+}

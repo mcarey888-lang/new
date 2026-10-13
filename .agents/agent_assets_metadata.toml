@@ -690,3 +690,17 @@ mtime_ms = 1791880529549
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/72d3cd1d-4c06-4f75-a924-1d369b984107/582f36c4-0f1f-4f30-8160-56ff7f1ec317"
 storage_version_token = "1791880551511554"
 content_type = "text/html"
+
+[[outputs]]
+id = "T8QQGhF5u6UH6p-YOZoY6"
+uri = "file://reports/SummitReady-production-readiness-repairs-2026-10-13.html"
+type = "html"
+title = "Production readiness: changes, evidence and blocked steps"
+description = "Migration inspection, resolved Expo/Clerk configuration, candidate checks, current production failures, and the safe rollout procedure. No mobile build or publication performed."
+logical_id = "137312c5-d57a-44ef-a525-f66303d8756f"
+content_hash = "sha256:8923c8a39e7371aa7214887c2c108f849ff18a085b6d7acaae75a20cf2b76d9a"
+size = 13056
+mtime_ms = 1791899585269
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/137312c5-d57a-44ef-a525-f66303d8756f/43d8f9b0-ace6-484c-9758-a1531e0bfefa"
+storage_version_token = "1791899586402095"
+content_type = "text/html"
