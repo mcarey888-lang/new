@@ -26,7 +26,8 @@ import { useScreenView } from "@/lib/analytics";
 import { CURATED_HILLS, type Trail } from "@/constants/trailData";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import { createExploreAiRequestGuard } from "@/utils/exploreRequestGuard";
-import { appendApprovedImageRevision } from "@/utils/mountainImage";
+import { appendApprovedImageRevision, hasApprovedMountainImage } from "@/utils/mountainImage";
+import { HillPlaceholder } from "@/components/HillPlaceholder";
 import { looksLikeUkPostcode, normalizeUkPostcode } from "@/utils/explorePostcode";
 import type { NearbyHill } from "@/context/AppContext";
 import { personalHillCoverKey, readPersonalHillCover } from "@/utils/personalHillCover";
@@ -264,10 +265,19 @@ function DiscoveryResultRow({ item }: { item: DiscoveryItem }) {
     >
       <View style={styles.resultRow}>
         <View style={styles.resultImage}>
-          {failed
-            ? <Fallback />
-            : <Image source={{ uri: discoveryImageUri(item, 220, 200) }} style={StyleSheet.absoluteFill}
-                     onError={() => setFailed(true)} accessible={false} />}
+          {/* The catalogue holds twenty thousand summits and approved artwork
+              for a few dozen. Everything else used to fall through to a
+              satellite tile of the hill, which at this size is an unreadable
+              green square — twenty rows of them read as wallpaper, and each
+              one cost a map request to produce. A hill outside the approved
+              set gets the drawn stand-in instead: no request, no signal
+              needed, and it says the hill's height rather than nothing. */}
+          {!hasApprovedMountainImage(item.name)
+            ? <HillPlaceholder name={item.name} elevationM={item.elevationM} />
+            : failed
+              ? <Fallback />
+              : <Image source={{ uri: discoveryImageUri(item, 220, 200) }} style={StyleSheet.absoluteFill}
+                       onError={() => setFailed(true)} accessible={false} />}
         </View>
         <View style={styles.resultBody}>
           <Text style={styles.resultName} numberOfLines={2}>{item.name}</Text>
