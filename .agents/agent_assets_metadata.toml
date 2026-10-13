@@ -676,3 +676,17 @@ mtime_ms = 1791869909515
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/f7bb8590-c478-472d-99e0-6c2b8711ce93/ad5daca6-f52a-457d-ae3a-9b26d76355e6"
 storage_version_token = "1791869950856132"
 content_type = "text/html"
+
+[[outputs]]
+id = "WC5VK3ZyYkgFNHZSkzexD"
+uri = "file://reports/SummitReady-independent-review-resolution-2026-10-13.html"
+type = "html"
+title = "Independent review — fixes and verification"
+description = "R01–R07 resolutions, changed files, executed regressions, F01–F22 reassessment and remaining release gates. Includes the outstanding protected-credit correction boundary."
+logical_id = "72d3cd1d-4c06-4f75-a924-1d369b984107"
+content_hash = "sha256:a7758167dbeb47a6459a07dcd4b29d938facab80119f3ff668713d7bb90237db"
+size = 14052
+mtime_ms = 1791880529549
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/72d3cd1d-4c06-4f75-a924-1d369b984107/582f36c4-0f1f-4f30-8160-56ff7f1ec317"
+storage_version_token = "1791880551511554"
+content_type = "text/html"
