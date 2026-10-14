@@ -5,6 +5,18 @@ description: Durable trust and activation rules for canonical route intelligence
 
 ## Production connectivity is a separate check
 
+Do not use the development-only `helium` host as a published engine endpoint.
+Obtain the production hostname from Database → Production Database → Settings →
+Connection details, retaining the reader's own credentials and verified TLS.
+
+**Why:** Both environments can contain the curated catalogue, while the workspace
+Helium address still fails DNS from the published server. Matching row counts
+does not make the two connection addresses interchangeable.
+
+**How to apply:** Inspect both catalogues read-only; do not copy an owner URL,
+infer a public hostname from a database server/proxy IP, or claim published
+reachability from a successful production-tool query.
+
 Require a dedicated, database-enforced catalogue reader: explicit SELECT access
 to the engine catalogue only, no application-table reads and no write privileges.
 Retain the existing bounded pool and read-only session setting as additional
