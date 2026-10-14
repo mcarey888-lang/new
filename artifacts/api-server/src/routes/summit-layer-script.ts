@@ -813,7 +813,7 @@ function requestSummits() {
 
   var url = SUMMITS_URL + "?bbox=" +
     [next.minLng, next.minLat, next.maxLng, next.maxLat].map(function (n) { return n.toFixed(5); }).join(",") +
-    "&zoom=" + Math.round(zoom);
+    "&zoom=" + String(zoom);
 
   fetch(url, summitAbort ? { signal: summitAbort.signal } : undefined)
     .then(function (r) {
@@ -850,7 +850,13 @@ function requestSummits() {
         minLng: bounds.getWest(), maxLng: bounds.getEast(),
         band: summitBandFor(map.getZoom()),
       };
-      if (summitShouldRefetch(arriving, here)) {
+      /* A capped reply is still drawable. Truncation makes it unsuitable as
+         a complete cache for a later move, not unsuitable for THIS view.
+         Applying the cache rule unchanged discarded every capped reply and
+         left the map blank without even the "zoom in" notice. Keep the real
+         truncated flag in arriving for subsequent request decisions. */
+      var arrivingCoverage = Object.assign({}, arriving, { truncated: false });
+      if (summitShouldRefetch(arrivingCoverage, here)) {
         /* Not for here. Leave what is drawn alone and let the next move ask
            again for the right place. */
         return;

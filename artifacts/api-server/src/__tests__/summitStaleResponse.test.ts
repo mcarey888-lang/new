@@ -111,14 +111,14 @@ function harness(opts: { abortable?: boolean } = {}) {
     api, pending,
     moveTo(box: Box, z = zoom) { view = box; zoom = z; },
     features: () => data.features,
-    answer(index: number, box: Box, names: string[]) {
+    answer(index: number, box: Box, names: string[], truncated = false) {
       pending[index]!.resolve({
         summits: names.map((name, i) => ({
           id: `id-${name}`, name, alternativeName: null, heightM: 900 + i,
           classification: null, place: "Somewhere",
           lat: (box.s + box.n) / 2, lng: (box.w + box.e) / 2,
         })),
-        truncated: false,
+        truncated,
         covered: { minLat: box.s - 0.02, maxLat: box.n + 0.02, minLng: box.w - 0.03, maxLng: box.e + 0.03 },
       });
     },
@@ -126,6 +126,48 @@ function harness(opts: { abortable?: boolean } = {}) {
 }
 
 const settle = () => new Promise(r => setTimeout(r, 0));
+
+describe("partial summit responses", () => {
+  it("draws a capped response covering the current view rather than leaving the map empty", async () => {
+    const h = harness();
+    h.api.addSummitLayers();
+    h.api.setSummitsOn(true);
+    h.answer(0, SNOWDONIA, ["Tryfan", "Carnedd Dafydd"], true);
+    await settle();
+    expect(h.features()).toHaveLength(2);
+    expect(h.api.loaded()).not.toBeNull();
+    // A partial response can be displayed without pretending it is a complete
+    // cache: a later movement must still be allowed to ask again.
+    h.api.requestSummits();
+    expect(h.pending).toHaveLength(2);
+  });
+
+  it("still refuses a capped response for an area the map has left", async () => {
+    const h = harness({ abortable: false });
+    h.api.addSummitLayers();
+    h.api.setSummitsOn(true);
+    h.moveTo(BEN_NEVIS);
+    h.answer(0, SNOWDONIA, ["Tryfan"], true);
+    await settle();
+    expect(h.features()).toHaveLength(0);
+    expect(h.api.loaded()).toBeNull();
+  });
+
+  it("keeps fractional zooms in the same band on client and server", () => {
+    for (const zoom of [6.8, 8.7, 9.8, 11.7, 12.8]) {
+      const h = harness();
+      h.moveTo(SNOWDONIA, zoom);
+      h.api.addSummitLayers();
+      h.api.setSummitsOn(true);
+      if (zoom < 7) {
+        expect(h.pending).toHaveLength(0);
+      } else {
+        const sentZoom = Number(new URL(h.pending[0]!.url, "https://example.test").searchParams.get("zoom"));
+        expect(sentZoom).toBe(zoom);
+      }
+    }
+  });
+});
 
 describe("a reply for somewhere the map has left", () => {
   it("does not replace the hills that are actually on screen", async () => {
