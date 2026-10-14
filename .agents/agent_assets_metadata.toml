@@ -704,3 +704,17 @@ mtime_ms = 1791899585269
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/137312c5-d57a-44ef-a525-f66303d8756f/43d8f9b0-ace6-484c-9758-a1531e0bfefa"
 storage_version_token = "1791899586402095"
 content_type = "text/html"
+
+[[outputs]]
+id = "XWXprcNWyn9G9SQBXpxgK"
+uri = "file://reports/SummitReady-readiness-followup-2026-10-14.html"
+type = "html"
+title = "SummitReady readiness evidence and F01–F22 status"
+description = "Verified source revision, production blockers, real PostgreSQL test results, correction limitations and Android/iPhone checklist."
+logical_id = "183f471e-970b-4c15-876c-d23ef2a0a3fa"
+content_hash = "sha256:bc602da04a2676257a18247ca805a8998d43b5179741cbcca3eaff489c80cb37"
+size = 15151
+mtime_ms = 1791961406732
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/183f471e-970b-4c15-876c-d23ef2a0a3fa/b0adb6d0-5ed4-436a-adfc-3334ac781bd6"
+storage_version_token = "1791961464535364"
+content_type = "text/html"
