@@ -1,0 +1,192 @@
+# SummitReady independent re-audit follow-up
+
+## Verdict
+
+**Source checks pass for the implemented scope. Production acceptance fails current public contracts and otherwise remains blocked. Not ready to create a testing build.**
+
+No production database write, production permission change, secret change, Publish, EAS build or store submission was performed. No live test posts were created and no existing user records were deleted.
+
+## Revision and scope
+
+Starting branch: `claude/route-map-server`.
+Starting SHA: `dc3b88cc754679bbe22a53077ba9de1a998b9589`.
+Independent re-audit baseline: `fa7bcc2933a85d81691524a0891da8d1f868ceec`.
+
+The two intervening commits were agent metadata/readiness preparation. Committed preparation included EAS environment alignment, public readiness/profile checks, schema verification SQL and reports. None was covered by the pinned independent re-audit.
+
+The photo fixes from the immediately preceding request were uncommitted at the start of this follow-up. They are included in this candidate, not silently treated as independently audited.
+
+The final source SHA and GitHub push outcome are supplied in the completion response. Current deployed SHA is **unknown**: deployment metadata provides URL/build health but not a verifiable source revision. No new backend revision was deployed by this agent.
+
+## Implemented
+
+### N01: calendar-date handling
+
+`utils/basecampPresentation.ts` now uses validated local calendar days for date-only week ranges, countdowns and day strips, instead of UTC-midnight parsing. Explicit timestamps keep timestamp semantics.
+
+`utils/planCalendarDates.test.ts` covers month/year crossings, DST, local countdown boundaries, day-strip alignment and impossible dates. The existing `journey1Correction.test.ts` remains included.
+
+### N02: audience-neutral backup wording
+
+`components/track/CompletedHikesSection.tsx` says **Account backup confirmed**. Its regression checks the new wording and rejects the old wording without removing receipt-revision checks or audience labels.
+
+### You profile-photo repairs
+
+Profile photo and hero camera controls open the existing editor; the owner-private hero reloads on focus with image caching disabled. Avatar uploads use a native data URI for Clerk; native covers use raw binary file upload. Browser uploads retain Blob transport. Missing/rejected backend responses are explicit failures; HTTP200 HTML cannot masquerade as an upload receipt. These changes do not prove installed-device upload success.
+
+### Protected historical invalidation preparation — limited, not full correction completion
+
+`src/services/canonicalEvidenceInvalidation.ts` adds an internal **development-only** transaction for reviewed evidence invalidation:
+
+- Locks the owner-scoped activity and affected runs.
+- Checks accepted source identity, correction identity and authority ordering.
+- Appends zero-credit revocations through existing personal and expedition ledgers.
+- Retains previous ledger events and writes their correction links.
+- Revokes non-history qualifications, preserves personal history, original raw GPS, recorded totals, source snapshot/hash and links.
+- Appends a private audit record in the same transaction.
+- Deduplicates unchanged retries; refuses conflicting/stale corrections.
+- Rolls the entire operation back if the audit append fails.
+- Refuses completed/inactive-run correction rather than silently resetting awards or bypassing the summit cinematic.
+
+There is **no public correction endpoint**, no production flag enabling and no production historical rewrite. This is not authority to turn an estimate or backup acknowledgement into verified credit.
+
+**Still pending:** approved nonzero evidence recomputation/requalification, completed-run award reversal semantics, and connection of the reviewed correction workflow to the protected processing system. R05/F09 are not closed by this restricted invalidation service.
+
+## Executed checks
+
+| Check | Result |
+|---|---|
+| Date suites under UTC | 29 passed |
+| Date suites under Europe/London | 29 passed |
+| Date suites under America/Los_Angeles | 29 passed |
+| Full mobile suite under America/Los_Angeles | 116 files, 1,329 passed |
+| Full backend suite, database integration enabled | 77 files, 998 passed, no skips |
+| Workspace type checks | Passed |
+| Release-profile alignment checker | Passed; backend secret/session alignment is a separate gate |
+| Development API/Expo restart | Successful |
+| Development public readiness checker | All nine checks passed |
+
+The managed-browser map screenshot showed controls but no visible tiles, with a resource HTTP404. It is **not** evidence of map rendering, interactive route planning or native summit-card layout. Endpoint responses and rendering are separate checks.
+
+The first full mobile run found a source assertion expecting the intentionally removed old wording; the assertion was corrected and the full suite rerun successfully. An initial root typecheck attempt timed out at 60 seconds; the later complete run passed. The first isolated integration attempt could not resolve a direct `pg` import; the fixture now uses the installed DB pool constructor and passed subsequent runs. These failed attempts were not counted as passes.
+
+### Real development PostgreSQL integration
+
+The original four skipped canonical tests now execute against real PostgreSQL in a generated, isolated development schema with a separate pool/search path. This is schema isolation inside development, **not a separate database server and not production**.
+
+The fixture uses the real canonical/ledger DDL, excluding global extension installation and the unrelated legacy app-table adapter. It exercises actual indexes, constraints and transactions. It drops only its own generated schema in cleanup.
+
+Original checks: concurrent deduplication, cross-owner identity separation, conflict without overwrite, private GPS evidence.
+
+Four additional checks: atomic invalidation/history/raw-evidence preservation and idempotency; cross-owner/source rejection; completed-run refusal; database-trigger-induced audit failure with full transaction rollback.
+
+## Production evidence, read-only
+
+Evidence files:
+
+- `production-readiness-followup-schema-2026-10-14.json`
+- `production-schema-diff-2026-10-14.json`
+- `production-readiness-2026-10-14.json`
+- `development-readiness-2026-10-14.json`
+
+### Schema and migrations
+
+All 30 required column checks failed because the seven repair tables and `tracked_routes.audience` are absent. Required repair primary keys/indexes and publication-backup FK are absent. No partially applied effects of 0006–0008 were found in the inspected required objects.
+
+The current supported Publish diff contains nine additive statements: seven CREATE TABLE statements, one tracked-route column addition and the publication-backup FK after its referenced table. No drops, truncations, removals, structural-data-loss flag or compatibility warnings. Migrations 0006–0008 were inspected, but **not applied to production**.
+
+Production writes are unavailable through the SQL tool. Managed production schema changes must use the user-controlled Publish flow, not custom scripts, startup DDL or deployment hooks.
+
+### Backup
+
+The user's prior screenshots show seven-day PITR and scheduled backups retained for 28 days, including an October 13 scheduled restore point. No fresh backup could be created or its current availability independently checked through the available callbacks. Before rollout, confirm a current recoverable restore point and record the pre-change time. Do not click Restore merely to make a backup.
+
+### Published HTTP checks at 06:49 UTC on October 14
+
+- Health: HTTP200.
+- Route-map: HTTP200, `private, max-age=3600`; conditional request HTTP304. The intended no-cache policy is still missing.
+- Tryfan search and map viewport: HTTP503 `summit_catalogue_unavailable`.
+- Recorded hikes, planned routes, audience preferences, activities and canonical history: HTTP302 to `/`, not JSON401.
+- Fresh deployment logs classify the engine failures as `database_dns_unavailable`.
+
+These responses do not match the candidate. They do not identify the deployed commit or prove the staged next-Publish secret is incorrect.
+
+### Engine role and permission audit
+
+Production `summit_engine_reader` exists, can log in, is not superuser/createdb/createrole/bypass-RLS, and has no memberships in other roles. It can SELECT all eleven catalogue tables, with no INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER privileges on them.
+
+Across inspected non-system relations, its only additional reads are PostGIS metadata objects. No app-table read/write grants were found. This is a relation/role ACL check, not an exhaustive audit of all callable functions or security-definer routines.
+
+It has no database/schema CREATE privilege but retains TEMPORARY through **PUBLIC**. A direct role-only REVOKE will not override PUBLIC. Removing this safely requires an owner-controlled ACL change that first preserves legitimate application-role permissions; no blanket PUBLIC revoke was performed.
+
+The secret tool confirms production ENGINE_DATABASE_URL exists but does not expose its host, role or database. No raw secret was accessed and no inferred target was substituted. Actual production target comparison/repair remains blocked on secure owner-side configuration.
+
+The separate engine-only pool and application read-only session configuration are unchanged. No AI fallback, catalogue replacement or alternate data source was added.
+
+## Authenticated production acceptance
+
+No authorised live test-account session is available to this agent. No identity/token bypass was used. Each of these remains blocked:
+
+- Exact backup revision acknowledgements and ambiguous retries.
+- Paginated restore and second-account isolation.
+- Activity edits and audience changes.
+- Tombstones against stale and newer resurrection attempts.
+- Planned-route save/read/follow contracts.
+- Only me/Followers/Public policy, withdrawal and media access.
+- Activity/post retry deduplication.
+- An authenticated round-trip proving frontend/backend live Clerk alignment.
+
+The EAS preview/production profiles intentionally use the live frontend and production API; this is **not an isolated staging environment**. Their build configuration matches, but that does not prove the backend secret belongs to the same instance.
+
+No live member-feed test content was posted.
+
+## Updated F01–F22
+
+“Fixed” below means inspected source/tests, never production or phone approval.
+
+| Finding | Status | Evidence / open gate |
+|---|---|---|
+| F01 | Needs device testing | Consent/policy tests retained; live account isolation/withdrawal blocked |
+| F02 | Needs device testing | Personal route handoff retained; offline following not tested on phones |
+| F03 | Fixed | Existing Track planner handlers and full suites pass; native journey remains |
+| F04 | Fixed | Shared activity origin retained; profile checker passes; live token alignment open |
+| F05 | Pending | Production role ACLs verified; engine target/DNS and migrations still blocked |
+| F06 | Fixed | Exact automatic/manual receipts retained; account-neutral wording fixed |
+| F07 | Pending | Four real ingestion DB tests now pass; full history/qualified-credit production acceptance remains |
+| F08 | Needs device testing | Existing full-payload/parser regressions pass; full-day native replay open |
+| F09 | Pending | Coverage and restricted invalidation pass; nonzero historical correction/calibration open |
+| F10 | Needs device testing | Durable checkpoint safeguards retained; OS storage fault injection open |
+| F11 | Needs device testing | Aged recovery retained; reboot/termination/account switching open |
+| F12 | Fixed | Explicit free-hike attribution and shell isolation retained; full suites pass |
+| F13 | Needs device testing | New photo controls, platform transport and focus refresh pass; native permissions/upload open |
+| F14 | Needs device testing | Export/audience-controlled links retained; recipient/native share-sheet journey open |
+| F15 | Fixed | Existing author fallback and draft-scoped idempotency pass |
+| F16 | Fixed | Private posts retain audience and appropriate view; live UI acceptance open |
+| F17 | Needs device testing | Token refresh/account fencing retained; native media expiry/resume open |
+| F18 | Fixed | Explicit failure/retry states retained; full suites pass |
+| F19 | Needs device testing | Start/Finish/checkpoint guards retained; native controls/open permission cases |
+| F20 | Needs device testing | Tile-free saved trace retained; offline reopening/process death open |
+| F21 | Fixed | Contribution evidence remains separate from reference geometry; tests pass |
+| F22 | Pending | N01/N02 fixed; exact candidate will be committed, but deployed/installed parity unresolved |
+
+## Required owner-controlled steps before production can pass
+
+1. Confirm a current recovery point/PITR window and pre-change timestamp.
+2. Privately verify the intended production engine host/database/reader connection; correct through production secret settings without sending credentials in chat.
+3. Have the database owner resolve PUBLIC-derived TEMPORARY while preserving legitimate app-role access.
+4. Use Publish's validated additive schema migration flow; never select Overwrite production data. Recheck the current diff before approval.
+5. After rollout, rerun the schema inventory and public checker, then use authorised isolated accounts for authenticated acceptance. Do not post test content to the member feed.
+
+Until these are done, no backend deployment or production acceptance success can be claimed.
+
+## Android/iPhone checklist after backend gates pass
+
+- Change avatar/hero from You; deny permission, cancel, retry and relaunch; verify owner-private cover and account switching.
+- Record with screen locked and offline; force-close/reboot; recover the same UUID and all raw fixes.
+- Pause/resume, Finish/Save/Discard and double-tap safeguards; inspect quality labels without inventing ascent.
+- Reconnect: backup ACK matches current revision; edits during upload survive; restore on another device; deletion cannot resurrect.
+- Save a personal plan, reopen and follow offline; planned geometry stays separate from actual GPS.
+- Test Only me/Followers/member visibility and withdrawal with authorised accounts, without publishing live test-feed posts.
+- Verify Track/Explore/Training/Expedition entry context, mountain progression, exactly-once summit celebration and climber transition.
+
+**Installed-phone and offline GPS behaviour were not verified by these backend or browser checks.**

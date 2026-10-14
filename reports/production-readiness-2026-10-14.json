@@ -1,0 +1,48 @@
+{
+  "origin": "https://summitready.uk",
+  "checkedAt": "2026-10-14T06:49:17.738Z",
+  "readOnly": true,
+  "health": 200,
+  "routeMap": {
+    "status": 200,
+    "cacheControl": "private, max-age=3600",
+    "conditionalStatus": 304
+  },
+  "search": {
+    "status": 503,
+    "error": "summit_catalogue_unavailable"
+  },
+  "pins": {
+    "status": 503,
+    "error": "summit_catalogue_unavailable"
+  },
+  "protectedEndpoints": [
+    {
+      "path": "/api/recorded-hikes",
+      "status": 302,
+      "redirect": "/"
+    },
+    {
+      "path": "/api/planned-routes",
+      "status": 302,
+      "redirect": "/"
+    },
+    {
+      "path": "/api/activity-community/preferences",
+      "status": 302,
+      "redirect": "/"
+    },
+    {
+      "path": "/api/activities",
+      "status": 302,
+      "redirect": "/"
+    },
+    {
+      "path": "/api/canonical-history",
+      "status": 302,
+      "redirect": "/"
+    }
+  ],
+  "engineFailure": "database_dns_unavailable",
+  "deployedRevision": "not exposed by available deployment metadata"
+}

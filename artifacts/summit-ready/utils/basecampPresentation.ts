@@ -300,12 +300,26 @@ export function sessionFacts(session: Pick<QueuedSession, "elevationM" | "durati
  * screen says WHEN week 1 actually is. Nothing here changes the engine; it
  * reads the dates the engine already produced.
  */
+/** Calendar-only values are local days; timestamps retain their instant semantics. */
+function planCalendarDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!parts) {
+    const instant = new Date(value);
+    return Number.isNaN(instant.getTime()) ? null : instant;
+  }
+  const year = Number(parts[1]), month = Number(parts[2]) - 1, day = Number(parts[3]);
+  const result = new Date(year, month, day);
+  return result.getFullYear() === year && result.getMonth() === month && result.getDate() === day
+    ? result : null;
+}
+
 export function weekDateRange(
   startDate: string | null | undefined,
   endDate: string | null | undefined,
 ): string | null {
-  const start = startDate ? new Date(startDate) : null;
-  const end = endDate ? new Date(endDate) : null;
+  const start = planCalendarDate(startDate);
+  const end = planCalendarDate(endDate);
   if (!start || Number.isNaN(start.getTime())) return null;
   if (!end || Number.isNaN(end.getTime())) return null;
 
@@ -327,8 +341,8 @@ export function weeksUntilPlanStart(
   now: Date = new Date(),
 ): number | null {
   if (!firstWeekStart) return null;
-  const start = new Date(firstWeekStart);
-  if (Number.isNaN(start.getTime())) return null;
+  const start = planCalendarDate(firstWeekStart);
+  if (!start) return null;
   const days = Math.ceil((start.getTime() - now.getTime()) / DAY_MS);
   if (days <= 0) return null;
   return Math.max(1, Math.round(days / 7));
@@ -362,10 +376,7 @@ export function planWeekDays(
   const todayDow = now.getDay();
   const todayDate = now.getDate();
   // Treat the plan's date as a local calendar day, not a UTC timestamp.
-  const parts = weekStart?.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  const start = parts
-    ? new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]), 12)
-    : weekStart ? new Date(weekStart) : null;
+  const start = planCalendarDate(weekStart);
 
   if (!start || Number.isNaN(start.getTime())) {
     return [1, 2, 3, 4, 5, 6, 0].map(dow => ({

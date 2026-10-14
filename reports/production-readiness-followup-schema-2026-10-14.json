@@ -1,0 +1,66 @@
+{
+  "environment": "production",
+  "readOnly": true,
+  "schema": [
+    {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "table_name,column_name,passed,actual_type,actual_nullable,actual_default\nactivity_bookmarks,hike_id,f,,,\nactivity_bookmarks,owner,f,,,\nactivity_bookmarks,viewer,f,,,\nactivity_follows,followed,f,,,\nactivity_follows,follower,f,,,\nactivity_preferences,audience,f,,,\nactivity_preferences,cover_path,f,,,\nactivity_preferences,owner,f,,,\nactivity_publications,audience,f,,,\nactivity_publications,audience_revision,f,,,\nactivity_publications,hike_id,f,,,\nactivity_publications,owner,f,,,\nactivity_publications,updated_at,f,,,\nactivity_route_reports,hike_id,f,,,\nactivity_route_reports,owner,f,,,\nactivity_route_reports,reason,f,,,\nactivity_route_reports,reporter,f,,,\nactivity_trail_suggestions,evidence_revision,f,,,\nactivity_trail_suggestions,hike_id,f,,,\nactivity_trail_suggestions,owner,f,,,\nactivity_trail_suggestions,review_notes,f,,,\nactivity_trail_suggestions,reviewed_at,f,,,\nactivity_trail_suggestions,status,f,,,\nrecorded_hike_backups,deleted_at,f,,,\nrecorded_hike_backups,hike_id,f,,,\nrecorded_hike_backups,owner_user_id,f,,,\nrecorded_hike_backups,revision,f,,,\nrecorded_hike_backups,snapshot,f,,,\nrecorded_hike_backups,updated_at,f,,,\ntracked_routes,audience,f,,,\n",
+      "success": true
+    },
+    {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "table_name,primary_key_and_index_passed\nactivity_bookmarks,f\nactivity_follows,f\nactivity_preferences,f\nactivity_publications,f\nactivity_route_reports,f\nactivity_trail_suggestions,f\nrecorded_hike_backups,f\n",
+      "success": true
+    },
+    {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "publication_backup_fk_passed\nf\n",
+      "success": true
+    },
+    {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "table_name,contype,convalidated,definition\n",
+      "success": true
+    },
+    {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "tablename,indexname,indexdef\n",
+      "success": true
+    }
+  ],
+  "role": {
+    "exitCode": 0,
+    "exitReason": null,
+    "output": "rolname,rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolbypassrls,database_create,temporary,schema_create\nsummit_engine_reader,t,f,f,f,f,f,t,f\n",
+    "success": true
+  },
+  "enginePrivilegesNow": {
+    "exitCode": 0,
+    "exitReason": null,
+    "output": "relname,can_read,can_write_or_manage\nevidence_sources,t,f\nmountain_aliases,t,f\nmountain_classifications,t,f\nmountain_source_records,t,f\nmountains,t,f\nroute_definitions,t,f\nroute_facts,t,f\nroute_geometries,t,f\nroute_geometry_members,t,f\nroute_identities,t,f\nsource_bundles,t,f\n",
+    "success": true
+  },
+  "nonCataloguePrivilegesNow": {
+    "exitCode": 0,
+    "exitReason": null,
+    "output": "nspname,relname,can_read,can_write_or_manage\npublic,geography_columns,t,f\npublic,geometry_columns,t,f\npublic,spatial_ref_sys,t,f\n",
+    "success": true
+  },
+  "inheritedRolesNow": {
+    "exitCode": 0,
+    "exitReason": null,
+    "output": "rolname\n",
+    "success": true
+  },
+  "tempAclNow": {
+    "exitCode": 0,
+    "exitReason": null,
+    "output": "grantee,privilege_type,is_grantable\nneondb_owner,TEMPORARY,f\nneon_superuser,TEMPORARY,f\nPUBLIC,TEMPORARY,f\n",
+    "success": true
+  }
+}

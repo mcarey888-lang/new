@@ -1,5 +1,5 @@
-import { ChevronRight, Settings, UserRound } from "lucide-react-native";
-import React, { useEffect, useState,useRef } from "react";
+import { ChevronRight, Settings, UserRound, Camera } from "lucide-react-native";
+import React, { useCallback,useEffect, useState,useRef } from "react";
 import {tokenBelongsToUser} from "@/utils/authRequest";
 import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
@@ -10,7 +10,7 @@ import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import type { RankRequirementResult } from "@/utils/rankDomain";
 import { useAuth } from "@clerk/expo";
-import { router } from "expo-router";
+import { router,useFocusEffect } from "expo-router";
 import { Platform } from "react-native";
 import { activityApiBase } from "@/utils/activityAudience";
 import { CommunityRecordingLibrary } from "@/components/track/CommunityRecordingLibrary";
@@ -67,12 +67,12 @@ export function PrimaryProfilePresentation({
   const coverTokenRef=useRef(getToken);coverTokenRef.current=getToken;
   const [personalCoverState, setPersonalCover] = useState<{ownerUserId:string;uri:string;headers?:Record<string,string>}|null>(null);
   const personalCover=personalCoverState?.ownerUserId===userId?personalCoverState:null;
-  useEffect(()=>{
+  useFocusEffect(useCallback(()=>{
     let active=true;let objectUrl:string|null=null;setPersonalCover(null);
     const load=async()=>{
       if(!userId)return;
       const token=await coverTokenRef.current({skipCache:true});if(!token || !tokenBelongsToUser(token,userId))return;
-      const uri=`${activityApiBase}/activity-community/profile-cover`;
+      const uri=`${activityApiBase}/activity-community/profile-cover?refresh=${Date.now()}`;
       if(Platform.OS!=="web"){if(active)setPersonalCover({ownerUserId:userId,uri,headers:{Authorization:`Bearer ${token}`}});return;}
       const response=await fetch(uri,{headers:{Authorization:`Bearer ${token}`}});
       if(!response.ok)return;
@@ -83,7 +83,7 @@ export function PrimaryProfilePresentation({
     void load().catch(()=>{});
     const interval=setInterval(()=>void load().catch(()=>{}),30_000);
     return()=>{active=false;clearInterval(interval);if(objectUrl)URL.revokeObjectURL(objectUrl);};
-  },[userId]);
+   },[userId]));
   const ascentProgress = nextRankAscent?.availability === "available" && nextRankAscent.remaining !== null
     ? nextRankAscent.remaining > 0
       ? `+${nextRankAscent.remaining.toLocaleString("en-GB")} m eligible ascent to go`
@@ -136,6 +136,12 @@ export function PrimaryProfilePresentation({
               <Text style={styles.brand}>SUMMITREADY</Text>
               <Text style={styles.coverKicker}>YOUR MOUNTAIN STORY</Text>
             </View>
+            <View style={{flexDirection:"row",gap:SP.sm}}>
+            {isSignedIn ? <TouchableOpacity
+              onPress={()=>router.push({pathname:"/edit-profile",params:{image:"cover"}} as never)}
+              accessibilityRole="button" accessibilityLabel="Change You hero image"
+              testID="profile-change-cover" style={styles.settingsButton}
+            ><Camera size={18} color={BASECAMP.text}/></TouchableOpacity> : null}
             <TouchableOpacity
               onPress={onOpenSettings}
               activeOpacity={0.75}
@@ -147,11 +153,15 @@ export function PrimaryProfilePresentation({
             >
               <Settings size={18} color={BASECAMP.text} />
             </TouchableOpacity>
+            </View>
           </View>
         </View>
         <View style={styles.identity}>
           <View style={styles.identityRow}>
-            <View style={styles.avatar}>
+            <TouchableOpacity style={styles.avatar} disabled={!isSignedIn}
+              accessibilityRole="button" accessibilityLabel="Change profile photo"
+              testID="profile-change-avatar"
+              onPress={()=>router.push({pathname:"/edit-profile",params:{image:"avatar"}} as never)}>
               {demoAvatar ? (
                 <ExpoImage
                   source={require("@/assets/images/hero-base-camp.png")}
@@ -167,7 +177,7 @@ export function PrimaryProfilePresentation({
               ) : (
                 <UserRound size={25} color={BASECAMP.textMuted} />
               )}
-            </View>
+            </TouchableOpacity>
             <View style={styles.nameBlock}>
               <View style={styles.rankLine}>
                 <Text style={styles.rank} numberOfLines={1}>{rankName.toUpperCase()}</Text>

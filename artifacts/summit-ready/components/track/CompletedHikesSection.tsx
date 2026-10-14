@@ -82,7 +82,7 @@ export function CompletedHikesSection() {
             <View style={styles.copy}>
               <Text style={styles.name}>{hike.name}</Text>
               <Text style={styles.meta}>{new Date(hike.date).toLocaleDateString("en-GB")} · {hike.distance.toFixed(2)} km · {Math.round(hike.elevationGain)} m ascent · {hike.timeTaken} min</Text>
-              <Text style={styles.meta}>{hike.backupRevision && hike.backedUpRevision === hike.backupRevision ? "Private backup confirmed" : "Saved on this device"}</Text>
+              <Text style={styles.meta}>{hike.backupRevision && hike.backedUpRevision === hike.backupRevision ? "Account backup confirmed" : "Saved on this device"}</Text>
               <Text style={styles.meta}>{hike.sharingIntentConfirmed ? ACTIVITY_AUDIENCES.find(a => a.value === hike.audience)?.label ?? "Only me" : "Only me · legacy sharing choice not confirmed"}</Text>
             </View>
             <ChevronRight size={18} color={BASECAMP.textMuted} />

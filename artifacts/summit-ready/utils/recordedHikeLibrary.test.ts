@@ -11,7 +11,8 @@ describe("completed hike library and recording integration", () => {
     expect(section).toContain("exploreHikes");
     expect(section).toContain('pathname: "/hike-detail"');
     expect(section).toContain("params: { id: hike.id }");
-    expect(section).toContain("Private backup confirmed");
+    expect(section).toContain("Account backup confirmed");
+    expect(section).not.toContain("Private backup confirmed");
     expect(section).toContain("hike.backedUpRevision === hike.backupRevision");
     // Cloud restoration is explicit; opening an existing local row never
     // requires a route API lookup or a successful cloud sync.
