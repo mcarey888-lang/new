@@ -29,15 +29,24 @@ export function stubDocument() {
     textContent: "",
     innerHTML: "",
     type: "", placeholder: "", value: "",
+    tabIndex: -1,
+    attributes: {} as Record<string, string>,
+    onclick: null as null | (() => void),
+    onkeydown: null as null | ((event: { key: string; preventDefault(): void }) => void),
     children: [] as unknown[],
-    setAttribute: () => {},
+    setAttribute(name: string, value: string) { this.attributes[name] = value; },
     appendChild(child: unknown) { this.children.push(child); return child; },
     addEventListener: () => {},
     blur: () => {}, focus: () => {}, click: () => {},
   });
+  const elements = new Map<string, ReturnType<typeof el>>();
   return {
     createElement: el,
-    getElementById: () => el(),
+    getElementById: (id: string) => {
+      if (!elements.has(id)) elements.set(id, el());
+      return elements.get(id)!;
+    },
+    querySelector: () => null,
     body: el(),
   };
 }
@@ -48,7 +57,10 @@ function harness(opts: { abortable?: boolean } = {}) {
   let zoom = 12;
   let data: { features: unknown[] } = { features: [] };
   const handlers: Record<string, Array<(e: unknown) => void>> = {};
-  const pending: Array<{ url: string; resolve: (body: unknown) => void; aborted: boolean }> = [];
+  const pending: Array<{
+    url: string; resolve: (body: unknown) => void;
+    fail: (status: number) => void; aborted: boolean;
+  }> = [];
 
   const map = {
     getZoom: () => zoom,
@@ -72,7 +84,11 @@ function harness(opts: { abortable?: boolean } = {}) {
 
   const fetchStub = (url: string, opts?: { signal?: { addEventListener(t: string, f: () => void): void } }) =>
     new Promise((resolve, reject) => {
-      const entry = { url, aborted: false, resolve: (body: unknown) => resolve({ ok: true, json: () => Promise.resolve(body) }) };
+      const entry = {
+        url, aborted: false,
+        resolve: (body: unknown) => resolve({ ok: true, json: () => Promise.resolve(body) }),
+        fail: (status: number) => resolve({ ok: false, status }),
+      };
       pending.push(entry);
       opts?.signal?.addEventListener?.("abort", () => {
         entry.aborted = true;
@@ -99,16 +115,19 @@ function harness(opts: { abortable?: boolean } = {}) {
 
   const body = `${summitLayerScript("/api/summits")}
   return { addSummitLayers: addSummitLayers, setSummitsOn: setSummitsOn,
-           requestSummits: requestSummits, loaded: function () { return summitLoaded; } };`;
+           requestSummits: requestSummits, loaded: function () { return summitLoaded; },
+           liftSummitNotice: liftSummitNotice };`;
   const api = new Function(
     "map", "post", "fetch", "document", "setTimeout", "clearTimeout", "AbortController", body,
   )(scope.map, scope.post, scope.fetch, scope.document, scope.setTimeout, scope.clearTimeout, scope.AbortController) as {
     addSummitLayers(): void; setSummitsOn(on: boolean): void; requestSummits(): void;
     loaded(): { minLat: number; maxLat: number } | null;
+    liftSummitNotice(inset: number): void;
   };
 
   return {
     api, pending,
+    notice: () => scope.document.getElementById("summitNote"),
     moveTo(box: Box, z = zoom) { view = box; zoom = z; },
     features: () => data.features,
     answer(index: number, box: Box, names: string[], truncated = false) {
@@ -126,6 +145,65 @@ function harness(opts: { abortable?: boolean } = {}) {
 }
 
 const settle = () => new Promise(r => setTimeout(r, 0));
+
+describe("a retryable catalogue failure", () => {
+  it("shows an accessible retry action and recovers without fake pins", async () => {
+    const h = harness();
+    h.api.addSummitLayers();
+    h.api.setSummitsOn(true);
+    h.pending[0]!.fail(503);
+    await settle();
+    expect(h.features()).toHaveLength(0);
+    const notice = h.notice();
+    expect(notice.textContent).toContain("tap to retry");
+    expect(notice.attributes.role).toBe("button");
+    expect(notice.tabIndex).toBe(0);
+    notice.onclick!();
+    expect(h.pending).toHaveLength(2);
+    expect(notice.textContent).toBe("Loading summits…");
+    expect(notice.onclick).toBeNull();
+    h.answer(1, SNOWDONIA, ["Tryfan"]);
+    await settle();
+    expect(h.features()).toHaveLength(1);
+    expect(notice.style.display).toBe("none");
+  });
+
+  it.each(["Enter", " "])("supports the %j keyboard action", async key => {
+    const h = harness();
+    h.api.addSummitLayers();
+    h.api.setSummitsOn(true);
+    h.pending[0]!.fail(503);
+    await settle();
+    let prevented = false;
+    h.notice().onkeydown!({ key, preventDefault: () => { prevented = true; } });
+    expect(prevented).toBe(true);
+    expect(h.pending).toHaveLength(2);
+    h.answer(1, SNOWDONIA, ["Tryfan"]);
+    await settle();
+    expect(h.features()).toHaveLength(1);
+  });
+
+  it("stays above the host panel when the inset changes", async () => {
+    const h = harness();
+    h.api.addSummitLayers();
+    h.api.setSummitsOn(true);
+    h.pending[0]!.fail(503);
+    await settle();
+    h.api.liftSummitNotice(240);
+    expect(h.notice().style.bottom).toBe("252px");
+  });
+
+  it("does not turn an incomplete-result warning into a retry button", async () => {
+    const h = harness();
+    h.api.addSummitLayers();
+    h.api.setSummitsOn(true);
+    h.answer(0, SNOWDONIA, ["Tryfan"], true);
+    await settle();
+    expect(h.notice().textContent).toContain("zoom in for the rest");
+    expect(h.notice().attributes.role).toBe("status");
+    expect(h.notice().onclick).toBeNull();
+  });
+});
 
 describe("partial summit responses", () => {
   it("draws a capped response covering the current view rather than leaving the map empty", async () => {

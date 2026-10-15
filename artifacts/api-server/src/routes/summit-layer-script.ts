@@ -192,6 +192,11 @@ function liftSummitCard(inset) {
   summitCard.style.bottom = (Math.max(0, inset) + attributionHeight() + 12) + "px";
 }
 
+function liftSummitNotice(inset) {
+  var el = document.getElementById("summitNote");
+  if (el) el.style.bottom = (Math.max(0, inset) + attributionHeight() + 12) + "px";
+}
+
 /** Keep the search box clear of the host's header. */
 function liftSearchBox(inset) {
   if (searchBox) searchBox.style.top = Math.max(64, Math.max(0, inset) + 8) + "px";
@@ -764,11 +769,29 @@ function setSummitsOn(on) {
   else summitNotice(null);
 }
 
-function summitNotice(text) {
+function summitNotice(text, retryable) {
   var el = document.getElementById("summitNote");
   if (!el) return;
   el.textContent = text || "";
   el.style.display = text ? "block" : "none";
+  el.setAttribute("role", retryable ? "button" : "status");
+  el.setAttribute("aria-live", "polite");
+  el.tabIndex = retryable ? 0 : -1;
+  el.style.cursor = retryable ? "pointer" : "";
+  el.onclick = retryable ? function () {
+    /* Retry even when older pins cover this view. Retain those pins until a
+       real catalogue response replaces them; never invent a fallback. */
+    summitLoaded = null;
+    summitNotice("Loading summits…");
+    requestSummits();
+  } : null;
+  el.onkeydown = retryable ? function (event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (el.onclick) el.onclick();
+    }
+  } : null;
+  if (text) liftSummitNotice(typeof hostBottomInset === "number" ? hostBottomInset : 0);
 }
 
 function requestSummits() {
@@ -900,7 +923,7 @@ function requestSummits() {
       if (token !== summitRequest) return;
       /* Names the failure rather than leaving an empty map that looks like
          ground with no hills on it. */
-      summitNotice("Could not load summits");
+      summitNotice("Could not load summits — tap to retry", true);
     });
 }
 

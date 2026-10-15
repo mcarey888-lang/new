@@ -59,6 +59,7 @@ function setBottomInset(px) {
      the host's sheet sits. Behind it, a tapped hill opens a card nobody can
      see — which reads as the tap having done nothing. */
   if (typeof liftSummitCard === "function") liftSummitCard(hostBottomInset);
+  if (typeof liftSummitNotice === "function") liftSummitNotice(hostBottomInset);
 }
 
 /**
