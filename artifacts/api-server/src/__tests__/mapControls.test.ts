@@ -1,9 +1,54 @@
 import { describe, expect, it } from "vitest";
 import { buildRouteMapHtml } from "../routes/route-map-web";
 import { mapControlsScript } from "../routes/map-controls-script";
+import { recordingScript } from "../routes/recording-script";
+import { runInNewContext } from "node:vm";
 
 const script = (gpx = true) => mapControlsScript(gpx);
 const page = () => buildRouteMapHtml("K", "full", "/api/map-tiles", true, "/api/path-snap", "/api/route-profile", "/api/route-gpx", "/api/summits");
+
+describe("layers menu clears the host mode switch", () => {
+  function placement(inset?: number, drawingBottom?: number) {
+    const context = {
+      ...(inset === undefined ? {} : { hostTopInset: inset }),
+      window: { innerHeight: 750 },
+      result: {} as Record<string, string>,
+    };
+    runInNewContext(script() + `
+      layersSheet = { style: {} };
+      drawBar = {
+        style: { display: ${JSON.stringify(drawingBottom === undefined ? "none" : "block")} },
+        getBoundingClientRect: function () { return { height: 40, bottom: ${drawingBottom ?? 0} }; }
+      };
+      placeLayersSheet();
+      result = layersSheet.style;
+    `, context);
+    return context.result;
+  }
+  it("starts below the measured host header with a 12px gap", () => {
+    expect(placement(84).top).toBe("96px");
+    expect(placement(84).maxHeight).toBe("642px");
+  });
+  it("retains standalone placement when there is no host header", () => {
+    expect(placement().top).toBe("12px");
+    expect(placement(0).top).toBe("12px");
+  });
+  it("clears both a wrapped drawing bar and the host, whichever is lower", () => {
+    expect(placement(84, 140).top).toBe("148px");
+    expect(placement(84, 40).top).toBe("96px");
+  });
+  it("repositions the menu when the host sends a new measurement", () => {
+    const body = recordingScript().match(/function setTopInset\(px\) \{([\s\S]*?)\n\}/)![1]!;
+    const context = { hostTopInset: 0, moved: 0, searched: 0 };
+    runInNewContext(`
+      function liftSearchBox() { searched++; }
+      function placeLayersSheet() { moved++; }
+      function update(px) { ${body} }
+      update(84); update(120);
+    `, context);
+    expect(context).toMatchObject({ hostTopInset: 120, moved: 2, searched: 2 });
+  });
+});
 
 describe("small-screen control separation", () => {
   it("wraps the drawing bar and reserves the three-icon rail width", () => {

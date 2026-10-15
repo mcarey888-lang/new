@@ -185,10 +185,12 @@ function buildLayersSheet() {
 
 function placeLayersSheet() {
   if (!layersSheet) return;
-  var top = 12;
+  // The host's Training/Expeditions switch is outside the WebView/iframe;
+  // a higher map z-index cannot put this menu above that host overlay.
+  var top = (typeof hostTopInset === "number" ? hostTopInset : 0) + 12;
   if (drawBar && drawBar.style.display !== "none") {
     var box = drawBar.getBoundingClientRect();
-    if (box.height > 0) top = Math.round(box.bottom) + 8;
+    if (box.height > 0) top = Math.max(top, Math.round(box.bottom) + 8);
   }
   layersSheet.style.top = top + "px";
   layersSheet.style.maxHeight = Math.max(120, window.innerHeight - top - 12) + "px";

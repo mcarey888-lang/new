@@ -11,6 +11,12 @@ For remaining obscure catalogue hills, show a shared replaceable trig-point plac
 
 **How to apply:** Preserve approval priority; select shared artwork by canonical hill identity and revalidate mutable artwork rather than caching a placeholder or satellite result for days.
 
+Approved artwork metadata is environment-specific application data. Sharing the generated image objects between development and production does not share their approval records, and publishing a schema change does not promote those records.
+
+**Why:** The development library retained the user's reviewed collection while production had no corresponding approvals; a generated image could be downloaded from both environments, yet production's normal image selection still returned a fallback.
+
+**How to apply:** Check approval metadata and referenced image availability in the target environment before claiming the collection is live. Any promotion must be explicitly scoped to the existing approved records, preserve newer target approvals/rejections, and never copy the whole development database.
+
 **Why:** The user wants the image library to grow only as climbers actually open mountains, rather than pre-generating the whole catalogue. Requiring manual approval for every first-open result would defeat that experience, while letting admin-initiated review candidates publish themselves would violate the earlier explicit-review requirement.
 
 **How to apply:** Trigger a paid generation only from a mountain-detail selection backed by canonical catalogue identity, never from list thumbnails or image reads. Reuse the result across users, use an identity-matched photographic reference where trustworthy, and label AI images because photorealism does not prove geographic accuracy. A rejected image must cease being served.

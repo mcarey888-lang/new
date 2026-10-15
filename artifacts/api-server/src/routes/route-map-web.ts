@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { summitLayerScript } from "./summit-layer-script";
 import { recordingScript } from "./recording-script";
 import { mapControlsScript } from "./map-controls-script";
+import { initialMapLocationScript } from "./initial-map-location-script";
 
 const router: IRouter = Router();
 
@@ -299,7 +300,8 @@ styleLayers.push({
 var map = new maplibregl.Map({
   container: "map",
   style: { version: 8, sources: sources, layers: styleLayers },
-  center: [-3.9976, 53.1149], zoom: 13, pitch: 0, bearing: 0,
+  // An overview while permission/a GPS fix is pending, not a pretend location.
+  center: [-3, 54.5], zoom: 5, pitch: 0, bearing: 0,
   attributionControl: { compact: true }
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-left");
@@ -1101,6 +1103,7 @@ ${recording ? `map.on("load", function () { setRecording(true); });` : ""}
 
 ${chrome === "full" ? mapControlsScript(Boolean(gpxUrl)) : ""}
 ${chrome === "full" ? "buildControls();" : ""}
+${recording ? "" : initialMapLocationScript()}
 </script>
 </body>
 </html>`;

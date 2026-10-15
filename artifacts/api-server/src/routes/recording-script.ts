@@ -71,6 +71,7 @@ function setBottomInset(px) {
 function setTopInset(px) {
   hostTopInset = Math.max(0, Math.min(400, Number(px) || 0));
   if (typeof liftSearchBox === "function") liftSearchBox(hostTopInset);
+  if (typeof placeLayersSheet === "function") placeLayersSheet();
 }
 
 /**

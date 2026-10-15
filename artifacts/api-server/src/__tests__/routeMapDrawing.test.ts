@@ -26,6 +26,7 @@ describe("zooming out in 3D", () => {
     const events = new Map<string, () => void>();
     const map = {
       addControl: vi.fn(),
+      once: vi.fn(),
       getCenter: () => ({ lat: 53.1149 }),
       on: vi.fn((name: string, callback: () => void) => { events.set(name, callback); }),
       getZoom: () => zoom, getPitch: () => pitch,
