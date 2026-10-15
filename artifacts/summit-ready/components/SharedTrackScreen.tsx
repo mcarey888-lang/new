@@ -15,6 +15,7 @@ import { LogHikeModal } from "@/components/LogHikeModal";
 import { TrackMap, type TrackMapHandle } from "@/components/track/TrackMap";
 import { useApp } from "@/context/AppContext";
 import { useGpsStatus } from "@/hooks/useGpsStatus";
+import { useSummitTicks } from "@/hooks/useSummitTicks";
 import { useScreenView } from "@/lib/analytics";
 import { T } from "@/constants/theme";
 import { discardActiveHike, readActiveHike } from "@/utils/activeHikeSession";
@@ -93,6 +94,23 @@ export function SharedTrackScreen() {
     mapRef.current?.send({ type: "topInset", px: Math.round(insetsRef.current.top) });
   }, []);
 
+  /* Hills this person says they have been up. The map draws them green; it
+     never asks who is looking, because that page is public. */
+  const summitTicks = useSummitTicks();
+  const ticksRef = useRef<string[]>([]);
+  ticksRef.current = summitTicks.ids;
+
+  const sendTicks = useCallback(() => {
+    mapRef.current?.send({ type: "summitTicks", ids: ticksRef.current });
+  }, []);
+
+  /* Sent once the stored list has actually been read. Sending before that
+     hands the map an empty list and unticks every hill on screen until the
+     read finishes. */
+  useEffect(() => {
+    if (summitTicks.ready) sendTicks();
+  }, [summitTicks.ready, summitTicks.ids, sendTicks]);
+
   const [sheetHeight, setSheetHeight] = useState(0);
   /* Collapsed by default. Opening Track is usually the last thing somebody
      does before walking, and the common path is Start. The rest — changing
@@ -122,13 +140,28 @@ export function SharedTrackScreen() {
   const onMapMessage = useCallback((message: Record<string, unknown>) => {
     /* The page says it is ready and asks for them, which is the only moment
        both sides are known to exist. */
-    if (message["type"] === "needInsets" || message["type"] === "ready") sendInsets();
+    if (message["type"] === "needInsets" || message["type"] === "ready") {
+      sendInsets();
+      /* The page asking for its insets is the first moment it is known to
+         exist, so it is also the moment to tell it what is ticked. */
+      if (summitTicks.ready) sendTicks();
+    }
+    /* The map reports the tap; this decides. Keeping the list on one side
+       means the card and the pin can only ever show what was really saved. */
+    if (message["type"] === "summitTickToggled") {
+      const id = message["id"];
+      const name = message["name"];
+      summitTicks.toggle({
+        id: typeof id === "string" ? id : null,
+        name: typeof name === "string" ? name : "",
+      });
+    }
     if (message["type"] === "summitCardOpened") {
       setSummitOpen(true);
       setExpanded(false);
     }
     if (message["type"] === "summitCardClosed") setSummitOpen(false);
-  }, [sendInsets]);
+  }, [sendInsets, sendTicks, summitTicks]);
 
   /* What this shell can offer besides a free hike. */
   const currentWeek = getCurrentWeek(trainingPlan);

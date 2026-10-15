@@ -27,6 +27,14 @@ var SUMMIT_MIN_ZOOM = ${MIN_PIN_ZOOM};
 var SUMMIT_ALL_ZOOM = ${ALL_SUMMITS_ZOOM};
 var SUMMIT_COLOR = "#F2C14E";
 var SUMMIT_INK = "#0B1418";
+/* A hill the person says they have been up. Green because it is the one
+   colour already meaning "done" everywhere else in the app, and because it
+   reads against both the summer and the satellite basemap. */
+var SUMMIT_DONE_COLOR = "#3ECF75";
+/* Bare catalogue ids, sent in by the app. The map never asks for these: this
+   page is public and unauthenticated, and whose hills these are is not its
+   business to fetch. */
+var summitTicked = Object.create(null);
 
 /* Generated from the server's own ladder, so the map and the query cannot
    disagree about which hills belong at a zoom. */
@@ -97,8 +105,13 @@ function addSummitLayers() {
     id: "summit-point", type: "circle", source: "summits",
     filter: ["!", ["has", "point_count"]],
     paint: {
-      "circle-color": SUMMIT_COLOR,
-      "circle-radius": 6,
+      /* Driven by the feature, not by a second layer: one layer keeps the
+         click handling, the clustering and the draw order identical for
+         ticked and unticked hills. */
+      "circle-color": ["case", ["boolean", ["get", "done"], false], SUMMIT_DONE_COLOR, SUMMIT_COLOR],
+      /* A shade bigger, so a ticked hill is findable without relying on
+         colour alone. */
+      "circle-radius": ["case", ["boolean", ["get", "done"], false], 7, 6],
       "circle-stroke-color": SUMMIT_INK,
       "circle-stroke-width": 2,
     },
@@ -171,6 +184,7 @@ function addSummitLayers() {
 /* ── The card a tapped summit opens ─────────────────────────────────────── */
 
 var summitCard = null;
+var summitCardLast = null;
 var summitCardFor = null;
 
 /**
@@ -255,6 +269,9 @@ function escapeSummitText(value) {
 function showSummitCard(p, coordinates) {
   var card = ensureSummitCard();
   summitCardFor = { id: p.id, lat: coordinates[1], lng: coordinates[0], name: p.name };
+  /* Kept so a tick arriving from the app can redraw this card in place. */
+  summitCardLast = { p: p, coordinates: coordinates };
+  var done = !!summitTicked[String(p.id).toLowerCase()];
 
   var ascent = summitAscentLine(p);
   card.innerHTML =
@@ -276,6 +293,17 @@ function showSummitCard(p, coordinates) {
     '<div id="summitParking" style="font-size:12px;margin-top:7px;display:none"></div>' +
     '<div style="color:#8E9D99;font-size:12px;margin-top:8px">Tap for routes and detail</div>' +
     '</div>' +
+    /* Secondary to planning a route: this is a thing you do occasionally,
+       and the button you came for is the one below it. Says what it will do
+       when it is not done, and what is true when it is. */
+    '<button type="button" id="summitTick" aria-pressed="' + (done ? 'true' : 'false') + '" ' +
+      'style="margin-top:10px;width:100%;padding:9px;border-radius:7px;cursor:pointer;' +
+      'font:600 14px system-ui,sans-serif;' +
+      (done
+        ? 'border:1px solid rgba(62,207,117,0.55);background:rgba(62,207,117,0.14);color:#3ECF75"'
+        : 'border:1px solid rgba(255,255,255,0.22);background:none;color:#C8D4D1"') + '>' +
+      (done ? '\u2713 Climbed' : 'Tick off as climbed') +
+      '</button>' +
     '<button type="button" id="summitPlanRoute" ' +
       'style="margin-top:12px;width:100%;padding:10px;border:0;border-radius:7px;' +
       'background:#F2C14E;color:#0B1418;font:600 14px system-ui,sans-serif;cursor:pointer">' +
@@ -313,6 +341,13 @@ function showSummitCard(p, coordinates) {
   open.onclick = openMountain;
   open.onkeydown = function (e) {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openMountain(); }
+  };
+
+  /* The app owns the list, so this only reports the tap. The card and the
+     pin recolour when the app sends the new list back, which means what is
+     on screen always matches what was actually saved. */
+  document.getElementById("summitTick").onclick = function () {
+    post({ type: "summitTickToggled", id: p.id, name: p.name, done: !done });
   };
 
   document.getElementById("summitPlanRoute").onclick = function () {
@@ -431,6 +466,7 @@ function hideSummitCard(keepParking) {
   var wasOpen = !!(summitCard && summitCard.style.display === "block");
   if (summitCard) summitCard.style.display = "none";
   summitCardFor = null;
+  summitCardLast = null;
   if (wasOpen) post({ type: "summitCardClosed" });
   if (keepParking) return;
   parkingToken++;
@@ -748,6 +784,56 @@ function summitNotice(text) {
   el.style.display = text ? "block" : "none";
 }
 
+/* One place builds a summit feature, so a tick and a fresh fetch cannot drift
+   into drawing the same hill two different ways. */
+var summitPinsOnScreen = [];
+
+function summitCollection(pins) {
+  return {
+    type: "FeatureCollection",
+    features: pins.map(function (s) {
+      return {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [s.lng, s.lat] },
+        properties: {
+          id: s.id, name: s.name,
+          alternativeName: s.alternativeName,
+          heightM: s.heightM,
+          prominenceM: s.prominenceM,
+          classification: s.classification,
+          place: s.place,
+          country: s.country,
+          area: s.area,
+          /* Flattened: MapLibre feature properties are a flat bag, and an
+             object arrives at the other end as "[object Object]". */
+          ascentM: s.ascent && s.ascent.kind === "known" ? s.ascent.metres : null,
+          ascentRoute: s.ascent && s.ascent.kind === "known" ? s.ascent.routeName : null,
+          done: !!summitTicked[String(s.id).toLowerCase()],
+        },
+      };
+    }),
+  };
+}
+
+/* The app owns the list and sends it in — on load, and again whenever it
+   changes. Replacing it wholesale rather than toggling one id keeps the two
+   sides from disagreeing after a message goes missing. */
+function setSummitTicks(ids) {
+  summitTicked = Object.create(null);
+  if (ids && ids.length) {
+    for (var i = 0; i < ids.length; i++) {
+      if (ids[i]) summitTicked[String(ids[i]).toLowerCase()] = true;
+    }
+  }
+  if (map.getSource("summits")) {
+    map.getSource("summits").setData(summitCollection(summitPinsOnScreen));
+  }
+  /* An open card is describing one of these hills, so its button is now
+     wrong. Redrawn in place rather than closed: closing it would lose the
+     parking markers and the person's place on the map. */
+  if (summitCardFor && summitCardLast) showSummitCard(summitCardLast.p, summitCardLast.coordinates);
+}
+
 function requestSummits() {
   if (!summitsOn || !map.getSource("summits")) return;
 
@@ -839,29 +925,10 @@ function requestSummits() {
 
       summitPending = null;
       var pins = (data && data.summits) || [];
-      map.getSource("summits").setData({
-        type: "FeatureCollection",
-        features: pins.map(function (s) {
-          return {
-            type: "Feature",
-            geometry: { type: "Point", coordinates: [s.lng, s.lat] },
-            properties: {
-              id: s.id, name: s.name,
-              alternativeName: s.alternativeName,
-              heightM: s.heightM,
-              prominenceM: s.prominenceM,
-              classification: s.classification,
-              place: s.place,
-              country: s.country,
-              area: s.area,
-              /* Flattened: MapLibre feature properties are a flat bag, and an
-                 object arrives at the other end as "[object Object]". */
-              ascentM: s.ascent && s.ascent.kind === "known" ? s.ascent.metres : null,
-              ascentRoute: s.ascent && s.ascent.kind === "known" ? s.ascent.routeName : null,
-            },
-          };
-        }),
-      });
+      /* Held so a tick can recolour what is already on screen without asking
+         the server for the same hills again. */
+      summitPinsOnScreen = pins;
+      map.getSource("summits").setData(summitCollection(pins));
       /* What the server actually searched, which is wider than what was
          asked for. Recording the narrower rectangle made every small pan look
          like new ground and asked again for hills already held. */

@@ -929,6 +929,12 @@ function handleMsg(ev) {
   if (msg.type === "recClear") { recClearTrack(); return; }
   if (msg.type === "recRecentre") { recRecentre(); return; }
   if (msg.type === "recording") { setRecording(msg.on !== false); return; }
+  /* The hills this person says they have been up. Sent in by the app,
+     because this page is public and has no business asking who is
+     looking at it. */
+  if (msg.type === "summitTicks" && typeof setSummitTicks === "function") {
+    setSummitTicks(Array.isArray(msg.ids) ? msg.ids : []);
+  }
   if (msg.type === "bottomInset") { setBottomInset(msg.px); return; }
   if (msg.type === "topInset") { setTopInset(msg.px); return; }
 
