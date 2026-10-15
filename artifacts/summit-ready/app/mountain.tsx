@@ -611,7 +611,7 @@ export default function MountainDetailScreen() {
             if (generatedHeroUri && !generatedHeroFailed) setGeneratedHeroFailed(true);
             else setHeroFailed(true);
           }}
-          minHeight={334}
+          minHeight={260}
           dim={0.95}
           style={{ justifyContent: "space-between" }}
         >
@@ -691,6 +691,10 @@ export default function MountainDetailScreen() {
             onClose={() => setTrackOpen(false)}
           />
         ) : null}
+
+        <SafetySection hazards={hazards} />
+        <AboutSection text={summitDescription} state={descriptionState} />
+        <KeyFacts facts={mountain.practical} />
 
         <View onLayout={mark("routes")} style={styles.routesSection}>
           <View style={styles.gutter}>
@@ -784,10 +788,6 @@ export default function MountainDetailScreen() {
             onWalkToRouteStart={routeStart ? () => getDirectionsToRouteStart("walking") : undefined}
           />
         </View>
-
-        <SafetySection hazards={hazards} />
-        <AboutSection text={summitDescription} state={descriptionState} />
-        <KeyFacts facts={mountain.practical} />
 
       </ScrollView>
 

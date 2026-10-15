@@ -72,6 +72,22 @@ describe("Explore", () => {
 describe("Mountain Detail", () => {
   const body = code(read("app/mountain.tsx"));
 
+  it("raises the hero title and places safety and information before routes", () => {
+    expect(body).toContain("minHeight={260}");
+    const actions = body.indexOf("<ActionGrid");
+    const safety = body.indexOf("<SafetySection");
+    const about = body.indexOf("<AboutSection");
+    const facts = body.indexOf("<KeyFacts");
+    const routes = body.indexOf('onLayout={mark("routes")}');
+    expect(actions).toBeGreaterThan(-1);
+    expect(safety).toBeGreaterThan(actions);
+    expect(about).toBeGreaterThan(safety);
+    expect(facts).toBeGreaterThan(about);
+    expect(routes).toBeGreaterThan(facts);
+    expect(body.match(/<SafetySection/g)).toHaveLength(1);
+    expect(body.match(/<AboutSection/g)).toHaveLength(1);
+  });
+
   it("resolves the mountain through the canonical lookup", () => {
     expect(body).toMatch(/\/mountain-lookup/);
     expect(body).toMatch(/presentMountain/);
