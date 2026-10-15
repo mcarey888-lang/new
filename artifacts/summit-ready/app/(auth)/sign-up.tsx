@@ -5,7 +5,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Eye, EyeOff } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { authUnavailableMessage } from "@/utils/authAvailability";
 import {
   ActivityIndicator,
   Image,
@@ -42,6 +43,10 @@ function getClerkErrorMessage(error: ClerkErrorLike | null | undefined, fallback
 }
 
 export default function SignUpScreen() {
+  /* When this screen opened. The only evidence available for telling a
+     slow sign-in service from an unreachable one, which is why the
+     message below is chosen from it rather than asserted. */
+  const openedAtRef = useRef(Date.now());
   useScreenView("sign_up");
   const { authParams, finishAuthentication } = usePaywallAuthReturn();
   const insets = useSafeAreaInsets();
@@ -70,7 +75,7 @@ export default function SignUpScreen() {
 
   async function handleSignUp() {
     if (!clerkLoaded || typeof signUp?.create !== "function") {
-      setError("Authentication service is still loading — please wait a moment and try again.");
+      setError(authUnavailableMessage(Date.now() - openedAtRef.current));
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -120,7 +125,7 @@ export default function SignUpScreen() {
 
   async function handleVerify() {
     if (!clerkLoaded || typeof signUp?.verifications?.verifyEmailCode !== "function") {
-      setError("Authentication service is still loading — please wait a moment and try again.");
+      setError(authUnavailableMessage(Date.now() - openedAtRef.current));
       return;
     }
     setLoading(true);
