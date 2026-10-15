@@ -19,6 +19,10 @@ cached under the same URL on a user's device. During an approval rollout,
 give affected image requests a new stable URL once, then let the new
 `no-store` policy handle later replacements.
 
+An older versioned URL can also contain a cached fallback if it was requested
+before approval metadata reached production. Refresh that existing revision,
+not only unversioned URLs; retain the mountain identity and image dimensions.
+
 **Why:** Existing Explore cards kept showing the old Wikimedia photos even
 after the server returned the approved images, because those identical
 request URLs had previously been cacheable for 30 days.

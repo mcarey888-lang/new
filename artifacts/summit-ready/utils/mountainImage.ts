@@ -13,7 +13,7 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 // The original, unversioned photo URL was cacheable for 30 days. Give the
 // approved collection a new stable URL so existing devices request its
 // replacement once; approved responses themselves are served with no-store.
-const APPROVED_HERO_REVISION = "approved-30-20260925";
+const APPROVED_HERO_REVISION = "approved-library-20261015";
 
 const APPROVED_MOUNTAIN_IMAGE_NAMES = new Set([
   "ben nevis",
@@ -91,7 +91,12 @@ export function appendApprovedImageRevision(uri: string, mountainName: string): 
     const origin = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
     return `${origin}/api/artwork/approved/SR-MTN-MATTERHORN-001/hero`;
   }
-  if (!hasApprovedMountainImage(mountainName) || uri.includes("approvedHeroRevision=")) return uri;
+  if (!hasApprovedMountainImage(mountainName)) return uri;
+  // Earlier revisions may themselves have cached satellite fallbacks before
+  // approvals reached production. Replace those revisions, not just bare URLs.
+  if (/[?&]approvedHeroRevision=/.test(uri)) {
+    return uri.replace(/([?&]approvedHeroRevision=)[^&#]*/, `$1${APPROVED_HERO_REVISION}`);
+  }
   return `${uri}${uri.includes("?") ? "&" : "?"}approvedHeroRevision=${APPROVED_HERO_REVISION}`;
 }
 

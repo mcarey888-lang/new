@@ -4,6 +4,19 @@ import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri
 afterEach(() => vi.unstubAllGlobals());
 
 describe("approved mountain image subjects", () => {
+  it("escapes the September thumbnail cache while preserving mountain identity and dimensions", () => {
+    const old = "/api/mountain-image?name=Ben%20Nevis&location=Scotland&width=520&height=480&mountainId=original-id&approvedHeroRevision=approved-30-20260925";
+    const updated = appendApprovedImageRevision(old, "Ben Nevis");
+    expect(updated).toBe(old.replace("approved-30-20260925", "approved-library-20261015"));
+    expect(appendApprovedImageRevision(updated, "Ben Nevis")).toBe(updated);
+  });
+
+  it("refreshes route-labelled approved thumbnails without changing their subject", () => {
+    const old = "/api/mountain-image?name=Snowdon&width=240&height=200";
+    expect(appendApprovedImageRevision(old, "Snowdon"))
+      .toBe(`${old}&approvedHeroRevision=approved-library-20261015`);
+    expect(appendApprovedImageRevision(old, "Snowdon")).toBe(appendApprovedImageRevision(old, "Snowdon"));
+  });
   it("recognizes the approved mountain collection and documented name variants", () => {
     const mountains = [
       "Ben Nevis",
