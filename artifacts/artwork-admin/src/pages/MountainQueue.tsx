@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useGetMountains, useGetCandidates, useApproveCandidate, useRejectCandidate, useGetMountainGeneration, useGetMountainPrompt, useGenerateMountainArtwork, Candidate } from "../hooks/use-mountain-api";
 import { ArtworkAdminHeader } from "@/components/ArtworkAdminHeader";
+import { ApprovedArtworkImport } from "@/components/ApprovedArtworkImport";
 
 export default function MountainQueue() {
   const [page, setPage] = useState(1);
@@ -97,6 +98,7 @@ export default function MountainQueue() {
       />
 
       <main className="flex-1 p-6 flex flex-col gap-6 max-w-screen-2xl mx-auto w-full">
+        <ApprovedArtworkImport adminKey={adminKey} />
         <div className="flex flex-wrap items-center gap-4 bg-card p-4 rounded-lg border border-border">
           <div className="relative flex-1 min-w-[190px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

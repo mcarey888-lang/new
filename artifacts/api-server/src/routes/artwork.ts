@@ -78,8 +78,10 @@ import {
 import { logger } from "../lib/logger.js";
 import { getUiAssetBulkJob, startUiAssetBulkJob } from "../services/artwork/uiAssetBulkService.js";
 import { mountainAutoHeroRouter } from "./mountain-auto-hero.js";
+import { artworkPromotionRouter } from "./artwork-promotion.js";
 
 export const artworkRouter = Router();
+artworkRouter.use("/approved-library-import", artworkPromotionRouter);
 
 const VALID_CROPS: CropType[] = ["hero", "card", "thumbnail", "master"];
 

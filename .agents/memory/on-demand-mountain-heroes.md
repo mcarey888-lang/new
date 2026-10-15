@@ -13,6 +13,12 @@ For remaining obscure catalogue hills, show a shared replaceable trig-point plac
 
 Approved artwork metadata is environment-specific application data. Sharing the generated image objects between development and production does not share their approval records, and publishing a schema change does not promote those records.
 
+For approved-library transfers, offer an explicit owner approval in Artwork Admin rather than requiring pgAdmin. Do not import automatically at server startup or as an unannounced side effect of publishing.
+
+**Why:** The user does not want pgAdmin and requested an approval trigger while preserving the existing approved images and mountain identities.
+
+**How to apply:** Preview the target environment and changes, retain owner-only mutation permissions, preserve existing target decisions and require deliberate approval before writing metadata.
+
 **Why:** The development library retained the user's reviewed collection while production had no corresponding approvals; a generated image could be downloaded from both environments, yet production's normal image selection still returned a fallback.
 
 **How to apply:** Check approval metadata and referenced image availability in the target environment before claiming the collection is live. Any promotion must be explicitly scoped to the existing approved records, preserve newer target approvals/rejections, and never copy the whole development database.
