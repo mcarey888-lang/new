@@ -7,6 +7,8 @@ import { resolveCanonicalMountainIdentity, type CanonicalMountainIdentity } from
 import { getCanonicalMountainById } from "../services/mountain/canonicalMountainIdentity.js";
 import { approvedFeaturedMountainId } from "../services/mountain/approvedFeaturedMountainIdentity.js";
 import { isMountainHeroImageRejected } from "../services/artwork/mountainHeroReviewState.js";
+import sharp from "sharp";
+import { MOUNTAIN_PLACEHOLDER_SVG } from "../services/artwork/mountainPlaceholder.js";
 
 const router: IRouter = Router();
 
@@ -32,6 +34,7 @@ interface ImageResult {
   thumbUrl: string | null;
   coord:    Coord | null;
   mutableHero?: boolean;
+  placeholder?: boolean;
 }
 
 const imageCache = new Map<string, ImageResult>();
@@ -578,18 +581,40 @@ interface ImageLookupInput {
   coord?: Coord;
 }
 
-async function getImageData(input: ImageLookupInput): Promise<ImageResult> {
+export async function getImageData(input: ImageLookupInput): Promise<ImageResult> {
   const { name, location, mountainId, routeIdentityKey, summitIdentityKey } = input;
   const canonicalName = cleanName(name) || cleanName(location ?? "") || name;
   const routeSubject = exactImageSubject(name);
   const routeSpecific = isRouteSpecificImageRequest(name, routeIdentityKey);
   const featuredId = approvedFeaturedMountainId(name, location);
-  const canonicalMountain = featuredId && (!mountainId || mountainId === featuredId)
+  // Catalogue IDs are authoritative; display place labels may be more specific
+  // than the engine's region and must not hide that ID's saved artwork.
+  const canonicalMountain = mountainId && !routeSpecific
+    ? await getCanonicalMountainById(mountainId).catch(() => null)
+    : featuredId && (!mountainId || mountainId === featuredId)
     ? await getCanonicalMountainById(featuredId).catch(() => null)
     : !routeSpecific
       ? await resolveCanonicalMountainIdentity(name, location, mountainId).catch(() => null)
       : null;
-  const cacheKey = mountainImageCacheKey({ name, location, mountainId: canonicalMountain?.id ?? mountainId, routeIdentityKey, summitIdentityKey });
+  // Catalogue artwork is shared by canonical ID, never by a cached photograph.
+  // Re-check every read so another visitor/process sees newly ready or approved
+  // artwork immediately. Keep legacy route-image/reference searches unchanged.
+  if (canonicalMountain) {
+    const approved = await approvedHeroUrl(canonicalMountain);
+    const automatic = approved ? null : await reusableAutoHeroUrl(canonicalMountain);
+    return {
+      thumbUrl: approved ?? automatic,
+      coord: input.coord ?? null,
+      mutableHero: true,
+      placeholder: !approved && !automatic,
+    };
+  }
+  // An explicit catalogue identity must never fall back to a name-only image
+  // when the engine cannot verify it.
+  if (mountainId && !routeSpecific) {
+    return { thumbUrl: null, coord: input.coord ?? null, mutableHero: true, placeholder: true };
+  }
+  const cacheKey = mountainImageCacheKey({ name, location, mountainId, routeIdentityKey, summitIdentityKey });
   const cacheGeneration = imageCacheGenerations.get(cacheKey) ?? 0;
   const cached   = imageCache.get(cacheKey);
   // Featured mountains re-check approval on every request, including in API
@@ -774,7 +799,7 @@ router.get("/mountain-image", async (req, res) => {
   if (!name) { res.status(400).end(); return; }
 
   try {
-    const { thumbUrl, coord, mutableHero } = await getImageData({
+    const { thumbUrl, coord, mutableHero, placeholder } = await getImageData({
       name,
       location: rawLocation || undefined,
       mountainId,
@@ -782,6 +807,16 @@ router.get("/mountain-image", async (req, res) => {
       summitIdentityKey,
       coord: verifiedCoord,
     });
+    if (placeholder) {
+      const buffer = await sharp(Buffer.from(MOUNTAIN_PLACEHOLDER_SVG))
+        .resize(Math.max(1, width), Math.max(1, height), { fit: "cover" })
+        .png().toBuffer();
+      res.set("Content-Type", "image/png");
+      res.set("Cache-Control", "no-store");
+      res.set("X-Mountain-Artwork", "illustrative-placeholder");
+      res.send(buffer);
+      return;
+    }
 
     // Approved AI illustrations are stored in App Storage. Resolve only this
     // exact internal URL shape; never fetch an arbitrary relative URL.

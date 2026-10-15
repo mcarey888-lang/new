@@ -5,6 +5,12 @@ description: Product distinction between automatic first-open images and manual 
 
 Opening a canonically identified catalogue mountain can request one shared AI hero on demand. The resulting image may become visible automatically as a fallback, clearly identified as AI-generated; manually requested admin generations remain review candidates until explicitly approved. Reviewed/approved artwork always takes priority over automatic imagery.
 
+For remaining obscure catalogue hills, show a shared replaceable trig-point placeholder until a generated image is ready, not automatic photo searches or satellite imagery. Do not replace the already approved AI artwork for major popular summits.
+
+**Why:** The user explicitly protected approved popular-summit artwork and requested first-open generation only for the remaining obscure hills, with later visitors immediately reusing the saved result.
+
+**How to apply:** Preserve approval priority; select shared artwork by canonical hill identity and revalidate mutable artwork rather than caching a placeholder or satellite result for days.
+
 **Why:** The user wants the image library to grow only as climbers actually open mountains, rather than pre-generating the whole catalogue. Requiring manual approval for every first-open result would defeat that experience, while letting admin-initiated review candidates publish themselves would violate the earlier explicit-review requirement.
 
 **How to apply:** Trigger a paid generation only from a mountain-detail selection backed by canonical catalogue identity, never from list thumbnails or image reads. Reuse the result across users, use an identity-matched photographic reference where trustworthy, and label AI images because photorealism does not prove geographic accuracy. A rejected image must cease being served.

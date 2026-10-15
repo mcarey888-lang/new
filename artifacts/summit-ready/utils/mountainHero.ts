@@ -29,7 +29,7 @@ export function canonicalMountainImageUrl(
   revision?: string | null,
 ): string {
   const params = new URLSearchParams({
-    mountainId, name, location, width: "960", height: "620",
+    mountainId, name, location, width: "960", height: "620", artwork: "shared-v1",
   });
   if (revision) params.set("revision", revision);
   return `${apiBase}/mountain-image?${params.toString()}`;

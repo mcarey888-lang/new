@@ -15,7 +15,7 @@ describe("mountain hero requests", () => {
     expect(generatedMountainHeroUrl("https://elsewhere.test/photo.jpg", "/api", mountainId)).toBeNull();
     expect(generatedMountainHeroUrl("/api/artwork/mountains/other/generated/unsafe", "/api", mountainId)).toBeNull();
     expect(canonicalMountainImageUrl("/api", mountainId, "Ben Nevis", "Scotland", "approved"))
-      .toContain(`mountainId=${mountainId}&name=Ben+Nevis&location=Scotland&width=960&height=620&revision=approved`);
+      .toContain(`mountainId=${mountainId}&name=Ben+Nevis&location=Scotland&width=960&height=620&artwork=shared-v1&revision=approved`);
   });
 
   it("requires a token and requests only the selected mountain", async () => {

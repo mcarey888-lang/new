@@ -643,7 +643,7 @@ export default function MountainDetailScreen() {
                 : generatedHeroUri && !generatedHeroFailed
                   ? "AI-generated mountain depiction"
                   : heroGenerationStatus === "failed"
-                    ? "New hero unavailable — showing the existing image"
+                    ? "New hero unavailable — keeping the current artwork"
                     : ""}
             </Text>
           </View>

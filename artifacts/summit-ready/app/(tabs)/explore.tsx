@@ -103,7 +103,8 @@ function discoveryImageUri(item: DiscoveryItem, width: number, height: number) {
   const location = [item.region, item.country].filter(Boolean).join(", ");
   return appendApprovedImageRevision(
     `${API_BASE}/mountain-image?name=${encodeURIComponent(item.name)}`
-      + `&location=${encodeURIComponent(location)}&width=${width}&height=${height}`,
+      + `&location=${encodeURIComponent(location)}&width=${width}&height=${height}`
+      + (item.source === "catalogue" ? `&mountainId=${encodeURIComponent(item.id)}&artwork=shared-v1` : ""),
     item.name,
   );
 }
