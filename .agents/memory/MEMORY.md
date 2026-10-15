@@ -90,3 +90,4 @@
 - [Store build source](store-build-source.md) — build the tested workspace snapshot through a separate release ref when shared development has advanced independently.
 - [Conditional HTTP checks](http-conditional-checks.md) — Node fetch can force a full response when testing ETags; use ordinary max-age=0 revalidation or curl.
 - [Durable runtime dates](durable-runtime-dates.md) — durableptc v1 may reject documented date APIs; isolate timestamps in impure code rather than repeating completed reads.
+- [SQL payload limits](sql-payload-limits.md) — large SQL callback arguments can fail before execution; keep transactions atomic and respect production read-only access.

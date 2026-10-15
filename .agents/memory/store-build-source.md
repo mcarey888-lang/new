@@ -20,3 +20,9 @@ Optional TestFlight test notes can block EAS submission scheduling without stopp
 **Why:** The build started successfully, but automatic submission with test notes was rejected. Scheduling the same existing build again without the optional notes succeeded.
 
 **How to apply:** After a partial build/submit failure, confirm the build exists before retrying. Reuse its build ID for submission without plan-restricted notes; do not create a duplicate build.
+
+An App Store Connect upload number does not establish the number of a different, completed EAS artifact. Check the actual EAS build and compare the mobile source tree before changing version settings or creating a replacement.
+
+**Why:** A low-numbered Apple upload appeared to require a rebuild, but a correctly numbered production artifact with the same mobile code was already complete and could be submitted directly. The origin of the lower-numbered upload was not established.
+
+**How to apply:** Reuse a compatible finished artifact when its confirmed version/build exceeds the known store uploads. Report submission queuing separately from Apple processing, and do not claim the separate upload path's counter has been repaired without verifying it.

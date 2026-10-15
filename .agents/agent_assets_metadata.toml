@@ -718,3 +718,17 @@ mtime_ms = 1791961406732
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/183f471e-970b-4c15-876c-d23ef2a0a3fa/b0adb6d0-5ed4-436a-adfc-3334ac781bd6"
 storage_version_token = "1791961464535364"
 content_type = "text/html"
+
+[[outputs]]
+id = "i6hznsRs11wlQQmqLENj8"
+uri = "file://generated-artifacts/artwork-promotion/README.md"
+type = "text"
+title = "Approved artwork promotion — owner instructions"
+description = "Validated 33-mountain, 99-record metadata-only promotion. Includes production owner execution steps and verification evidence. Not yet applied to production."
+logical_id = "37f8b710-727d-4040-b3a7-366e54990ee5"
+content_hash = "sha256:4110259742f02f4af43d3e6c056c206a3a0121a83433bbd816880261b21fc0a0"
+size = 3666
+mtime_ms = 1792084875551
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/37f8b710-727d-4040-b3a7-366e54990ee5/8ee9531b-05e7-4081-8bbe-ae886e6eb5d9"
+storage_version_token = "1792084929039431"
+content_type = "text/markdown"
