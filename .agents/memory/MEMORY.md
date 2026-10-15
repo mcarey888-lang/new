@@ -46,6 +46,7 @@
 - [Summit Data Engine production schema](summit-engine-public-schema.md) — engine data tables belong in public for managed production copies; legacy provenance labels remain stable.
 - [Canonical activity foundation](canonical-activity-foundation.md) — owner-scoped canonical identity coexists with global legacy IDs; report collisions without leaking or overwriting.
 - [GitHub push credential split](github-push-credential-split.md) — connector API access may allow push while the shell Git transport still lacks a writable credential.
+- [Development secret snapshots](development-secret-snapshots.md) — an existing Shell can retain old settings while the restarted API uses the corrected secret; verify the actual API separately.
 - [PA-A2 parked during Stage 5](pa-a2-parallel-blocker.md) — Publish’s incomplete ledger diff remains frozen, but this infrastructure issue does not block normal Stage 5 development.
 - [Expedition completion authority](expedition-completion-authority.md) — Final-stage saves return through Basecamp; only canonical 100% plus completed stages can award completion.
 - [SDE route read boundary](sde-route-read-boundary.md) — canonical reads use a bounded ENGINE_DATABASE_URL-only server pool; geometry stays hidden without exact rights and validation proof.
