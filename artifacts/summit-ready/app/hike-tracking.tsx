@@ -728,9 +728,11 @@ function HikeTrackingScreenBody() {
   useEffect(() => {
     let cancelled = false;
     async function warmup() {
-      const { status: permStatus } = await Location.requestForegroundPermissionsAsync();
+      const { status: permStatus } = await Location.requestForegroundPermissionsAsync()
+        .catch(() => ({ status: "denied" }));
       if (cancelled) return;
       if (permStatus !== "granted") { setPermDenied(true); return; }
+      setPermDenied(false);
       try {
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         if (!cancelled) {
@@ -1266,6 +1268,15 @@ function HikeTrackingScreenBody() {
       return;
     }
 
+    // Start the durable elapsed-time recording before any optional location
+    // request. Denied/unavailable GPS must never stop a time-only hike.
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor(
+        (Date.now() - trackStartMsRef.current - totalPausedMsRef.current) / 1000
+      );
+      setElapsedSecs(Math.max(0, elapsed));
+    }, 1000);
+
     const snapshot = stageSnapshotRef.current;
     const start = snapshot && typeof snapshot === "object"
       ? {
@@ -1291,6 +1302,13 @@ function HikeTrackingScreenBody() {
        keeps collecting while closed, and why, and wait to be told to go
        ahead. Going straight to the system prompt is what gets an app pulled. */
     if (Platform.OS !== "web") {
+      const foregroundAllowed = await Location.getForegroundPermissionsAsync()
+        .then(permission => permission.status === "granted")
+        .catch(() => false);
+      if (!foregroundAllowed) {
+        setPermDenied(true);
+        return;
+      }
       const outcome = await requestBackgroundLocation({
         confirm: ({ title, message, agreeLabel, declineLabel }) =>
           new Promise<boolean>(resolve => {
@@ -1316,14 +1334,6 @@ function HikeTrackingScreenBody() {
     if (hillMeta.sessionKey) {
       void logHillSessionStarted({ hill_name: hillMeta.hillName ?? undefined });
     }
-
-    // Timestamp-based timer — survives OS throttling of JS intervals
-    timerRef.current = setInterval(() => {
-      const elapsed = Math.floor(
-        (Date.now() - trackStartMsRef.current - totalPausedMsRef.current) / 1000
-      );
-      setElapsedSecs(Math.max(0, elapsed));
-    }, 1000);
 
     /* Show where we are straight away, without making it the track's first
        point. This fix came from the warm-up, taken at Balanced accuracy to
@@ -1747,29 +1757,6 @@ function HikeTrackingScreenBody() {
       : { status: "unavailable", reason: "Challenge and achievement qualification is not confirmed yet." },
   });
 
-  // ── Render: permission denied ────────────────────────────────────────────
-  if (permDenied) {
-    return (
-      <View style={[s.root, { paddingTop: insets.top }]}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-          <ArrowLeft size={20} color={T.text} />
-        </TouchableOpacity>
-        <View style={s.centeredMsg}>
-          <WifiOff size={48} color={T.textMuted} />
-          <Text style={s.msgTitle}>Location Access Needed</Text>
-          <Text style={s.msgBody}>SummitReady needs location permission to track your hike.</Text>
-          <TouchableOpacity
-            onPress={() => Linking.openSettings()}
-            style={s.openSettingsBtn}
-            activeOpacity={0.8}
-          >
-            <Text style={s.openSettingsBtnText}>Open Settings</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
   // ── Render: finished summary ─────────────────────────────────────────────
   if (status === "finished") {
     return (
@@ -1942,6 +1929,14 @@ function HikeTrackingScreenBody() {
 
   return (
     <View style={s.root}>
+      {permDenied && (
+        <View style={{ position: "absolute", top: insets.top + 52, left: 12, right: 12, zIndex: 8, padding: 12, borderRadius: 10, backgroundColor: T.card }} testID="recording-without-gps">
+          <Text style={{ color: T.text, fontSize: 13 }}>Location off — recording time only. No GPS track or measured distance/ascent. You can add your stats by hand when you finish.</Text>
+          {Platform.OS !== "web" && <TouchableOpacity onPress={() => Linking.openSettings()} accessibilityRole="button" accessibilityLabel="Open location settings">
+            <Text style={{ color: T.green, paddingTop: 8 }}>Location settings (optional)</Text>
+          </TouchableOpacity>}
+        </View>
+      )}
 
       {/* Keep the map controls below the host header and device safe area.
           This changes layout, not the map URL or recording lifecycle. */}

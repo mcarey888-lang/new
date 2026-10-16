@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PENDING_PAST_HIKES_KEY, type PastHike } from "@/context/AppContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -85,6 +85,9 @@ function OptionCard({
   return (
     <TouchableOpacity
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
       activeOpacity={0.8}
       style={[s.optionCard, selected && { borderColor: color, borderWidth: 1.5 }]}
     >
@@ -123,6 +126,9 @@ function ChipSelect({
         return (
           <TouchableOpacity
             key={label}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            accessibilityState={{ selected: active }}
             onPress={() => onSelect(active ? 0 : idx)}
             activeOpacity={0.75}
             style={[s.chip, active && { backgroundColor: color + "20", borderColor: color + "70" }]}
@@ -359,7 +365,7 @@ function StepPlan({
   ];
   return (
     <View style={s.stepWrap}>
-      <Text style={s.stepTitle}>Last step — your training preferences</Text>
+      <Text style={s.stepTitle}>Your training preferences</Text>
       <Text style={s.stepSub}>We'll tailor your plan to fit your schedule and what you have available.</Text>
 
       <QGroup label="Training days per week you can commit to">
@@ -748,7 +754,6 @@ export default function QuestionnaireScreen() {
 
   // ── Shared state ────────────────────────────────────────────────────────
   const [showBaselineModal, setShowBaselineModal] = useState(false);
-  const pendingParams = useRef<{ score: number; mountain: string } | null>(null);
 
   const [mountainName, setMountainName] = useState("");
   const [fitnessLevel, setFitnessLevel] = useState(0);
@@ -844,24 +849,18 @@ export default function QuestionnaireScreen() {
     } else {
       await AsyncStorage.removeItem(_pendingKey);
     }
-    pendingParams.current = { score, mountain: mountainName.trim() };
     void logReadinessTestCompleted({ readiness_score: score, fitness_level: fitnessLevelStr });
     setShowBaselineModal(true);
   }
 
-  function navigateToPaywall() {
+  async function continueToSetup() {
+    // This same explanation also exists on Basecamp. Acknowledging it here
+    // must not produce a second logical notice after the goal is created.
+    await AsyncStorage.setItem("baseline_popup_seen", "1");
     setShowBaselineModal(false);
-    const p = pendingParams.current;
-    if (p) {
-      router.push({
-        pathname: "/paywall",
-        params: {
-          score: String(p.score),
-          mountain: p.mountain,
-          fromQuestionnaire: "true",
-        },
-      });
-    }
+    // Setup consumes the saved questionnaire, confirms real route facts,
+    // and persists the goal before opening the free training dashboard.
+    router.replace("/setup");
   }
 
   // ── Questionnaire flow ──────────────────────────────────────────────────
@@ -928,7 +927,7 @@ export default function QuestionnaireScreen() {
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.nextBtnGrad}>
               <Text style={s.nextBtnText}>
-                {isLast ? "See my readiness score" : "Next"}
+                {isLast ? "Review my goal" : "Next"}
               </Text>
               {isLast ? <Zap size={18} color="#fff" /> : <ArrowRight size={18} color="#fff" />}
             </LinearGradient>
@@ -940,7 +939,7 @@ export default function QuestionnaireScreen() {
         visible={showBaselineModal}
         transparent
         animationType="fade"
-        onRequestClose={navigateToPaywall}
+        onRequestClose={() => { void continueToSetup(); }}
       >
         <View style={s.baselineOverlay}>
           <View style={s.baselineSheet}>
@@ -951,8 +950,8 @@ export default function QuestionnaireScreen() {
             <Text style={s.baselineBody}>
               Your starting score is built from your questionnaire — it reflects where you are right now, not where you'll be.{"\n\n"}The more training sessions you log, the more accurately it reflects your real fitness. Keep training and watch it grow.
             </Text>
-            <TouchableOpacity onPress={navigateToPaywall} activeOpacity={0.85} style={s.baselineBtn}>
-              <Text style={s.baselineBtnText}>Got it, show me my score</Text>
+            <TouchableOpacity onPress={() => { void continueToSetup(); }} activeOpacity={0.85} style={s.baselineBtn}>
+              <Text style={s.baselineBtnText}>Continue to goal setup</Text>
             </TouchableOpacity>
           </View>
         </View>

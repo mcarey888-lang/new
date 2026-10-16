@@ -55,6 +55,7 @@ export function SharedTabBar() {
 
   return (
     <View
+      testID="primary-tab-bar"
       style={[
         styles.container,
         { height: tabBarHeight, paddingBottom: Platform.OS === "web" ? 12 : insets.bottom },

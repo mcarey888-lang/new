@@ -795,6 +795,18 @@ router.get("/mountain-image", async (req, res) => {
 
   const width  = Math.min(parseInt(String(req.query["width"]  ?? "800"), 10) || 800, 1280);
   const height = Math.min(parseInt(String(req.query["height"] ?? "400"), 10) || 400,  800);
+  // This endpoint supplies artwork, not map navigation. A geocoded satellite
+  // tile must be explicitly requested, never substituted for an unknown hill.
+  const illustrationFallback = req.query["fallback"] !== "satellite";
+  const sendPlaceholder = async () => {
+    const buffer = await sharp(Buffer.from(MOUNTAIN_PLACEHOLDER_SVG))
+      .resize(Math.max(1, width), Math.max(1, height), { fit: "cover" })
+      .png().toBuffer();
+    res.set("Content-Type", "image/png");
+    res.set("Cache-Control", "no-store");
+    res.set("X-Mountain-Artwork", "illustrative-placeholder");
+    res.send(buffer);
+  };
 
   if (!name) { res.status(400).end(); return; }
 
@@ -808,13 +820,7 @@ router.get("/mountain-image", async (req, res) => {
       coord: verifiedCoord,
     });
     if (placeholder) {
-      const buffer = await sharp(Buffer.from(MOUNTAIN_PLACEHOLDER_SVG))
-        .resize(Math.max(1, width), Math.max(1, height), { fit: "cover" })
-        .png().toBuffer();
-      res.set("Content-Type", "image/png");
-      res.set("Cache-Control", "no-store");
-      res.set("X-Mountain-Artwork", "illustrative-placeholder");
-      res.send(buffer);
+      await sendPlaceholder();
       return;
     }
 
@@ -854,11 +860,18 @@ router.get("/mountain-image", async (req, res) => {
       }
     }
 
-    // ── Mapbox satellite fallback ─────────────────────────────────────────────
+    // Artwork cards must not silently substitute another named mountain from
+    // a broad geocoder or expose map labels behind their own UI badges.
+    if (illustrationFallback) {
+      await sendPlaceholder();
+      return;
+    }
+
+    // ── Mapbox satellite fallback (legacy callers only) ────────────────────────
     const token = process.env.MAPBOX_TOKEN;
     if (!token) { res.status(503).end(); return; }
 
-    const { lat, lng } = coord ?? await fallbackGeocode(name);
+    const { lat, lng } = verifiedCoord ?? coord ?? await fallbackGeocode(name);
     const mapUrl =
       `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/` +
       `${lng.toFixed(5)},${lat.toFixed(5)},13,0/${width}x${height}@2x` +

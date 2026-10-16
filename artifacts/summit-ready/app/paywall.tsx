@@ -94,6 +94,12 @@ export default function PaywallScreen() {
 
   const activePkg = selectedPlan === "annual" && annualPkg ? annualPkg : monthlyPkg;
 
+  function continueWithoutPro() {
+    if (fromQuestionnaire) router.replace("/setup");
+    else if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)/dashboard");
+  }
+
   function handleSubscribe() {
     if (!activePkg) return;
     if (!userId) {
@@ -174,9 +180,10 @@ export default function PaywallScreen() {
       >
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
           <TouchableOpacity
-            onPress={() => fromQuestionnaire
-              ? router.replace("/setup")
-              : router.back()}
+            onPress={continueWithoutPro}
+            accessibilityRole="button"
+            accessibilityLabel="Close upgrade screen"
+            testID="paywall-close"
             style={styles.closeBtn}
             activeOpacity={0.7}
           >
@@ -313,6 +320,15 @@ export default function PaywallScreen() {
 
         <Animated.View entering={FadeInUp.delay(300).duration(600)} style={styles.ctaSection}>
           <TouchableOpacity
+            onPress={continueWithoutPro}
+            accessibilityRole="button"
+            accessibilityLabel="Continue without Pro"
+            testID="paywall-continue-free"
+            style={[styles.restoreBtn, { minHeight: HIT.minTarget }]}
+          >
+            <Text style={styles.restoreText}>Continue without Pro</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={handleSubscribe}
             disabled={isPurchasing || offeringsLoading || !activePkg || !authLoaded}
             activeOpacity={0.85}
@@ -383,7 +399,9 @@ export default function PaywallScreen() {
           <Text style={styles.legalNote}>
             {Platform.OS === "android"
               ? "Payment will be charged to your Google Play account at confirmation of purchase. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your Google Play account settings."
-              : "Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your App Store account settings."}
+              : Platform.OS === "ios"
+                ? "Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your App Store account settings."
+                : "Native-store subscriptions are purchased and managed through the App Store on iOS or Google Play on Android. You can continue using the free features here without purchasing."}
           </Text>
           <View style={styles.legalLinks}>
             <TouchableOpacity onPress={() => Linking.openURL("https://summitready.uk/privacy")} activeOpacity={0.7}>

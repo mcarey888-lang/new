@@ -294,6 +294,20 @@ function logRootRenderError(error: Error, componentStack: string): void {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    // Exported web builds need the same viewport contract as the development
+    // preview wrapper. Do not retain an initial phone-sized document on resize.
+    const style = document.createElement("style");
+    style.setAttribute("data-summit-viewport", "true");
+    style.textContent = `
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #05090b; }
+      body { height: 100%; height: 100dvh; }
+      #root { display: flex; width: 100%; height: 100%; min-width: 0; min-height: 0; flex: 1; }
+    `;
+    document.head.appendChild(style);
+    return () => { style.remove(); };
+  }, []);
   return (
     <ErrorBoundary
       FallbackComponent={RootErrorFallback}

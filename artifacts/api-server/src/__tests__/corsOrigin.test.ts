@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import express from "express";
 import cors from "cors";
+import { isLoopbackCorsOrigin } from "../lib/corsPolicy.js";
 
 /**
  * Drawing a route failed with every section straight and no reason given. The
@@ -40,11 +41,11 @@ function isAllowedOrigin(origin: string): boolean {
   return false;
 }
 
-async function ask(origin: string | null): Promise<{ status: number; body: string }> {
+async function ask(origin: string | null, environment: { NODE_ENV?: string; CORS_ALLOW_LOOPBACK?: string } = { NODE_ENV: "production" }): Promise<{ status: number; body: string; allowOrigin: string | null; allowCredentials: string | null }> {
   const app = express();
   app.use(cors({
     origin: (o, cb) => {
-      if (!o || isAllowedOrigin(o)) cb(null, true);
+      if (!o || isAllowedOrigin(o) || isLoopbackCorsOrigin(o, environment)) cb(null, true);
       else cb(new Error(`CORS: origin not allowed — ${o}`));
     },
     credentials: true,
@@ -67,7 +68,12 @@ async function ask(origin: string | null): Promise<{ status: number; body: strin
       headers: { "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) },
       body: JSON.stringify({ to: { lat: 53.1, lng: -4 } }),
     });
-    return { status: res.status, body: await res.text() };
+    return {
+      status: res.status,
+      body: await res.text(),
+      allowOrigin: res.headers.get("access-control-allow-origin"),
+      allowCredentials: res.headers.get("access-control-allow-credentials"),
+    };
   } finally {
     server.close();
   }
@@ -87,6 +93,20 @@ describe("the origin a development URL actually sends", () => {
   it("still accepts a request that sends no origin, as a page load does", async () => {
     expect((await ask(null)).status).toBe(200);
   }, 20000);
+});
+
+describe("local QA against a production-mode API", () => {
+  it("refuses loopback by default", async () => {
+    const res = await ask("http://localhost:8081");
+    expect(res.status).toBe(403);
+    expect(res.allowOrigin).toBeNull();
+  });
+  it("reflects only the opted-in loopback origin with credentials", async () => {
+    const res = await ask("http://localhost:8081", { NODE_ENV: "production", CORS_ALLOW_LOOPBACK: "true" });
+    expect(res.status).toBe(200);
+    expect(res.allowOrigin).toBe("http://localhost:8081");
+    expect(res.allowCredentials).toBe("true");
+  });
 });
 
 describe("an origin we do not know", () => {

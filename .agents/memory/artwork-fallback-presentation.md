@@ -20,3 +20,15 @@ leaving the actual onboarding small in one corner with a white area below.
 **How to apply:** Check document scroll width against client width after the
 image has loaded, at narrow widths and after rotation. Preserve browser zoom
 accessibility; constrain the image rather than disabling zoom.
+
+Decorative expedition cards must not fall back to labelled satellite maps
+chosen by a broad geocoder. Preserve approved imagery; use a clearly
+illustrative placeholder when exact-mountain artwork/photos are unavailable.
+
+**Why:** QA found Kilimanjaro presented as a different Tanzanian peak. Map
+labels also appeared beneath the card's own category badge, making a wrong
+identity look like real mountain data.
+
+**How to apply:** Treat a missing picture as a presentation fallback, not
+permission to guess a mountain location. Do not alter the curated summit
+catalogue or regenerate approved artwork to correct a decorative card.

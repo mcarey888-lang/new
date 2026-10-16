@@ -112,7 +112,7 @@ export function calculateReadiness(
 
   // Convert GPS-tracked hikes into session-shaped objects so they feed
   // every scoring component that should reward real outdoor activity.
-  const hikeCompleted: Session[] = (opts?.exploreHikes ?? []).map(h => ({
+  const hikeCompleted: Session[] = (opts?.exploreHikes ?? []).filter(h => h.countsTowardTraining !== false).map(h => ({
     id: h.id,
     activityId: h.activityId,
     date: h.date,
@@ -313,7 +313,7 @@ export function diagnoseScoreStagnation(
   if (newScore > oldScore) return null;
 
   const planCompleted = sessions.filter(s => s.completed);
-  const hikeCompleted: Session[] = exploreHikes.map(h => ({
+  const hikeCompleted: Session[] = exploreHikes.filter(h => h.countsTowardTraining !== false).map(h => ({
     id: h.id, activityId: h.activityId, date: h.date, type: "cardio" as const,
     distance: h.distance, elevationGain: h.elevationGain,
     duration: h.timeTaken, effort: 3 as const,

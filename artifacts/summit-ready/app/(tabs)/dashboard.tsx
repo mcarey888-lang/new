@@ -1,7 +1,7 @@
 import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, Lock, Shield, AlertTriangle, Info, Compass, ChevronRight, Flag, Check, Minus, Plus, Footprints, Trophy, Mountain, Send, X, Lightbulb } from "lucide-react-native";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -307,6 +307,11 @@ function AlpineCard({
 }
 
 export default function DashboardScreen() {
+  const [isFocused, setIsFocused] = useState(false);
+  useFocusEffect(useCallback(() => {
+    setIsFocused(true);
+    return () => setIsFocused(false);
+  }, []));
   const reducedMotion = useReducedMotion();
   useScreenView("dashboard");
   const insets = useSafeAreaInsets();
@@ -338,11 +343,13 @@ export default function DashboardScreen() {
   const [showBaselineModal, setShowBaselineModal] = useState(false);
 
   useEffect(() => {
-    if (!summitGoal || readinessScore >= 40) return;
+    if (!isFocused || !summitGoal || readinessScore >= 40) return;
+    let cancelled = false;
     AsyncStorage.getItem("baseline_popup_seen").then(val => {
-      if (!val) setShowBaselineModal(true);
+      if (!cancelled && !val) setShowBaselineModal(true);
     });
-  }, [summitGoal, readinessScore]);
+    return () => { cancelled = true; };
+  }, [summitGoal, readinessScore, isFocused]);
 
   const dismissBaselineModal = async () => {
     await AsyncStorage.setItem("baseline_popup_seen", "1");
@@ -915,7 +922,7 @@ export default function DashboardScreen() {
         <AchievementToast newlyUnlocked={newlyUnlocked} onDismiss={clearNewlyUnlocked} />
       )}
 
-      <Modal
+      {isFocused && showBaselineModal && <Modal
         visible={showBaselineModal}
         transparent
         animationType="fade"
@@ -936,7 +943,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </Modal>}
     </View>
   );
 }

@@ -22,10 +22,6 @@ import {
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
-// Same pattern used by every other screen in the app
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : "/api";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Mountain, Footprints, Zap, Leaf, BarChart2,
@@ -40,7 +36,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { T } from "@/constants/theme";
 import type { VirtualBundle, BundleCategory } from "@/data/virtualBundles";
-import { appendApprovedImageRevision } from "@/utils/mountainImage";
+import { expeditionArtworkUri } from "@/utils/mountainImage";
 
 // ── Category config ────────────────────────────────────────────────────────────
 
@@ -226,13 +222,10 @@ export function VirtualMountainCard({
           end={{ x: 1, y: 1 }}
         />
 
-        {/* Remote mountain photo — fetched via /api/mountain-image (Wikipedia / Mapbox) */}
+        {/* Exact-name artwork/photo, or an illustrative placeholder; never a map tile. */}
         <ExpoImage
-          source={{ uri: appendApprovedImageRevision(
-            `${API_BASE}/mountain-image?name=${encodeURIComponent(bundle.goalMountain)}&width=800&height=340`,
-            bundle.goalMountain,
-          ) }}
-          style={StyleSheet.absoluteFill}
+          source={{ uri: expeditionArtworkUri(bundle.goalMountain) }}
+          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
           contentFit="cover"
           transition={400}
         />
@@ -245,7 +238,7 @@ export function VirtualMountainCard({
         />
 
         {/* Category badge — top-left */}
-        <View style={[s.catBadge, { backgroundColor: accent + "22", borderColor: accent + "55" }]}>
+        <View style={[s.catBadge, { backgroundColor: "#0A1525", borderColor: accent + "55" }]}>
           <Text style={[s.catBadgeText, { color: accent }]}>
             {bundle.category.toUpperCase()}
           </Text>
@@ -260,11 +253,10 @@ export function VirtualMountainCard({
           </View>
         )}
 
-        {/* Mountain name + flag + subtitle — overlaid bottom-left */}
+        {/* Country is written out below: no redundant, platform-dependent flag glyph. */}
         <View style={s.heroNameBlock}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text style={s.heroName}>{bundle.goalMountain}</Text>
-            <Text style={{ fontSize: 20 }}>{bundle.flag}</Text>
           </View>
           <Text style={s.heroSub}>
             {bundle.summitElevation.toLocaleString()}m · {bundle.country}

@@ -204,7 +204,7 @@ export function useCommunity(visible = true): CommunityHubProps {
     posts,
     minePosts,
     loading: enabled && (mine.isLoading || members.isLoading),
-    error: mine.isError || members.isError ? "Could not load member stories. Try signing in again." : null,
+    error: mine.isError || members.isError ? "Could not load member stories. Check your connection and try again." : null,
     busy,
     onRefresh: () => { void refresh(); },
     onCreate,

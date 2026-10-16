@@ -1,4 +1,4 @@
-export type ActivityLinked = { id: string; activityId?: string };
+export type ActivityLinked = { id: string; activityId?: string; sourceHikeId?: string };
 
 export function stableActivityId(item: ActivityLinked, kind: string): string {
   return item.activityId ?? `${kind}:${item.id}`;
@@ -34,7 +34,11 @@ export function mergeActivityKinds<A extends ActivityLinked, B extends ActivityL
   second: B[],
 ): Array<A | B> {
   const seen = new Set<string>();
+  const sourceIds = new Set([...first, ...second].map(item => item.id));
   return [...first, ...second].filter(item => {
+    // Explicit legacy training copies are links, not extra activities.
+    // Keep the original hike without changing either stored record.
+    if (item.sourceHikeId && sourceIds.has(item.sourceHikeId)) return false;
     const key = item.activityId ?? `legacy:${item.id}`;
     if (seen.has(key)) return false;
     seen.add(key);

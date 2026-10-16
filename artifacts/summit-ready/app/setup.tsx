@@ -214,6 +214,7 @@ export default function SetupScreen() {
           hillDays?: number;
           equipment?: Equipment[];
           location?: string;
+          availableDays?: number[];
           rawFitnessLevel?: number;
           rawExerciseFreq?: number;
           rawElevation?: number;
@@ -230,6 +231,7 @@ export default function SetupScreen() {
         if (data.hillDays) setHillDays(data.hillDays);
         if (data.equipment?.length) setEquipment(data.equipment);
         if (data.location) setLoc(data.location);
+        if (data.availableDays?.length) setAvailableDays(data.availableDays);
         if (typeof data.fitnessBaseline === "number") setPrefillBaseline(data.fitnessBaseline);
 
         // Map raw questionnaire answers to fitness sliders so the

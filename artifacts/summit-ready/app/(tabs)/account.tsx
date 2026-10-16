@@ -260,7 +260,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
     exploreHikes,
   ), [sessions, exploreHikes]);
   const recentActivity = useMemo(() => [
-    ...sessions.filter(s => s.completed).map(s => ({
+    ...sessions.filter(s => s.completed && !exploreHikes.some(h => s.sourceHikeId === h.id)).map(s => ({
       id: `session:${s.id}`, title: s.hillName ?? (s.type === "bigDay" ? "Big day" : s.type === "hill" ? "Hill session" : "Cardio session"),
       date: s.date, distance: s.distance, elevation: s.elevationGain, kind: "Session",
       hikeId: null,

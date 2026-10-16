@@ -117,7 +117,7 @@ function SharedTrackScreenBody() {
      "Contains OS data (c) Crown copyright" is a licence condition, so the map
      is told how much room is taken and lifts it clear. */
   useEffect(() => {
-    insetsRef.current.bottom = Math.round(sheetHeight + navigationHeight);
+    insetsRef.current.bottom = Math.round(sheetHeight + navigationHeight + 8);
     if (!mapRevision) return;
     sendInsets();
     /* The card is not the preview: send the selected geometry after the map
@@ -304,7 +304,7 @@ function SharedTrackScreenBody() {
       </View>
 
       <View
-        style={[st.sheet, { bottom: navigationHeight, paddingBottom: 20 }]}
+        style={[st.sheet, { bottom: navigationHeight + 8, paddingBottom: 20 }]}
         accessibilityLabel="Start a hike"
         onLayout={e => setSheetHeight(e.nativeEvent.layout.height)}
       >
@@ -512,7 +512,7 @@ function SharedTrackScreenBody() {
 }
 
 const st = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, minHeight: 0, overflow: "hidden" },
   header: {
     position: "absolute", top: 0, left: 0, right: 0, zIndex: 4,
     flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingBottom: 8,

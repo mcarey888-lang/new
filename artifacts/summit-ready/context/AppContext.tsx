@@ -375,6 +375,10 @@ export interface PastHike {
 
 export interface ExploreHike {
   id: string;
+  /** Retry identity for manual entry; never a canonical/GPS activity ID. */
+  manualEntryId?: string;
+  /** Undefined preserves legacy behaviour; false opts out of training credit. */
+  countsTowardTraining?: boolean;
   name: string;
   date: string;
   distance: number;
@@ -1835,8 +1839,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const logExploreHike = useCallback(async (hike: Omit<ExploreHike, "id">) => serializeRecordedHikeWrite(EXPLORE_HIKES_KEY, async () => {
     if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed. Please reopen your recording.");
-    const existing = hike.activityId
-      ? exploreHikesRef.current.find(item => item.activityId === hike.activityId)
+    const existing = hike.activityId || hike.manualEntryId
+      ? exploreHikesRef.current.find(item => hike.activityId
+        ? item.activityId === hike.activityId
+        : item.manualEntryId === hike.manualEntryId)
       : undefined;
     if (existing) {
       // Retry queue persistence after a successful local save, without
@@ -1853,7 +1859,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if(userId) { await queueRecordedHikeSync(userId,replay);void retrySyncOutbox(userId,()=>getToken({skipCache:true})).catch(()=>{}); }
       return existing.id;
     }
-    const id = hike.activityId ?? Date.now().toString() + Math.random().toString(36).slice(2, 8);
+    const id = hike.activityId ?? hike.manualEntryId ?? Date.now().toString() + Math.random().toString(36).slice(2, 8);
     if ((await deletedRecordingIds(_uid)).has(id)) throw new Error("This recording was deleted. An older backup cannot restore it.");
     const newHike: ExploreHike = { ...hike, id, sharingRevision:hike.sharingRevision??(hike.sharingIntentConfirmed?new Date().toISOString():undefined),
       backupRevision: new Date().toISOString(), syncState: userId ? "queued" : "local_only" };

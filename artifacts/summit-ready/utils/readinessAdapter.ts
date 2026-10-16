@@ -33,23 +33,24 @@ export function createReadinessInput(
       durationMinutes: s.duration,
       completed: s.completed,
       canonicalActivityId: s.activityId,
-      stableSourceId: s.activityId ?? s.id,
+      stableSourceId: s.activityId ?? s.sourceHikeId ?? s.id,
       gpsQuality: isCanonicalGps ? "trusted" : null,
       expedition: Boolean(s.expeditionId),
     });
   });
 
   exploreHikes.forEach(h => {
+    if (h.countsTowardTraining === false) return;
     evidence.push({
       evidenceId: h.id,
       ownerId,
-      source: "tracked_gps",
+      source: h.manualEntryId || (h.recordingEvents && !h.trackPoints?.length) ? "manual" : "tracked_gps",
       completedAt: h.date,
       distanceKm: h.distance,
       ascentM: h.elevationGain,
       durationMinutes: h.timeTaken,
       completed: true,
-      gpsQuality: "trusted",
+      gpsQuality: h.manualEntryId || (h.recordingEvents && !h.trackPoints?.length) ? null : "trusted",
       syncState: h.syncState,
       canonicalActivityId: h.activityId,
       stableSourceId: h.activityId ?? h.id,

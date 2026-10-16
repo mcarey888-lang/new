@@ -208,7 +208,7 @@ export default function SessionsScreen() {
 
   const allItems = useMemo<LogItem[]>(() => {
     const base: LogItem[] = mergeActivityKinds(
-      sessions.map(d => ({ kind: "session" as const, data: d, id: d.id, activityId: d.activityId })),
+      sessions.map(d => ({ kind: "session" as const, data: d, id: d.id, activityId: d.activityId, sourceHikeId: d.sourceHikeId })),
       exploreHikes.map(d => ({ kind: "hike" as const, data: d, id: d.id, activityId: d.activityId })),
     );
     return base.sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());

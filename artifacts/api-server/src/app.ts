@@ -1,6 +1,7 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { mountRequestBodyParsers } from "./lib/requestBodyParsers";
 import cors from "cors";
+import { isLoopbackCorsOrigin } from "./lib/corsPolicy.js";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -38,11 +39,6 @@ const allowedOrigins = new Set<string>([
   ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
   ...(process.env.REPLIT_EXPO_DEV_DOMAIN ? [`https://${process.env.REPLIT_EXPO_DEV_DOMAIN}`] : []),
 ]);
-
-function isDevelopmentLoopbackOrigin(origin: string): boolean {
-  return process.env.NODE_ENV === "development"
-    && /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin);
-}
 
 /**
  * Whether an origin is one of ours, ignoring the port.
@@ -82,7 +78,7 @@ function isAllowedOrigin(origin: string): boolean {
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || isAllowedOrigin(origin) || isDevelopmentLoopbackOrigin(origin)) {
+      if (!origin || isAllowedOrigin(origin) || isLoopbackCorsOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: origin not allowed — ${origin}`));

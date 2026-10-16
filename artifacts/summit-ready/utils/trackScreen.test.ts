@@ -30,7 +30,7 @@ describe("selected saved-route preview", () => {
   });
 
   it("retains measured host insets and answers the loaded map without losing navigation clearance", () => {
-    expect(TRACK_CODE).toContain("insetsRef.current.bottom = Math.round(sheetHeight + navigationHeight)");
+    expect(TRACK_CODE).toContain("insetsRef.current.bottom = Math.round(sheetHeight + navigationHeight + 8)");
     expect(TRACK_CODE).toContain("insetsRef.current.top = insets.top + 46");
     expect(TRACK_CODE).toContain('message["type"] === "needInsets" || message["type"] === "ready"');
     expect(TRACK_CODE).toContain('px: Math.round(insetsRef.current.bottom)');
@@ -120,7 +120,7 @@ describe("the map and its attribution", () => {
   it("keeps the Start panel and map attribution above the full navigation footprint", () => {
     expect(TRACK_CODE).toContain("primaryTabBarHeight(Platform.OS, insets.bottom)");
     expect(TRACK_CODE).toContain("bottom: navigationHeight");
-    expect(TRACK_CODE).toContain("Math.round(sheetHeight + navigationHeight)");
+    expect(TRACK_CODE).toContain("Math.round(sheetHeight + navigationHeight + 8)");
     expect(read("components/SharedTabBar.tsx")).toContain("primaryTabBarHeight(Platform.OS, insets.bottom)");
   });
   it("uses the shared map rather than a second one", () => {

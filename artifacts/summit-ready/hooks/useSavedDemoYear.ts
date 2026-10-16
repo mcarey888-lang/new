@@ -31,8 +31,8 @@ export function useSavedDemoYear() {
         if (!response.ok) throw await responseError(response, "Could not load sample year");
         const profile = await response.json() as DemoProfile;
         if (!cancelled && ownerRef.current === owner) setState({ ...profile, loading: false, busy: false, error: null });
-      } catch (error) {
-        if (!cancelled && ownerRef.current === owner) setState({ ...EMPTY, error: String(error) });
+      } catch {
+        if (!cancelled && ownerRef.current === owner) setState({ ...EMPTY, error: "We couldn’t load your sample year. Check your connection and try again." });
       }
     })();
     return () => { cancelled = true; };
@@ -52,8 +52,8 @@ export function useSavedDemoYear() {
       if (!response.ok) throw await responseError(response, "Could not update sample year");
       const profile = await response.json() as DemoProfile;
       if (ownerRef.current === owner) setState({ ...profile, loading: false, busy: false, error: null });
-    } catch (error) {
-      if (ownerRef.current === owner) setState(current => ({ ...current, busy: false, error: String(error) }));
+    } catch {
+      if (ownerRef.current === owner) setState(current => ({ ...current, busy: false, error: "We couldn’t update your sample year. Check your connection and try again." }));
     }
   }, []);
   return { ...state, add: () => update("PUT"), remove: () => update("DELETE") };

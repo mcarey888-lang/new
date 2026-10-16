@@ -1,9 +1,10 @@
 import { Check, X } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
+  Alert,
   Modal,
   Platform,
   ScrollView,
@@ -46,7 +47,9 @@ interface Props {
 export function LogHikeModal({
   visible, prefillName, prefillDistance, prefillElevation, prefillTimeTaken, reason, onClose,
 }: Props) {
-  const { logExploreHike, addSession, summitGoal, trainingPlan } = useApp();
+  const { logExploreHike, summitGoal } = useApp();
+  const savingRef = useRef(false);
+  const entryIdRef = useRef("");
   const today = new Date().toISOString().split("T")[0];
   const [name, setName] = useState(prefillName ?? "");
   const [date, setDate] = useState(today);
@@ -59,12 +62,9 @@ export function LogHikeModal({
 
   const hasSummitGoal = !!summitGoal;
 
-  const currentWeekNumber = useMemo(() => {
-    return trainingPlan.find((w) => w.isCurrentWeek)?.weekNumber ?? 1;
-  }, [trainingPlan]);
-
   useEffect(() => {
     if (visible) {
+      entryIdRef.current = `manual-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       setName(prefillName ?? "");
       setDate(today);
       setDistance(prefillDistance ?? 5);
@@ -75,28 +75,28 @@ export function LogHikeModal({
   }, [visible, prefillName, prefillDistance, prefillElevation, prefillTimeTaken]);
 
   async function handleSave() {
-    if (!name.trim()) return;
+    if (!name.trim() || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const hikeId = await logExploreHike({ name: name.trim(), date, distance, elevationGain, timeTaken, notes });
-    if (hasSummitGoal && addToSummit) {
-      await addSession({
-        type: "bigDay",
-        date,
-        distance,
-        elevationGain,
-        duration: timeTaken,
-        effort: 3,
-        notes: notes.trim() ? notes.trim() : `Trail session: ${name.trim()}`,
-        completed: true,
-        weekNumber: currentWeekNumber,
-        hillName: name.trim(),
-        sourceHikeId: hikeId,
+    try {
+      // One activity, optionally contributing to readiness. Never manufacture
+      // a second completed workout or match an arbitrary future plan week.
+      await logExploreHike({
+        name: name.trim(), date, distance, elevationGain, timeTaken, notes,
+        manualEntryId: entryIdRef.current,
+        // Without a goal there is no opt-out control; retain the activity as
+        // fitness history for a future goal, as ordinary recorded hikes are.
+        countsTowardTraining: !hasSummitGoal || addToSummit,
       });
+      if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setNotes("");
+      onClose();
+    } catch {
+      Alert.alert("Could not save your hike", "Your entry is still here. Check device storage and try saving again.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
-    setSaving(false);
-    setNotes("");
-    onClose();
   }
 
   return (
@@ -148,6 +148,10 @@ export function LogHikeModal({
                 style={[s.summitToggle, addToSummit && s.summitToggleActive]}
                 onPress={() => setAddToSummit((v) => !v)}
                 activeOpacity={0.8}
+                accessibilityRole="checkbox"
+                accessibilityLabel="Count toward Summit training"
+                accessibilityState={{ checked: addToSummit }}
+                aria-checked={addToSummit}
               >
                 <View style={[s.summitCheckbox, addToSummit && s.summitCheckboxActive]}>
                   {addToSummit && <Check size={12} color="#fff" />}

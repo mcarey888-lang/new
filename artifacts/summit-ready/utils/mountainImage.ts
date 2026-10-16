@@ -15,6 +15,12 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 // replacement once; approved responses themselves are served with no-store.
 const APPROVED_HERO_REVISION = "approved-library-20261015";
 
+/** Artwork cards are not maps: never show a geocoder's labelled satellite tile. */
+export function expeditionArtworkUri(mountainName: string): string {
+  const uri = `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=800&height=340&fallback=illustration&artworkRevision=expedition-identity-v1`;
+  return appendApprovedImageRevision(uri, mountainName);
+}
+
 const APPROVED_MOUNTAIN_IMAGE_NAMES = new Set([
   "ben nevis",
   "snowdon",
@@ -108,7 +114,7 @@ export function mountainImageUri(
   const name = mountainName?.trim();
   if (!name) return null;
   const dimensions = size ? `&width=${size.width}&height=${size.height}` : "";
-  return appendApprovedImageRevision(`${API_BASE}/mountain-image?name=${encodeURIComponent(name)}${dimensions}`, name);
+  return appendApprovedImageRevision(`${API_BASE}/mountain-image?name=${encodeURIComponent(name)}${dimensions}&fallback=illustration&artworkRevision=mountain-identity-v2`, name);
 }
 
 /**
