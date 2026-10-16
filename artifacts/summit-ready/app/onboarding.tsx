@@ -103,14 +103,16 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.screen} testID="onboarding-screen">
-      {/* A full-bleed backdrop rather than a hero frame: it sits behind the
-          whole flow, and the scrim is heavy enough that the headline and the
-          controls never fight the photograph. */}
+      {/* Keep the artwork full-bleed. Welcome has no content cards, so a
+          lighter middle reveals the mountain and foreground instead of
+          fading most of the screen to black. Other steps retain their scrim. */}
       <View style={styles.backdrop} pointerEvents="none" testID="onboarding-backdrop">
         <Image source={HERO} style={styles.backdropImage} resizeMode="cover" accessible={false} />
         <LinearGradient
-          colors={["rgba(5,9,11,0.58)", "rgba(5,9,11,0.86)", BASECAMP.ink]}
-          locations={[0, 0.46, 0.92]}
+          colors={first
+            ? ["rgba(5,9,11,0.62)", "rgba(5,9,11,0.25)", "rgba(5,9,11,0.08)", "rgba(5,9,11,0.72)"]
+            : ["rgba(5,9,11,0.58)", "rgba(5,9,11,0.86)", BASECAMP.ink]}
+          locations={first ? [0, 0.24, 0.62, 1] : [0, 0.46, 0.92]}
           style={StyleSheet.absoluteFill}
         />
       </View>

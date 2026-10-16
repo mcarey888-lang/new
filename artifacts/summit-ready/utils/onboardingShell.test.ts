@@ -19,6 +19,13 @@ const code = (src: string) =>
   src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
 describe("the flow is six screens", () => {
+  it("reveals the welcome artwork through the middle while preserving other steps", () => {
+    const body = code(read("app/onboarding.tsx"));
+    expect(body).toContain('colors={first');
+    expect(body).toContain('"rgba(5,9,11,0.08)"');
+    expect(body).toContain('locations={first ? [0, 0.24, 0.62, 1] : [0, 0.46, 0.92]}');
+    expect(body).toContain('"rgba(5,9,11,0.86)", BASECAMP.ink');
+  });
   it("bounds the original background artwork instead of using its intrinsic width", () => {
     const body = code(read("app/onboarding.tsx"));
     expect(body).toContain('testID="onboarding-screen"');

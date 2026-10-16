@@ -732,3 +732,17 @@ mtime_ms = 1792084875551
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/37f8b710-727d-4040-b3a7-366e54990ee5/8ee9531b-05e7-4081-8bbe-ae886e6eb5d9"
 storage_version_token = "1792084929039431"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "qPT_cZiF0Bn2g55z5sngQ"
+uri = "file://generated-artifacts/user-audit/SummitReady-development-user-audit-2026-10-16.md"
+type = "text"
+title = "SummitReady — browser user audit"
+description = "Development-preview findings, passed journeys, screenshots references, authentication/map blockers, and checks still needed. Not a release sign-off."
+logical_id = "6819bb79-df17-4a02-8dcb-1cb46531febd"
+content_hash = "sha256:dc4dbbe8f4d55fa3c30621cdc427beec911c73da2999844a105e60fa36b69737"
+size = 8712
+mtime_ms = 1792180589519
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/6819bb79-df17-4a02-8dcb-1cb46531febd/da4c4e51-1b81-437a-affc-e0d0e5f7b825"
+storage_version_token = "1792180597634367"
+content_type = "text/markdown"
