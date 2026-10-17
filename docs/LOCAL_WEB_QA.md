@@ -164,3 +164,28 @@ cannot be attributed with certainty.
   production activities, releases or native build counters were changed.
 - Final whitespace check `git --no-optional-locks diff --check` was blocked
   by the workspace's Git/index-lock security guard. No override was attempted.
+
+## Production loopback configuration follow-up (2026-10-17)
+
+The project-variable API reported production `CORS_ALLOW_LOOPBACK=true`, but
+live `OPTIONS /api/elevation-bank` with origin `http://localhost:8081` still
+returned HTTP403 `{"error":"origin_not_allowed"}` after the owner published.
+That read-back did not prove which environment the running deployment received.
+The available tools do not expose its actual injected deployment-secret list.
+
+The API artifact's explicit `[services.production.run.env]` now includes
+`CORS_ALLOW_LOOPBACK = "true"`, added through the validated artifact-config
+workflow. This is a non-secret QA switch. NODE_ENV remains production, and the
+development run configuration, databases, credentials and origin policy are
+unchanged.
+
+The 19 CORS tests and API typecheck passed, including a real local HTTP
+preflight using the opted-in production-mode policy. That preflight returns
+HTTP204 with `Access-Control-Allow-Origin: http://localhost:8081` and
+`Access-Control-Allow-Credentials: true`; HTTP200 is not the middleware default.
+
+The final fresh public curl still returned HTTP403. **The corrected service
+configuration needs another owner publish; live success remains unverified.**
+After publishing, rerun the same OPTIONS request and verify the 204 and exact
+origin header before declaring production localhost QA enabled. This is not
+a claim that the wider release audit has passed.

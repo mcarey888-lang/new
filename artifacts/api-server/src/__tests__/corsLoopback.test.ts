@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import express from "express";
+import cors from "cors";
+import type { AddressInfo } from "node:net";
 import { isLoopbackCorsOrigin } from "../lib/corsPolicy.js";
 
 describe("opt-in loopback CORS", () => {
@@ -26,5 +29,35 @@ describe("opt-in loopback CORS", () => {
     "http://localhost:3000?evil=true",
   ])("never opens other origins: %s", origin => {
     expect(isLoopbackCorsOrigin(origin, { ...production, CORS_ALLOW_LOOPBACK: "true" })).toBe(false);
+  });
+
+  it("returns a successful real HTTP preflight with the opted-in production policy", async () => {
+    const app = express();
+    app.use(cors({
+      origin: (origin, callback) => callback(null, isLoopbackCorsOrigin(origin ?? "", {
+        NODE_ENV: "production", CORS_ALLOW_LOOPBACK: "true",
+      })),
+      credentials: true,
+    }));
+    const server = app.listen(0, "127.0.0.1");
+    await new Promise<void>((resolve, reject) => {
+      server.once("listening", resolve);
+      server.once("error", reject);
+    });
+    try {
+      const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/elevation-bank`, {
+        method: "OPTIONS",
+        headers: {
+          Origin: "http://localhost:8081",
+          "Access-Control-Request-Method": "GET",
+        },
+      });
+      expect(response.status).toBe(204);
+      expect(response.headers.get("access-control-allow-origin")).toBe("http://localhost:8081");
+      expect(response.headers.get("access-control-allow-credentials")).toBe("true");
+      expect(response.headers.get("access-control-allow-methods")).toContain("GET");
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
   });
 });

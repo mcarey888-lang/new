@@ -28,6 +28,8 @@ args = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
 [services.production.run.env]
 PORT = "8080"
 NODE_ENV = "production"
+# Owner-approved opt-in for local web QA against the production API.
+CORS_ALLOW_LOOPBACK = "true"
 
 [services.production.health.startup]
 path = "/api/healthz"
