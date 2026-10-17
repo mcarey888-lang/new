@@ -30,6 +30,39 @@ describe("route API authentication", () => {
     expect(next).toHaveBeenCalledOnce();
     expect(res.status).not.toHaveBeenCalled();
   });
+  it("logs opt-in QA metadata but still rejects an unverified token with generic JSON", () => {
+    vi.stubEnv("CLERK_SECRET_KEY", "sk_live_privateFixture");
+    vi.stubEnv("CORS_ALLOW_LOOPBACK", "true");
+    vi.stubEnv("CLERK_PUBLISHABLE_KEY", `pk_live_${Buffer.from("clerk.example.test$").toString("base64")}`);
+    vi.mocked(getAuth).mockReturnValue({ userId: null } as ReturnType<typeof getAuth>);
+    const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+    // Even a JWT-shaped bearer asserting a user identity is NOT authenticated.
+    const jwt = `${encode({ kid: "ins_DevelopmentFixture" })}.${encode({
+      iss: "https://development.example.test", azp: "http://localhost:8081", sub: "user_private",
+    })}.notASignature`;
+    const req = request(), res = response(), next = vi.fn();
+    req.headers.origin = "http://localhost:8081";
+    req.headers.authorization = `Bearer ${jwt}`;
+    res.getHeader.mockImplementation((name: string) =>
+      name === "x-clerk-auth-reason" ? "jwk-kid-mismatch"
+        : "The following kid is available: ins_ProductionFixture");
+    requireAuth({ json: true })(req, res as unknown as Response, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Your sign-in could not be verified. Please sign in again to save routes.",
+    });
+    expect(req.log.warn).toHaveBeenCalledWith(expect.objectContaining({
+      authReason: "jwk-kid-mismatch",
+      qaAuthDiagnostics: expect.objectContaining({
+        unverifiedTokenIssuerOrigin: "https://development.example.test",
+        unverifiedTokenSigningKeyId: "ins_DevelopmentFixture",
+        availableVerificationKeyIds: ["ins_ProductionFixture"],
+      }),
+    }), "route API authentication rejected");
+    expect(JSON.stringify(vi.mocked(req.log.warn).mock.calls)).not.toContain(jwt);
+    expect(JSON.stringify(vi.mocked(req.log.warn).mock.calls)).not.toContain("user_private");
+  });
   it("fails closed if authentication cannot be checked", () => {
     vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fixture");
     vi.mocked(getAuth).mockImplementation(() => { throw new Error("private diagnostic"); });

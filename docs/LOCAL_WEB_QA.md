@@ -197,3 +197,38 @@ successful recheck. The actual injected deployment-secret list remains
 inaccessible through the available tools, so this verifies runtime behaviour,
 not which settings store supplied the flag. This does not close the wider
 release audit.
+
+## Private diagnostics for localhost authentication failures
+
+The live Clerk rejection was `jwk-kid-mismatch`, not an authorized-party error.
+An earlier QA export contained a development Clerk publishable key, whereas
+the production EAS profile selects a different live instance. This is a
+configuration mismatch to investigate; it is not permission to accept
+development tokens on production.
+
+Rejected JSON API requests now include a private `qaAuthDiagnostics` log
+object only when `CORS_ALLOW_LOOPBACK` is exactly `true` and the request Origin
+matches the existing localhost/127.0.0.1 policy. It contains selected **unverified**
+issuer/authorized-party origins and public signing-key IDs, the configured
+publishable-key origin, live/test key modes and whether a local JWT verification
+key is configured. When Clerk's error supplies its available verifier key IDs,
+only those bounded public IDs are retained, never the raw error message.
+
+These fields do not appear in API responses. JWTs, signatures, user IDs,
+emails, full keys, cookies and URL credentials are not included. Malformed or
+oversized diagnostic input produces empty metadata rather than throwing.
+Authentication still relies exclusively on Clerk's verified user identity:
+no authorized-party list, signature verification or key configuration changed.
+
+After the owner publishes this diagnostic change, retry the authenticated
+request from the signed-in localhost QA browser, then inspect Publishing logs
+for `route API authentication rejected` and its `qaAuthDiagnostics` object.
+Compare the observed issuer and signing-key ID against the intended live
+instance. A development token needs a production-aligned QA frontend and a
+dedicated live QA login, not a production authentication bypass. A live token
+rejected against different verifier keys instead needs private verification
+of the production backend's Clerk configuration.
+
+Publishing these diagnostics alone does **not** establish an authenticated
+HTTP200 or repair a signing-key mismatch. Those require a real matching session
+and a subsequent production acceptance request.

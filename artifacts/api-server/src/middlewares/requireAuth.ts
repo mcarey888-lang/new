@@ -25,6 +25,7 @@
 
 import { getAuth, requireAuth as clerkRequireAuth } from "@clerk/express";
 import type { RequestHandler } from "express";
+import { getLoopbackAuthDiagnostics } from "../lib/clerkAuthDiagnostics";
 
 export type AuthMode = "enforce" | "refuse" | "allow_unauthenticated";
 
@@ -57,6 +58,11 @@ export function requireAuth(options: { json?: boolean } = {}): RequestHandler {
             req.log?.warn({
               bearerPresent: /^Bearer\s+\S+/i.test(req.headers.authorization ?? ""),
               authReason: res.getHeader("x-clerk-auth-reason") ?? "unknown",
+              qaAuthDiagnostics: getLoopbackAuthDiagnostics({
+                origin: req.headers.origin,
+                authorization: req.headers.authorization,
+                verificationMessage: res.getHeader("x-clerk-auth-message"),
+              }),
             },
               "route API authentication rejected");
             res.status(401).json({ error: "Your sign-in could not be verified. Please sign in again to save routes." });
