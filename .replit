@@ -80,3 +80,6 @@ EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY = "goog_ydwWJzCJnygaMTTzTiRRTRClbVm"
 
 [userenv.development]
 STAGE2_LEDGER_ENABLED = "true"
+
+[userenv.production]
+CORS_ALLOW_LOOPBACK = "true"
