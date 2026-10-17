@@ -184,8 +184,16 @@ preflight using the opted-in production-mode policy. That preflight returns
 HTTP204 with `Access-Control-Allow-Origin: http://localhost:8081` and
 `Access-Control-Allow-Credentials: true`; HTTP200 is not the middleware default.
 
-The final fresh public curl still returned HTTP403. **The corrected service
-configuration needs another owner publish; live success remains unverified.**
-After publishing, rerun the same OPTIONS request and verify the 204 and exact
-origin header before declaring production localhost QA enabled. This is not
-a claim that the wider release audit has passed.
+The initial post-change public curl still returned HTTP403. A subsequent
+fresh public check on 2026-10-17 now returns **HTTP204**, with
+`Access-Control-Allow-Origin: http://localhost:8081` and
+`Access-Control-Allow-Credentials: true`. The disguised origin
+`http://localhost.evil.test:8081` still returns HTTP403
+`{"error":"origin_not_allowed"}`.
+
+Production localhost CORS is now verified through the live HTTP response.
+No additional configuration change or publishing was performed during this
+successful recheck. The actual injected deployment-secret list remains
+inaccessible through the available tools, so this verifies runtime behaviour,
+not which settings store supplied the flag. This does not close the wider
+release audit.
