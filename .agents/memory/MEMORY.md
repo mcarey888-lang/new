@@ -94,3 +94,4 @@
 - [QA AI isolation](qa-ai-isolation.md) — browser QA must intercept automatic AI requests as well as explicit generation actions unless paid AI is being tested.
 - [Production loopback QA](production-loopback-qa.md) — owner explicitly approves opt-in localhost access to the production API for local web QA.
 - [Canonical GitHub branch](canonical-github-branch.md) — use claude/route-map-server as the single source of truth after branch reconciliation.
+- [Publish verification](publish-source-and-routing.md) — Publish snapshots the workspace; distinguish completed promotion from old running versions and reject HTML manifest fallbacks.

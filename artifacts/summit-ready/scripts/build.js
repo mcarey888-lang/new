@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { captureBuildProvenance } = require("../server/build-provenance.cjs");
 const { spawn } = require("child_process");
 const { Readable } = require("stream");
 const { pipeline } = require("stream/promises");
@@ -185,8 +186,9 @@ async function validateProductionClerkEndpoint(publishableKey) {
 async function startMetro(expoPublicDomain, expoPublicReplId) {
   const isRunning = await checkMetroHealth();
   if (isRunning) {
-    console.log("Metro already running");
-    return;
+    exitWithError(
+      `Metro port ${metroPort} is already in use. Refusing to reuse an unrelated server for a production export; choose an unused METRO_PORT.`,
+    );
   }
 
   console.log("Starting Metro...");
@@ -532,7 +534,7 @@ function updateBundleUrls(timestamp, baseUrl) {
   console.log("Updated bundle URLs");
 }
 
-function updateManifests(manifests, timestamp, baseUrl, assetsByHash) {
+function updateManifests(manifests, timestamp, baseUrl, assetsByHash, provenance) {
   const updateForPlatform = (platform, manifest) => {
     if (!manifest.launchAsset || !manifest.extra) {
       exitWithError(`Malformed manifest for ${platform}`);
@@ -543,6 +545,7 @@ function updateManifests(manifests, timestamp, baseUrl, assetsByHash) {
     manifest.createdAt = new Date(
       Number(timestamp.split("-")[0]),
     ).toISOString();
+    manifest.extra.summitReadyBuild = provenance;
     manifest.extra.expoClient.hostUri =
       baseUrl.replace("https://", "") + "/" + platform;
     manifest.extra.expoGo.debuggerHost =
@@ -623,7 +626,15 @@ async function main() {
   }
 
   console.log("Updating manifests and creating landing page...");
-  updateManifests(manifests, timestamp, baseUrl, assetsByHash);
+  const provenance = captureBuildProvenance(
+    workspaceRoot, new Date(Number(timestamp.split("-")[0])).toISOString(),
+  );
+  updateManifests(manifests, timestamp, baseUrl, assetsByHash, provenance);
+  fs.writeFileSync(
+    path.join(projectRoot, "static-build", "build-info.json"),
+    JSON.stringify(provenance, null, 2),
+  );
+  console.log(`Build source: ${provenance.gitCommit ?? "Git unavailable in snapshot"}; dirty: ${provenance.gitTreeDirty}; verification hash: ${provenance.verificationSourceHash}`);
 
   console.log("Build complete! Deploy to:", baseUrl);
 

@@ -22,8 +22,45 @@ build = [ "pnpm", "--filter", "@workspace/summit-landing", "run", "build" ]
 publicDir = "artifacts/summit-landing/dist/public"
 serve = "static"
 
+# Do not rewrite other artifacts' paths (particularly /mobile/) to the homepage.
 [[services.production.rewrites]]
-from = "/*"
+from = "/"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/privacy"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/terms"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/training-guides"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/training-guides/*"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/can-i-climb"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/can-i-climb/*"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/mountains"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/mountains/*"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/readiness-check"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/screenshot-helper"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/admin/*"
+to = "/index.html"
+[[services.production.rewrites]]
+from = "/internal/*"
 to = "/index.html"
 
 [services.env]

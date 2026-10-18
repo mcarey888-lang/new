@@ -45,8 +45,8 @@ function getAppName() {
   }
 }
 
-function serveManifest(platform, res) {
-  const manifestPath = path.join(STATIC_ROOT, platform, "manifest.json");
+function serveManifest(platform, res, staticRoot = STATIC_ROOT) {
+  const manifestPath = path.join(staticRoot, platform, "manifest.json");
 
   if (!fs.existsSync(manifestPath)) {
     res.writeHead(404, { "content-type": "application/json" });
@@ -59,6 +59,7 @@ function serveManifest(platform, res) {
   const manifest = fs.readFileSync(manifestPath, "utf-8");
   res.writeHead(200, {
     "content-type": "application/json",
+    "cache-control": "no-store",
     "expo-protocol-version": "1",
     "expo-sfv-version": "0",
   });
@@ -81,11 +82,11 @@ function serveLandingPage(req, res, landingPageTemplate, appName) {
   res.end(html);
 }
 
-function serveStaticFile(urlPath, res) {
+function serveStaticFile(urlPath, res, staticRoot = STATIC_ROOT) {
   const safePath = path.normalize(urlPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const filePath = path.join(STATIC_ROOT, safePath);
+  const filePath = path.join(staticRoot, safePath);
 
-  if (!filePath.startsWith(STATIC_ROOT)) {
+  if (!filePath.startsWith(staticRoot)) {
     res.writeHead(403);
     res.end("Forbidden");
     return;
@@ -107,18 +108,19 @@ function serveStaticFile(urlPath, res) {
 const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
 const appName = getAppName();
 
-const server = http.createServer((req, res) => {
+function createExpoStaticServer({ staticRoot = STATIC_ROOT, prefix = basePath } = {}) {
+  return http.createServer((req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host}`);
   let pathname = url.pathname;
 
-  if (basePath && pathname.startsWith(basePath)) {
-    pathname = pathname.slice(basePath.length) || "/";
+  if (prefix && (pathname === prefix || pathname.startsWith(prefix + "/"))) {
+    pathname = pathname.slice(prefix.length) || "/";
   }
 
   if (pathname === "/" || pathname === "/manifest") {
     const platform = req.headers["expo-platform"];
     if (platform === "ios" || platform === "android") {
-      return serveManifest(platform, res);
+      return serveManifest(platform, res, staticRoot);
     }
 
     if (pathname === "/") {
@@ -126,10 +128,17 @@ const server = http.createServer((req, res) => {
     }
   }
 
-  serveStaticFile(pathname, res);
-});
+  if (pathname === "/build-info.json") res.setHeader("cache-control", "no-store");
+  serveStaticFile(pathname, res, staticRoot);
+  });
+}
 
+if (require.main === module) {
+const server = createExpoStaticServer();
 const port = parseInt(process.env.PORT || "3000", 10);
 server.listen(port, "0.0.0.0", () => {
   console.log(`Serving static Expo build on port ${port}`);
 });
+}
+
+module.exports = { createExpoStaticServer };

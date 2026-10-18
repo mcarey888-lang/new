@@ -3,6 +3,7 @@ previewPath = "/mobile-preview.html"
 title = "SummitReady"
 version = "1.0.0"
 id = "artifacts/summit-ready"
+router = "path"
 
 [[integratedSkills]]
 name = "expo"
