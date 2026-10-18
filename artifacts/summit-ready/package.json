@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:offline-wiring": "vitest run utils/osDayCacheStore.test.ts utils/osTileRetry.test.ts",
     "test:recording": "vitest run utils/recordedElevation.test.ts utils/recordedHikeLibrary.test.ts utils/recordedHikeRecovery.test.ts utils/syncOutbox.test.ts utils/reliability.test.ts utils/trackSavedRoutes.test.ts utils/recordingOutcome.test.ts",
-    "test": "vitest run utils",
+    "test": "vitest run utils --maxWorkers=2",
     "android": "expo run:android",
     "ios": "expo run:ios"
   },
