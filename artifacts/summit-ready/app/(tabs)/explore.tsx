@@ -7,7 +7,7 @@
  */
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import {
-  ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput,
+  ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput,
   useWindowDimensions, View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -27,6 +27,7 @@ import { CURATED_HILLS, type Trail } from "@/constants/trailData";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import { createExploreAiRequestGuard } from "@/utils/exploreRequestGuard";
 import { appendApprovedImageRevision } from "@/utils/mountainImage";
+import { MountainArtworkImage as Image } from "@/components/MountainArtworkImage";
 import { looksLikeUkPostcode, normalizeUkPostcode } from "@/utils/explorePostcode";
 import { searchTrainingHills } from "@/utils/trainingHillSearch";
 import { ExploreSearchControls } from "@/components/explore/ExploreSearchControls";

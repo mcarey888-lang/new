@@ -91,6 +91,8 @@ function harness() {
   return { buildSummitSearch: buildSummitSearch, searchInput: function () { return searchInput; },
            searchList: function () { return searchList; }, goToSummit: goToSummit,
            showParkingFor: showParkingFor, hideSummitCard: hideSummitCard,
+           keepSummitCardForPlanning: keepSummitCardForPlanning,
+           ensureSummitCard: ensureSummitCard,
            showSummitCard: showSummitCard, ensureParkingLayers: ensureParkingLayers,
            onDrawingFinished: onDrawingFinished,
            clearSummitDestination: clearSummitDestination,
@@ -111,6 +113,8 @@ function harness() {
     goToSummit(s: Record<string, unknown>): void;
     showParkingFor(s: Record<string, unknown>): void;
     hideSummitCard(keepParking?: boolean | { type: string }): void;
+    keepSummitCardForPlanning(): void;
+    ensureSummitCard(): El;
     showSummitCard(p: Record<string, unknown>, c: number[]): void;
     ensureParkingLayers(): void;
     onDrawingFinished(): void;
@@ -520,14 +524,23 @@ describe("car parks while planning a route to the hill", () => {
     expect(h.parking()!.features).toHaveLength(0);
   });
 
-  it("closes the card keeping parking when planning a route", () => {
+  it("retains the summit popup and parking information when planning a route", async () => {
+    const h = harness();
+    h.api.showSummitCard(HILL, [HILL.lng, HILL.lat]);
+    const card = h.api.ensureSummitCard();
+    expect(card.style.display).toBe("block");
+    h.api.keepSummitCardForPlanning();
+    expect(card.style.display).toBe("block");
+    expect(card.style.overflowY).toBe("auto");
+    expect(h.byId.get("summitPlanRoute")!.style.display).toBe("none");
+    expect(card.innerHTML).toContain("summitParking");
+
     const body = summitLayerScript("/api/summits", "/api/summits/parking");
     const handler = body.slice(
       body.indexOf('summitPlanRoute").onclick'),
       body.indexOf("function summitRouteExists"),
     );
-    expect(handler).toContain("hideSummitCard(true)");
-    /* And nowhere else: dismissing the card must still clear them. */
-    expect(body.match(/hideSummitCard\(true\)/g) ?? []).toHaveLength(1);
+    expect(handler).toContain("keepSummitCardForPlanning()");
+    expect(handler).not.toContain("hideSummitCard(");
   });
 });

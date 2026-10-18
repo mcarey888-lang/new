@@ -17,7 +17,7 @@ import {
 import { VirtualMountainCard } from "@/components/VirtualMountainCard";
 import { ExpeditionDayCount } from "@/components/ExpeditionDayCount";
 import { ManualDnaHeader } from "@/components/ManualDnaHeader";
-import { Image as ExpoImage } from "expo-image";
+import { ExpoMountainArtworkImage as ExpoImage } from "@/components/MountainArtworkImage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";

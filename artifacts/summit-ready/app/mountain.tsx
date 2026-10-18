@@ -241,8 +241,8 @@ export default function MountainDetailScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mountain]);
 
-  // Only the detail screen starts generation, after catalogue identity is resolved.
-  // List thumbnails and general image reads never request paid artwork.
+  // Detail requests and shared card slots both use the server's identity-bound,
+  // rate-limited generation flow. General image GETs remain read-only.
   useEffect(() => {
     if (!canonicalMountainId || !userId) return;
     let cancelled = false;

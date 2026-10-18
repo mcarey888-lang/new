@@ -20,7 +20,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import { Image as ExpoImage } from "expo-image";
+import { ExpoMountainArtworkImage as ExpoImage } from "@/components/MountainArtworkImage";
 
 import { LinearGradient } from "expo-linear-gradient";
 import {

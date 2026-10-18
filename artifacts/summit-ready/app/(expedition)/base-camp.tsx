@@ -11,7 +11,7 @@ import {
   ChevronRight, TrendingUp, Camera, Plus, Trophy, Clock,
   Footprints, RefreshCw, AlertTriangle, Play, Trash2, X,
 } from "lucide-react-native";
-import { Image as ExpoImage } from "expo-image";
+import { ExpoMountainArtworkImage as ExpoImage } from "@/components/MountainArtworkImage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";

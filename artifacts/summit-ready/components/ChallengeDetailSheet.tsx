@@ -8,7 +8,7 @@ import {
   ActivityIndicator, Linking, Modal, Platform, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
-import { Image as ExpoImage } from "expo-image";
+import { ExpoMountainArtworkImage as ExpoImage } from "@/components/MountainArtworkImage";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   X, Mountain, MapPin, Clock, TrendingUp,

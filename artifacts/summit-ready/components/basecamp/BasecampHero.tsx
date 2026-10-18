@@ -18,7 +18,7 @@
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ImageBackground, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
+  StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -30,6 +30,7 @@ import {
 } from "@/utils/basecampPresentation";
 import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 import type { CanonicalBasecampFacts } from "@/hooks/useCanonicalBasecampFacts";
+import { MountainArtworkBackground as ImageBackground } from "@/components/MountainArtworkImage";
 
 type HeroSource =
   | { kind: "resolving" }

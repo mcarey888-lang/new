@@ -23,9 +23,9 @@ For approved-library transfers, offer an explicit owner approval in Artwork Admi
 
 **How to apply:** Check approval metadata and referenced image availability in the target environment before claiming the collection is live. Any promotion must be explicitly scoped to the existing approved records, preserve newer target approvals/rejections, and never copy the whole development database.
 
-**Why:** The user wants the image library to grow only as climbers actually open mountains, rather than pre-generating the whole catalogue. Requiring manual approval for every first-open result would defeat that experience, while letting admin-initiated review candidates publish themselves would violate the earlier explicit-review requirement.
+**Why:** The user wants the image library to grow on demand rather than pre-generating the whole catalogue. They subsequently extended first-view generation from detail pages to cards and list thumbnails too. Manually initiated review candidates must still not publish themselves.
 
-**How to apply:** Trigger a paid generation only from a mountain-detail selection backed by canonical catalogue identity, never from list thumbnails or image reads. Reuse the result across users, use an identity-matched photographic reference where trustworthy, and label AI images because photorealism does not prove geographic accuracy. A rejected image must cease being served.
+**How to apply:** Authenticated mountain slots on details, dashboards and lists may request generation only after obtaining a verified canonical identity. Legacy name-only slots must resolve uniquely in the catalogue; noncatalogued or ambiguous hills retain placeholders. Keep general image GETs read-only, reuse the existing authenticated request flow and unchanged per-user/per-IP/concurrency limits, and preserve approved-art priority. Reuse results across users and label AI images; a rejected image must cease being served.
 
 The public mountain review queue may expose that an unapproved generated candidate exists for filtering, but must not expose its image URL or bytes.
 

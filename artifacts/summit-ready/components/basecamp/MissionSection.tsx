@@ -17,7 +17,7 @@
  */
 import React, { useEffect, useState } from "react";
 import {
-  Image, type ImageSourcePropType, ScrollView, StyleSheet, Text, TouchableOpacity, View,
+  type ImageSourcePropType, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
@@ -26,6 +26,7 @@ import { BASECAMP, HIT, MOTION } from "@/constants/tokens";
 import { SRPanel, SRSectionHeader, SRFactDivider } from "@/components/ui";
 import { sessionFacts, type QueuedSession } from "@/utils/basecampPresentation";
 import { exerciseCardArtwork } from "@/utils/exerciseArtwork";
+import { MountainArtworkImage as Image } from "@/components/MountainArtworkImage";
 
 /** Visual identity per plan session type. Icons only — no invented copy. */
 const TYPE_VISUAL: Record<string, { Icon: typeof Activity; tint: readonly [string, string] }> = {

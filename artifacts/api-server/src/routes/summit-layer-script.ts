@@ -323,9 +323,10 @@ function showSummitCard(p, coordinates) {
     var at = { lng: summitCardFor.lng, lat: summitCardFor.lat,
                id: summitCardFor.id, name: summitCardFor.name };
     post({ type: "planRouteTo", id: at.id, name: at.name, lat: at.lat, lng: at.lng });
-    /* Kept: the next tap is where the walk starts, and on a hill that is
-       nearly always one of these car parks. */
-    hideSummitCard(true);
+    /* Keep both the parking markers AND their trust/distance information
+       accessible while drawing. The host already lifts this card clear of
+       its measured planning controls. */
+    keepSummitCardForPlanning();
     if (typeof setDrawing !== "function" || typeof addPoint !== "function") return;
 
     if (summitRouteExists()) {
@@ -424,10 +425,18 @@ function summitRouteExists() {
  *
  * The car parks normally go with it: left behind, they sit on the map
  * claiming to be the parking for whatever gets opened next. The exception is
- * planning a route to this very hill, where the card closes to make room and
- * the car parks become the most useful thing on the screen — the next tap is
- * the start of the walk, and that is usually one of them.
+ * planning a route to this very hill now keeps the card open, with scrollable
+ * parking information. Ordinary dismissal still removes both card and pins.
  */
+function keepSummitCardForPlanning() {
+  if (!summitCard) return;
+  summitCard.style.maxHeight = "35vh";
+  summitCard.style.overflowY = "auto";
+  var plan = document.getElementById("summitPlanRoute");
+  if (plan) plan.style.display = "none";
+  liftSummitCard(typeof hostBottomInset === "number" ? hostBottomInset : 0);
+}
+
 function hideSummitCard(keepParking) {
   var wasOpen = !!(summitCard && summitCard.style.display === "block");
   if (summitCard) summitCard.style.display = "none";

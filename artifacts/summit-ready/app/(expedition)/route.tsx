@@ -9,7 +9,7 @@ import {
   Mountain, MapPin, ChevronRight, TrendingUp, Clock, Flag,
   Layers, Navigation, CheckCircle, AlertTriangle,
 } from "lucide-react-native";
-import { Image as ExpoImage } from "expo-image";
+import { ExpoMountainArtworkImage as ExpoImage } from "@/components/MountainArtworkImage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
