@@ -5,6 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { execFile, spawnSync } from "node:child_process";
+import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const { createExpoStaticServer } = require("../server/serve.js");
@@ -63,15 +66,23 @@ describe("published hosted-bundle contract", () => {
     expect(captureBuildProvenance(root, first.builtAt, ["source.js"]).verificationSourceHash)
       .not.toBe(first.verificationSourceHash);
   });
-  it("declares explicit path routing and stamps both manifests in the build pipeline", async () => {
+  it("declares Expo-aware routing and stamps both manifests in the build pipeline", async () => {
     const config = await readFile(new URL("../.replit-artifact/artifact.toml", import.meta.url), "utf8");
-    expect(config).toContain('router = "path"');
+    // path-only routing cannot select the Expo service for expo-platform requests.
+    expect(config).toContain('router = "expo-domain"');
     expect(config).toContain('paths = [ "/mobile/" ]');
     const build = await readFile(new URL("../scripts/build.js", import.meta.url), "utf8");
     expect(build).toContain("manifest.extra.summitReadyBuild = provenance");
     expect(build).toContain('"build-info.json"');
     expect(build).toContain("Refusing to reuse an unrelated server");
   });
+  it.skipIf(spawnSync("which", ["artifact-router"]).status !== 0)(
+    "serves both manifests through the real production router with the Expo header", async () => {
+      const root = fileURLToPath(new URL("../../../", import.meta.url));
+      const result = await promisify(execFile)(process.execPath,
+        ["scripts/verify-hosted-router.mjs"], { cwd: root, timeout: 20000 });
+      expect(result.stdout).toContain("PASS: production artifact router");
+    }, 25000);
   it("keeps the marketing SPA's rewrites away from mobile/API paths and preserves its pages", async () => {
     const config = await readFile(new URL("../../summit-landing/.replit-artifact/artifact.toml", import.meta.url), "utf8");
     const source = await readFile(new URL("../../summit-landing/src/main.tsx", import.meta.url), "utf8");

@@ -19,3 +19,9 @@ A manifest check must require JSON content, a newer `createdAt`, the expected so
 **Why:** The root marketing SPA returned HTML 200 at mobile manifest paths. Its HTML modification time was unrelated to the native bundle timestamp.
 
 **How to apply:** Use the read-only publish verification command with the production URL and cutoff time. Its served-code checks do not establish browser interactions, account persistence or phone behaviour.
+
+Mobile artifacts must use Expo-aware routing, not ordinary path routing, when hosted manifests are requested with `expo-platform`.
+
+**Why:** The production artifact router has a separate Expo-header dispatch path. With `router = "path"`, plain asset requests reached the Node server but requests carrying `expo-platform` returned the router's plain-text 404. An isolated test through the installed router reproduced the failure; switching to `expo-domain` alone made both platform manifests return JSON 200.
+
+**How to apply:** Run the hosted-router smoke check through the actual production router, not only directly against the Node handler. Keep generated native exports out of Git tracking so rebuilding them does not falsely mark the source snapshot dirty.
