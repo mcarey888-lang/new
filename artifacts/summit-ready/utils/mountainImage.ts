@@ -22,6 +22,10 @@ export function expeditionArtworkUri(mountainName: string): string {
 }
 
 const APPROVED_MOUNTAIN_IMAGE_NAMES = new Set([
+  "mont blanc",
+  "matterhorn",
+  "kilimanjaro",
+  "mount kilimanjaro",
   "ben nevis",
   "snowdon",
   "yr wyddfa",
@@ -89,14 +93,8 @@ export function hasApprovedMountainImage(mountainName: string | null | undefined
 
 /** Preserve identity/route/location params while escaping old cached photos. */
 export function appendApprovedImageRevision(uri: string, mountainName: string): string {
-  // The reviewed Matterhorn Batch 01 asset has an exact approved URL. In the
-  // development artwork collection, use it instead of the old, long-cached
-  // /mountain-image response (which can be a topo/map fallback). This also
-  // covers callers that build the URL directly rather than mountainImageUri().
-  if (typeof __DEV__ !== "undefined" && __DEV__ && normalizeMountainName(mountainName) === "matterhorn") {
-    const origin = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
-    return `${origin}/api/artwork/approved/SR-MTN-MATTERHORN-001/hero`;
-  }
+  // All environments use the shared endpoint: it checks both identity-bound
+  // mountain approvals and the approved Batch library before any placeholder.
   if (!hasApprovedMountainImage(mountainName)) return uri;
   // Earlier revisions may themselves have cached satellite fallbacks before
   // approvals reached production. Replace those revisions, not just bare URLs.

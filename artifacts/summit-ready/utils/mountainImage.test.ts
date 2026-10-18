@@ -81,16 +81,20 @@ describe("approved mountain image subjects", () => {
     const refreshed = appendApprovedImageRevision(previous, "Snowdon");
     expect(refreshed).toContain("location=Snowdonia%2C%20Wales&routeIdentityKey=pyg&approvedHeroRevision=");
     expect(appendApprovedImageRevision(refreshed, "Snowdon")).toBe(refreshed);
-    expect(appendApprovedImageRevision(previous, "Matterhorn")).toBe(previous);
+    expect(appendApprovedImageRevision(previous, "Matterhorn")).toContain("&approvedHeroRevision=");
   });
 
-  it("uses the exact reviewed Matterhorn asset instead of an old cached map in the artwork preview", () => {
+  it("uses the same approved-aware mountain endpoint in previews and installed builds", () => {
     vi.stubGlobal("__DEV__", true);
     const previous = "/api/mountain-image?name=Matterhorn&width=800&height=300";
     expect(appendApprovedImageRevision(previous, "Matterhorn"))
-      .toContain("/api/artwork/approved/SR-MTN-MATTERHORN-001/hero");
+      .toContain(`${previous}&approvedHeroRevision=`);
     expect(mountainImageUri("Matterhorn"))
-      .toContain("/api/artwork/approved/SR-MTN-MATTERHORN-001/hero");
-    expect(appendApprovedImageRevision(previous, "Matterhorn Ridge")).toBe(previous);
+      .toContain("/api/mountain-image?name=Matterhorn");
+    vi.stubGlobal("__DEV__", false);
+    for (const mountain of ["Mont Blanc", "Matterhorn", "Kilimanjaro", "Mount Kilimanjaro"]) {
+      expect(hasApprovedMountainImage(mountain)).toBe(true);
+      expect(mountainImageUri(mountain)).toContain("&approvedHeroRevision=");
+    }
   });
 });

@@ -28,6 +28,19 @@ function isPlacement(value: string): value is ApprovedArtworkPlacement {
   return (APPROVED_ARTWORK_PLACEMENTS as readonly string[]).includes(value);
 }
 
+/** Exact mountain subjects only: an expedition/tour is not its summit. */
+export function approvedMountainBatchAssetId(name: string): string | null {
+  const subject = name.normalize("NFKD").replace(/\p{Diacritic}/gu, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+  const assets: Record<string, string> = {
+    "mont blanc": "SR-MTN-MONTBLANC-001",
+    "matterhorn": "SR-MTN-MATTERHORN-001",
+    "kilimanjaro": "SR-MTN-KILIMANJARO-001",
+    "mount kilimanjaro": "SR-MTN-KILIMANJARO-001",
+  };
+  return assets[subject] ?? null;
+}
+
 /**
  * Resolve an approved Batch 01 image without exposing review metadata.
  *

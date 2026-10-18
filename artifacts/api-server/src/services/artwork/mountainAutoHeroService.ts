@@ -8,6 +8,7 @@ import type { MountainHeroCandidate } from "./mountainHeroReview.js";
 import { canonicalImageSubject, parseMountainIllustrationPath } from "../../routes/mountain-image.js";
 import { logger } from "../../lib/logger.js";
 import { isMountainHeroImageRejected } from "./mountainHeroReviewState.js";
+import { approvedBatchHero } from "./approvedMountainBatch.js";
 import {
   getCanonicalMountainById,
   resolveCanonicalMountainIdentity,
@@ -148,7 +149,10 @@ async function readApprovedImage(mountain: AutoHeroMountain): Promise<string | n
       // A malformed legacy name-keyed approval is not trusted.
     }
   }
-  return null;
+  const batch = await approvedBatchHero(mountain.name);
+  return batch
+    ? `/api/mountain-image?mountainId=${encodeURIComponent(mountain.id)}&name=${encodeURIComponent(mountain.name)}&approvedHeroRevision=shared-library-v1`
+    : null;
 }
 
 async function isRejected(mountainId: string, candidate?: MountainHeroCandidate): Promise<boolean> {

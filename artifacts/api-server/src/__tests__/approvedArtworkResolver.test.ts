@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveApprovedBatch01Artwork } from "../services/artwork/approvedArtworkResolver.js";
+import { approvedMountainBatchAssetId, resolveApprovedBatch01Artwork } from "../services/artwork/approvedArtworkResolver.js";
 
 function candidate(version: number, status: "APPROVED" | "REVIEW REQUIRED" | "REJECTED", approved: boolean) {
   return {
@@ -14,6 +14,14 @@ function candidate(version: number, status: "APPROVED" | "REVIEW REQUIRED" | "RE
 }
 
 describe("approved Batch 01 artwork resolver", () => {
+  it("maps only exact mountain identities to reviewed assets", () => {
+    expect(approvedMountainBatchAssetId("  Mont Blanc ")).toBe("SR-MTN-MONTBLANC-001");
+    expect(approvedMountainBatchAssetId("Matterhorn")).toBe("SR-MTN-MATTERHORN-001");
+    expect(approvedMountainBatchAssetId("Mount Kilimanjaro")).toBe("SR-MTN-KILIMANJARO-001");
+    for (const name of ["Tour du Mont Blanc", "Mont Blanc du Tacul", "Everest", "Shengena Peak"]) {
+      expect(approvedMountainBatchAssetId(name)).toBeNull();
+    }
+  });
   it("resolves an approved current crop by stable asset ID and typed placement", () => {
     const result = resolveApprovedBatch01Artwork(
       { versions: [candidate(1, "APPROVED", true)] },

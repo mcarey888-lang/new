@@ -2,7 +2,10 @@ import { Router, type IRouter } from "express";
 import { pool } from "@workspace/db";
 import { cachedMountains } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-import { downloadMountainHeroIllustration } from "../services/artwork/artworkStorage.js";
+import { downloadMountainHeroIllustration, streamReviewCandidate } from "../services/artwork/artworkStorage.js";
+import { BATCH_01_ID } from "../services/artwork/batch01.js";
+import type { ApprovedArtworkReference } from "../services/artwork/approvedArtworkResolver.js";
+import { approvedBatchHero } from "../services/artwork/approvedMountainBatch.js";
 import { resolveCanonicalMountainIdentity, type CanonicalMountainIdentity } from "../services/mountain/canonicalMountainIdentity.js";
 import { getCanonicalMountainById } from "../services/mountain/canonicalMountainIdentity.js";
 import { approvedFeaturedMountainId } from "../services/mountain/approvedFeaturedMountainIdentity.js";
@@ -35,6 +38,8 @@ interface ImageResult {
   coord:    Coord | null;
   mutableHero?: boolean;
   placeholder?: boolean;
+  approvedBatch?: ApprovedArtworkReference;
+  approvedBatchFallbackName?: string;
 }
 
 const imageCache = new Map<string, ImageResult>();
@@ -601,18 +606,31 @@ export async function getImageData(input: ImageLookupInput): Promise<ImageResult
   // artwork immediately. Keep legacy route-image/reference searches unchanged.
   if (canonicalMountain) {
     const approved = await approvedHeroUrl(canonicalMountain);
-    const automatic = approved ? null : await reusableAutoHeroUrl(canonicalMountain);
+    // Existing identity-bound approvals lead. Reviewed Batch artwork comes
+    // before automatic images and placeholders, in every environment/profile.
+    const approvedBatch = !approved && !routeSpecific
+      ? await approvedBatchHero(canonicalMountain.name)
+      : null;
+    const automatic = approved || approvedBatch ? null : await reusableAutoHeroUrl(canonicalMountain);
     return {
       thumbUrl: approved ?? automatic,
       coord: input.coord ?? null,
       mutableHero: true,
-      placeholder: !approved && !automatic,
+      placeholder: !approved && !approvedBatch && !automatic,
+      ...(approvedBatch ? { approvedBatch } : {}),
+      ...(approved ? { approvedBatchFallbackName: canonicalMountain.name } : {}),
     };
   }
   // An explicit catalogue identity must never fall back to a name-only image
   // when the engine cannot verify it.
   if (mountainId && !routeSpecific) {
     return { thumbUrl: null, coord: input.coord ?? null, mutableHero: true, placeholder: true };
+  }
+  // Exact named objectives also work when they are absent from the hill
+  // catalogue. Never apply a name-only approval to an unverified explicit ID.
+  const approvedBatch = !routeSpecific ? await approvedBatchHero(name) : null;
+  if (approvedBatch) {
+    return { thumbUrl: null, coord: input.coord ?? null, mutableHero: true, approvedBatch };
   }
   const cacheKey = mountainImageCacheKey({ name, location, mountainId, routeIdentityKey, summitIdentityKey });
   const cacheGeneration = imageCacheGenerations.get(cacheKey) ?? 0;
@@ -811,7 +829,7 @@ router.get("/mountain-image", async (req, res) => {
   if (!name) { res.status(400).end(); return; }
 
   try {
-    const { thumbUrl, coord, mutableHero, placeholder } = await getImageData({
+    const { thumbUrl, coord, mutableHero, placeholder, approvedBatch, approvedBatchFallbackName } = await getImageData({
       name,
       location: rawLocation || undefined,
       mountainId,
@@ -819,6 +837,19 @@ router.get("/mountain-image", async (req, res) => {
       summitIdentityKey,
       coord: verifiedCoord,
     });
+    const sendApprovedBatch = async (reference: ApprovedArtworkReference) => {
+      // Only the currently approved derivative is public; no master, review
+      // metadata or generation controls are exposed by this image response.
+      res.set("X-Mountain-Artwork", "approved-library");
+      await streamReviewCandidate(
+        BATCH_01_ID, reference.assetId, reference.version, "hero",
+        res, "no-store",
+      );
+    };
+    if (approvedBatch) {
+      await sendApprovedBatch(approvedBatch);
+      return;
+    }
     if (placeholder) {
       await sendPlaceholder();
       return;
@@ -842,7 +873,7 @@ router.get("/mountain-image", async (req, res) => {
     // ── Proxy Wikimedia photos only; other URL values cannot trigger SSRF. ───
     if (thumbUrl) {
       const imgRes = isAllowedExternalMountainImageUrl(thumbUrl)
-        ? await fetch(thumbUrl, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(10000) })
+        ? await fetch(thumbUrl, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(10000) }).catch(() => null)
         : null;
       if (imgRes?.ok) {
         const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
@@ -858,6 +889,16 @@ router.get("/mountain-image", async (req, res) => {
           return;
         }
       }
+    }
+
+    // A broken external approval is not a reason to show a generic picture
+    // when this exact mountain also has an approved, stored library image.
+    const approvedBackup = approvedBatchFallbackName
+      ? await approvedBatchHero(approvedBatchFallbackName)
+      : null;
+    if (approvedBackup) {
+      await sendApprovedBatch(approvedBackup);
+      return;
     }
 
     // Artwork cards must not silently substitute another named mountain from
