@@ -35,6 +35,10 @@ import {
   View,
 } from "react-native";
 import { TrackMap, type TrackMapHandle } from "@/components/track/TrackMap";
+import {
+  assess as assessOffRoute, initialMemory as initialOffRouteMemory,
+  type OffRouteMemory, type OffRouteReading,
+} from "@/utils/offRoute";
 import { logHillSessionStarted, logHillSessionCompleted, logHikeTracked } from "@/lib/analytics";
 import { ActivityAudiencePicker } from "@/components/track/ActivityAudiencePicker";
 import { loadActivityAudience, saveActivityAudience, type ActivityAudience } from "@/utils/activityAudience";
@@ -767,6 +771,36 @@ function HikeTrackingScreenBody() {
   }, []);
 
   // ── Send a GPS point to the live map ─────────────────────────────────────
+  /**
+   * Judge one GPS fix against the route being followed.
+   *
+   * Called from every tracking watcher rather than from sendPointToMap,
+   * because this needs the fix's accuracy and that function is only given a
+   * position. The detector itself decides what to do with a poor fix; this
+   * only has to hand over what the device reported, including nothing.
+   *
+   * Everything here is local arithmetic on a route already on the phone, so it
+   * keeps working in a valley with no signal — which is exactly where it
+   * matters.
+   */
+  const checkOffRoute = useCallback((lat: number, lng: number, accuracyM: number | null) => {
+    const route = followedRouteRef.current;
+    if (route.length < 2) return;
+    const { memory, reading } = assessOffRoute(
+      offRouteMemoryRef.current,
+      route,
+      { latitude: lat, longitude: lng, accuracyM, at: Date.now() },
+    );
+    offRouteMemoryRef.current = memory;
+    setOffRoute(reading.status === "off_route" ? reading : null);
+    /* A buzz, because the phone is usually in a pocket when this matters and a
+       banner nobody is looking at is not an alert. Only on announce, so a
+       steady state does not vibrate every fix. */
+    if (reading.announce) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    }
+  }, []);
+
   const sendPointToMap = useCallback((lat: number, lng: number) => {
     recordingMapRef.current?.send({ type: "recPoint", lat, lng });
   }, []);
@@ -804,6 +838,8 @@ function HikeTrackingScreenBody() {
   }, [canonicalRouteIntent]);
 
   const followedRouteRef = useRef<Array<{ latitude: number; longitude: number }>>([]);
+  const offRouteMemoryRef = useRef<OffRouteMemory>(initialOffRouteMemory());
+  const [offRoute, setOffRoute] = useState<OffRouteReading | null>(null);
   const referenceRouteSentRef = useRef(false);
   const sendReferenceRouteToMap = useCallback(async () => {
     if (canonicalRouteIntent) return;
@@ -1212,6 +1248,7 @@ function HikeTrackingScreenBody() {
                 }
                 pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp, acc: accuracy, altAcc: loc.coords.altitudeAccuracy });
                 sendPointToMap(latitude, longitude);
+                checkOffRoute(latitude, longitude, loc.coords.accuracy ?? null);
               },
             );
             locationSubRef.current = fgSub;
@@ -1381,6 +1418,7 @@ function HikeTrackingScreenBody() {
           }
           pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp, acc: accuracy, altAcc: loc.coords.altitudeAccuracy });
           sendPointToMap(latitude, longitude);
+          checkOffRoute(latitude, longitude, loc.coords.accuracy ?? null);
         },
       );
       locationSubRef.current = fgSub;
@@ -1492,6 +1530,7 @@ function HikeTrackingScreenBody() {
           }
           pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp, acc: accuracy, altAcc: loc.coords.altitudeAccuracy });
           sendPointToMap(latitude, longitude);
+          checkOffRoute(latitude, longitude, loc.coords.accuracy ?? null);
         },
       );
       locationSubRef.current = fgSub;
@@ -1580,6 +1619,10 @@ function HikeTrackingScreenBody() {
     if (saveInFlightRef.current || discardInFlightRef.current) return;
     saveInFlightRef.current = true;
     setSaving(true);
+    /* Cleared with the hike. A banner left standing would greet the next walk
+       with a warning about a route nobody is on any more. */
+    setOffRoute(null);
+    offRouteMemoryRef.current = initialOffRouteMemory();
     const name     = routeName.trim() || "Tracked Hike";
     const distKm   = parseFloat(distanceKm.toFixed(2));
     const elevGain = Math.round(elevGainM);
@@ -2003,6 +2046,17 @@ function HikeTrackingScreenBody() {
         <View style={[s.offlineBanner, { top: insets.top + 68 }]} pointerEvents="none">
           <WifiOff size={13} color={T.orange} />
           <Text style={s.offlineBannerText}>Offline — activity saved on this device</Text>
+        </View>
+      )}
+
+      {/* Where they are relative to the route, and nothing about which way to
+          walk. The straight line back to a path can cross a crag, and this
+          cannot see one. Sits below the offline banner so two warnings stack
+          rather than cover each other. */}
+      {offRoute?.message && !isIdle && (
+        <View style={[s.offRouteBanner, { top: insets.top + (isOffline ? 108 : 68) }]}>
+          <MapPin size={13} color={T.red} />
+          <Text style={s.offRouteBannerText}>{offRoute.message}</Text>
         </View>
       )}
 
@@ -2598,6 +2652,25 @@ const s = StyleSheet.create({
     borderColor: T.orange,
   },
   offlineBannerText: {
+    color: T.text,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  offRouteBanner: {
+    position: "absolute",
+    alignSelf: "center",
+    zIndex: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.red,
+  },
+  offRouteBannerText: {
     color: T.text,
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",

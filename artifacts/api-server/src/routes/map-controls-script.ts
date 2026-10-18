@@ -169,7 +169,14 @@ function buildLayersSheet() {
       var b = sheetButton(layer.label);
       b.dataset.layer = layer.id;
       b.className = "ctlLayer";
-      b.onclick = function () { setLayer(layer.id); post({ type: "layerChanged", id: layer.id }); syncControls(); closeLayersSheet(); };
+      b.onclick = function () {
+        setLayer(layer.id);
+        /* The old buttons posted this and the app's protocol documents it.
+           Calling setLayer alone changes the map and tells nobody. */
+        post({ type: "layerChanged", id: layer.id });
+        syncControls();
+        closeLayersSheet();
+      };
       layersSheet.appendChild(b);
     })(LAYERS[i]);
   }
@@ -376,6 +383,7 @@ function syncControls() {
     follow.disabled = !!(snapOriginal && snapOriginal.disabled);
   }
 
+  mirror("ctlFly", "fly");
   mirror("ctlUndo", "undo");
   mirror("ctlClear", "clear");
   mirror("ctlSave", "save");

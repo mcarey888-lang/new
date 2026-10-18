@@ -17,6 +17,11 @@ vi.mock("../services/mountain/canonicalMountainIdentity.js", () => ({
   getCanonicalMountainById: vi.fn(async () => null),
   resolveCanonicalMountainIdentity: vi.fn(async () => null),
 }));
+// Exercise the no-artwork path, independently of the growing approved library.
+// Kilimanjaro now has approved artwork, which must win in the real endpoint.
+vi.mock("../services/artwork/approvedMountainBatch.js", () => ({
+  approvedBatchHero: vi.fn(async () => null),
+}));
 
 import router, { clearMountainImageMemoryCache } from "../routes/mountain-image.js";
 const realFetch = globalThis.fetch;

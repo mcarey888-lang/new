@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { mountainArtworkSlot, refreshedMountainArtworkUri, watchMountainArtwork } from "./mountainArtworkSlots";
 import { fetchMountainHeroStatus, MountainHeroRequestError } from "./mountainHero";
 
@@ -13,6 +14,15 @@ const tick = async () => { for (let i = 0; i < 12; i++) await Promise.resolve();
 afterEach(() => { stops.splice(0).forEach(stop => stop()); vi.restoreAllMocks(); vi.clearAllMocks(); vi.useRealTimers(); });
 
 describe("mountain artwork slots", () => {
+  it("keeps generation mounted behind catalogue illustrations", () => {
+    const explore = readFileSync(new URL("../app/(tabs)/explore.tsx", import.meta.url), "utf8");
+    expect(explore).toContain("fallback={<HillPlaceholder");
+    expect(explore).toContain("showFallbackUntilReady={!hasApprovedMountainImage(item.name)}");
+    const wrapper = readFileSync(new URL("../components/MountainArtworkImage.tsx", import.meta.url), "utf8");
+    expect(wrapper.indexOf("const source = useSlotSource(props.source)"))
+      .toBeLessThan(wrapper.indexOf("if (!fallback) return"));
+    expect(wrapper).toContain("source !== props.source");
+  });
   it("ignores unrelated images, malformed identities and route-specific imagery", () => {
     expect(mountainArtworkSlot("/api/photos/a")).toBeNull();
     expect(mountainArtworkSlot("/api/mountain-image?name=Hill&mountainId=bad")).toBeNull();

@@ -201,7 +201,7 @@ describe("the card, rendered", () => {
     const doc = {
       createElement: () => card,
       body: { appendChild() {} },
-      getElementById: () => ({ onclick: null, textContent: "", style: {} }),
+      getElementById: () => ({ onclick: null, textContent: "", style: {}, setAttribute() {} }),
       /* The card measures the attribution so it can sit above it. A page
          with no map control rendered yet answers null, which is the same
          answer this gives. */

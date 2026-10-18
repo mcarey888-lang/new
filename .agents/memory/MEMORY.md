@@ -93,3 +93,4 @@
 - [SQL payload limits](sql-payload-limits.md) — large SQL callback arguments can fail before execution; keep transactions atomic and respect production read-only access.
 - [QA AI isolation](qa-ai-isolation.md) — browser QA must intercept automatic AI requests as well as explicit generation actions unless paid AI is being tested.
 - [Production loopback QA](production-loopback-qa.md) — owner explicitly approves opt-in localhost access to the production API for local web QA.
+- [Canonical GitHub branch](canonical-github-branch.md) — use claude/route-map-server as the single source of truth after branch reconciliation.

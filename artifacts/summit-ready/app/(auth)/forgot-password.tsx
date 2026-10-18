@@ -2,7 +2,8 @@ import { useAuth, useSignIn } from "@clerk/expo";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import { authUnavailableMessage } from "@/utils/authAvailability";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -33,6 +34,10 @@ function getClerkErrorMessage(error: ClerkErrorLike | null | undefined, fallback
 }
 
 export default function ForgotPasswordScreen() {
+  /* When this screen opened. The only evidence available for telling a
+     slow sign-in service from an unreachable one, which is why the
+     message below is chosen from it rather than asserted. */
+  const openedAtRef = useRef(Date.now());
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { signIn } = useSignIn() as any;
@@ -57,7 +62,7 @@ export default function ForgotPasswordScreen() {
       || typeof signIn?.create !== "function"
       || typeof signIn?.resetPasswordEmailCode?.sendCode !== "function"
     ) {
-      setError("Authentication service is still loading — please wait a moment and try again.");
+      setError(authUnavailableMessage(Date.now() - openedAtRef.current));
       return;
     }
     setError(null);
@@ -96,7 +101,7 @@ export default function ForgotPasswordScreen() {
     if (newPassword !== confirmPassword) { setError("Passwords don't match."); return; }
     if (newPassword.length < 8) { setError("Password must be at least 8 characters."); return; }
     if (!clerkLoaded || typeof signIn?.resetPasswordEmailCode?.verifyCode !== "function") {
-      setError("Authentication service is still loading — please wait a moment and try again.");
+      setError(authUnavailableMessage(Date.now() - openedAtRef.current));
       return;
     }
     setError(null);

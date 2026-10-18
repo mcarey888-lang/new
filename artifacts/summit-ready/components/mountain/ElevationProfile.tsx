@@ -10,6 +10,17 @@
  * already dropped upstream rather than interpolated, so a gap in the source
  * data appears as a straight run between the readings either side of it and
  * never as invented terrain.
+ *
+ * LIVE USE
+ * Given `positionM` it also shows where somebody has got to: the part behind
+ * them in the route's colour, the part ahead dimmed, and a marker between. The
+ * prop is optional and everything without it renders exactly as before, so the
+ * mountain detail screen is untouched by this.
+ *
+ * The marker sits on the drawn line, which means its height is interpolated
+ * between two samples. That is not invented terrain — it is the same
+ * interpolation the line itself already shows, and putting the dot anywhere
+ * else would place it off the curve it belongs to.
  */
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -128,6 +139,8 @@ export function ElevationProfile({
         ))}
 
         <Path d={area} fill="url(#srProfileFill)" />
+        {/* The whole route. When live, this is what remains ahead, so it is
+            dimmed and the walked part is drawn over it. */}
         <Path
           d={line} fill="none"
           stroke={behind ? "rgba(255,255,255,0.28)" : EXPLORE.accent}

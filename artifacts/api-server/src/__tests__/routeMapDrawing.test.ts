@@ -193,6 +193,14 @@ describe("a drawn line is never dressed as a surveyed one", () => {
     expect(html).toContain('var ROUTE_COLOR = "#167DF7"');
   });
 
+  it("never leaves a failure without a reason", () => {
+    /* A bare "13 sections not on a path" is the least useful state this
+       readout has: it is the one where somebody cannot tell a broken
+       deployment from genuinely pathless ground. It cost an afternoon of
+       looking in the wrong place. */
+    expect(page()).toContain("could not reach the path service");
+  });
+
   it("says so in words as well as colour", () => {
     /* Colour alone fails anyone who cannot separate amber from blue, and fails
        everyone on a bright hillside. The count is spelled out because "3
@@ -248,6 +256,66 @@ describe("a drawn line is never dressed as a surveyed one", () => {
        handing over a real route, while one passing false is handing over a
        draft and must not have it drawn as checked. */
     expect(page()).toContain("var surveyed = msg.snapped !== false;");
+  });
+});
+
+describe("the snap radius the page asks for", () => {
+  /* The bug this exists to prevent happened: a whole route came back as
+     straight lines with the snapping working perfectly throughout, because the
+     tolerance was smaller than anyone can tap. */
+
+  it("scales with the zoom rather than being fixed", () => {
+    expect(page()).toContain("156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom())");
+  });
+
+  it("is forgiving enough to actually hit a path", () => {
+    /* Measured: a point chosen deliberately, zoomed in, on a screenshot, was
+       still 113 m from the nearest mapped way. At planning zoom the old
+       multiplier of 20 gave about 60 m, so nothing snapped. 45 gives about
+       135 m there, which catches a tap like that. */
+    const html = page();
+    const m = /metresPerPixel \* (\d+)/.exec(html);
+    expect(m, "radius multiplier not found").not.toBeNull();
+    const multiplier = Number(m![1]);
+    expect(multiplier).toBeGreaterThanOrEqual(40);
+
+    /* At zoom 14 over Snowdonia that must comfortably clear 113 m. */
+    const metresPerPixel = (156543.03392 * Math.cos(53.12 * Math.PI / 180)) / 2 ** 14;
+    expect(metresPerPixel * multiplier).toBeGreaterThan(113);
+  });
+
+  /* The multiplier alone solves the zoomed-OUT end. The other end broke too:
+     zoomed right in on aerial imagery, the scaled radius falls below the
+     offset between the photograph and the mapped geometry, so a tap placed
+     exactly on the visible path misses the path in the data. */
+  it("does not collapse when somebody zooms in to be precise", () => {
+    const html = page();
+    const floor = /var SNAP_RADIUS_FLOOR_M = (\d+);/.exec(html);
+    expect(floor, "no floor on the snap radius").not.toBeNull();
+    expect(Number(floor![1])).toBeGreaterThanOrEqual(20);
+    expect(html).toContain("Math.max(SNAP_RADIUS_FLOOR_M, Math.round(metresPerPixel * 45))");
+  });
+
+  it("keeps a usable tolerance at every zoom somebody can draw at", () => {
+    const html = page();
+    const multiplier = Number(/metresPerPixel \* (\d+)/.exec(html)![1]);
+    const floorM = Number(/var SNAP_RADIUS_FLOOR_M = (\d+);/.exec(html)![1]);
+    const radiusAt = (z: number) =>
+      Math.max(floorM, (156543.03392 * Math.cos((53.12 * Math.PI) / 180) * multiplier) / 2 ** z);
+    /* Zoom 19 is close enough to count parked cars, which is exactly where
+       somebody zooms to place a tap carefully. */
+    for (const z of [14, 16, 17, 18, 19, 20]) {
+      expect(radiusAt(z), `tolerance collapsed at zoom ${z}`).toBeGreaterThanOrEqual(20);
+    }
+  });
+
+  it("stays tight enough not to reach across to a different path", () => {
+    /* The floor buys tolerance where there was none; it must not buy so much
+       that a car park with several paths becomes ambiguous. The snapper takes
+       the nearest way inside the radius, so this is a bound on how far a
+       "nearest" can be, not a licence to pick the wrong one. */
+    const floorM = Number(/var SNAP_RADIUS_FLOOR_M = (\d+);/.exec(page())![1]);
+    expect(floorM).toBeLessThanOrEqual(40);
   });
 });
 

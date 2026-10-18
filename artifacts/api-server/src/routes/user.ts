@@ -20,6 +20,8 @@ function respondToDemoProfileError(req: Request, res: Response, err: unknown): v
     });
     return;
   }
+  /* The detail is logged above, not returned. A thrown database error
+     carries its connection string, and that string carries a password. */
   res.status(500).json({ error: "Failed to access demo profile" });
 }
 
@@ -124,8 +126,11 @@ router.delete("/user/me", requireAuth({ json: true }), async (req, res) => {
     res.status(200).json({ deleted: true });
   } catch (err: unknown) {
     req.log.error({ err, userId }, "Failed to delete Clerk user");
-    const msg = err instanceof Error ? err.message : "Failed to delete account";
-    res.status(500).json({ error: msg });
+    /* Logged in full above. What reaches the person says what to do next,
+       and nothing about the inside of the server. */
+    res.status(500).json({
+      error: "Could not delete your account. Please try again, or contact support if it keeps failing.",
+    });
   }
 });
 

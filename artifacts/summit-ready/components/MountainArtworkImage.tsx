@@ -21,8 +21,19 @@ function useSlotSource<T>(source: T): T {
     : source;
 }
 
-export function MountainArtworkImage(props: ImageProps) {
-  return <Image {...props} source={useSlotSource(props.source)} />;
+export function MountainArtworkImage({
+  fallback, showFallbackUntilReady = false, ...props
+}: ImageProps & { fallback?: React.ReactNode; showFallbackUntilReady?: boolean }) {
+  const source = useSlotSource(props.source);
+  const uri = source && typeof source === "object" && "uri" in source ? source.uri : "";
+  const [failedUri, setFailedUri] = useState<unknown>(null);
+  const visible = (!showFallbackUntilReady || source !== props.source) && failedUri !== uri;
+  if (!fallback) return <Image {...props} source={source} />;
+  // Keep the authenticated slot watcher mounted behind the illustration.
+  // Replacing the entire Image with a placeholder would prevent generation.
+  return <>{fallback}<Image {...props} source={source}
+    style={[props.style, { opacity: visible ? 1 : 0 }]}
+    onError={event => { setFailedUri(uri); props.onError?.(event); }} /></>;
 }
 
 export function MountainArtworkBackground(props: ImageBackgroundProps) {

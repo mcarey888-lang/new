@@ -248,6 +248,12 @@ var TERRAIN = ${JSON.stringify(TERRAIN_TILES)};
 var SNAP_URL = ${JSON.stringify(snapUrl ?? null)};
 var PROFILE_URL = ${JSON.stringify(profileUrl ?? null)};
 var GPX_URL = ${JSON.stringify(gpxUrl ?? null)};
+/* The smallest tolerance a tap is ever given, in metres. Covers the offset
+   between aerial imagery and mapped geometry, plus a thumb. Kept well under
+   the spacing of genuinely distinct paths, and the snapper still takes the
+   nearest way inside it, so a wider floor finds a path where there was
+   nothing — it does not pick a different one. */
+var SNAP_RADIUS_FLOOR_M = 25;
 var ROUTE_COLOR = "#167DF7";
 var SNAP_RADIUS_FLOOR_M = 25;
 var ASSERTED_COLOR = "#E9B949";
@@ -647,6 +653,15 @@ function updateHud() {
     else if (noPaths) note += " · no paths mapped here";
     else if (gaps) note += " · no path across the gap";
     else if (offPath) note += " · tap further onto the path";
+    /* Every remaining case says SOMETHING. A bare "13 sections not on a path"
+       is the least useful thing this readout can do: it is the one state where
+       the person cannot tell a broken deployment from genuinely pathless
+       ground, and it cost an afternoon of looking in the wrong place. The
+       reasons that land here — a request that never came back, a server
+       answering something that is not JSON, a route map served by a build
+       that predates the snapping endpoint — all mean the same thing to
+       whoever is holding the phone. */
+    else note += " · could not reach the path service";
   }
   /* Said rather than left blank. A readout with distance and no climb looks
      like a route with no climb, which on a mountain is a dangerous reading. */
@@ -709,16 +724,37 @@ function setSnapping(on) {
 /**
  * How far from a path a tap should still count, for the zoom now on screen.
  *
- * The tap tolerance spans forty-five screen pixels whatever the zoom; what those
- * pixels are worth on the ground is not. Zoomed out over a hillside each one
- * is ten metres or more, so a fixed radius asks for an accuracy no thumb has.
- * Deriving it from the scale means the tolerance matches what the person can
- * actually see and aim at. The server clamps it, so a silly value here cannot
- * make a tap reach across a valley.
+ * Scaled by zoom, because what a screen pixel is worth on the ground changes
+ * and a fixed radius asks for an accuracy no thumb has when zoomed out.
+ *
+ * THE MULTIPLIER IS 45, AND IT WAS 20, AND 20 WAS WRONG.
+ *
+ * Twenty pixels was reasoned from fingertip size and it fails in practice,
+ * because the error is not how wide a finger is — it is that a path at
+ * planning zoom is a hairline a pixel or two across. Measured: picking a point
+ * that looked like it was on a path, zoomed in, on a screenshot, taking care,
+ * landed 113 m from the nearest mapped way. Twenty pixels was about 60 m
+ * there, so the tap found nothing, and a whole route came back as straight
+ * lines with the snapping working perfectly throughout.
+ *
+ * Forty-five pixels is roughly 135 m at planning zoom and about 30 m zoomed
+ * right in, which is the shape this needs: forgiving where the map is small,
+ * precise where it is not.
+ *
+ * The server still clamps it, so this cannot make a tap reach across a valley
+ * however the zoom is abused.
  */
 function snapRadiusM() {
   var lat = map.getCenter().lat;
   var metresPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom());
+  /* Scaled by zoom, because a thumb covers the same pixels whatever the scale.
+     But floored, because the scaling collapses at the top end: at zoom 19 the
+     multiplier alone gives 8 m, and aerial imagery and OpenStreetMap geometry
+     routinely disagree by more than that. Zoomed right in on a photograph, a
+     tap placed exactly on the path somebody can SEE lands outside the path the
+     data holds, and the readout can only say they tapped off the path — which
+     reads as a lie to the person looking at their own finger on the line.
+     Zooming in to be precise must not be what breaks it. */
   return Math.max(SNAP_RADIUS_FLOOR_M, Math.round(metresPerPixel * 45));
 }
 
@@ -952,6 +988,12 @@ function handleMsg(ev) {
   if (msg.type === "recClear") { recClearTrack(); return; }
   if (msg.type === "recRecentre") { recRecentre(); return; }
   if (msg.type === "recording") { setRecording(msg.on !== false); return; }
+  /* The hills this person says they have been up. Sent in by the app,
+     because this page is public and has no business asking who is
+     looking at it. */
+  if (msg.type === "summitTicks" && typeof setSummitTicks === "function") {
+    setSummitTicks(Array.isArray(msg.ids) ? msg.ids : []);
+  }
   if (msg.type === "bottomInset") { setBottomInset(msg.px); return; }
   if (msg.type === "topInset") { setTopInset(msg.px); return; }
 

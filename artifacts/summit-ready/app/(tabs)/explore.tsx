@@ -26,8 +26,9 @@ import { useScreenView } from "@/lib/analytics";
 import { CURATED_HILLS, type Trail } from "@/constants/trailData";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import { createExploreAiRequestGuard } from "@/utils/exploreRequestGuard";
-import { appendApprovedImageRevision } from "@/utils/mountainImage";
+import { appendApprovedImageRevision, hasApprovedMountainImage } from "@/utils/mountainImage";
 import { MountainArtworkImage as Image } from "@/components/MountainArtworkImage";
+import { HillPlaceholder } from "@/components/HillPlaceholder";
 import { looksLikeUkPostcode, normalizeUkPostcode } from "@/utils/explorePostcode";
 import { searchTrainingHills } from "@/utils/trainingHillSearch";
 import { ExploreSearchControls } from "@/components/explore/ExploreSearchControls";
@@ -249,7 +250,6 @@ function ResultRow({ trail }: { trail: Trail }) {
 }
 
 function DiscoveryResultRow({ item }: { item: DiscoveryItem }) {
-  const [failed, setFailed] = useState(false);
   const place = [item.area, item.region, item.country].filter(Boolean).join(", ");
   const statusLabel = item.verificationStatus === "verified" ? "Mountain" : "Mountain suggestion";
   return (
@@ -261,10 +261,12 @@ function DiscoveryResultRow({ item }: { item: DiscoveryItem }) {
     >
       <View style={styles.resultRow}>
         <View style={styles.resultImage}>
-          {failed
-            ? <Fallback />
-            : <Image source={{ uri: discoveryImageUri(item, 220, 200) }} style={StyleSheet.absoluteFill}
-                     onError={() => setFailed(true)} accessible={false} />}
+          {/* The illustration stays visible while the canonical slot resolves.
+              Keep Image mounted so approved/shared artwork can replace it. */}
+          <Image source={{ uri: discoveryImageUri(item, 220, 200) }}
+            style={StyleSheet.absoluteFill} accessible={false}
+            fallback={<HillPlaceholder name={item.name} elevationM={item.elevationM} />}
+            showFallbackUntilReady={!hasApprovedMountainImage(item.name)} />
         </View>
         <View style={styles.resultBody}>
           <Text style={styles.resultName} numberOfLines={2}>{item.name}</Text>

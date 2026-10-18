@@ -33,23 +33,40 @@ export interface NextView {
  *
  * Self-contained by design: serialised into the page verbatim.
  */
-export function shouldRefetch(loaded: LoadedView | null, next: NextView): boolean {
-  if (!loaded) return true;
+/**
+ * Whether a fetched rectangle answers the view the map is showing.
+ *
+ * Geometry and band only. Deliberately says nothing about whether the server
+ * had to cut the list short: a truncated answer still describes this ground,
+ * it just describes it incompletely, and those are different questions.
+ *
+ * Conflating them cost a real bug. The arrival check asked "is this answer
+ * still relevant" with the same predicate that decides "should I fetch again",
+ * so every truncated response was thrown away on arrival — permanently, since
+ * the retry truncated too. Over Scotland at the widest zoom the map drew
+ * nothing at all.
+ */
+export function coversView(loaded: LoadedView | null, next: NextView): boolean {
+  if (!loaded) return false;
   /* A different band changes which hills qualify, so the old rectangle no
      longer answers the question however well it covers the ground. */
-  if (loaded.band !== next.band) return true;
-  /* A truncated answer is a partial one. Panning inside it still needs asking
-     again, because the hills that were cut may be exactly the ones now on
-     screen. */
-  if (loaded.truncated) return true;
-  /* Covered by what we already hold. The loaded rectangle carries the pan
-     margin, so this is true for any small movement, which is most of them. */
-  return !(
+  if (loaded.band !== next.band) return false;
+  return (
     next.minLat >= loaded.minLat &&
     next.maxLat <= loaded.maxLat &&
     next.minLng >= loaded.minLng &&
     next.maxLng <= loaded.maxLng
   );
+}
+
+export function shouldRefetch(loaded: LoadedView | null, next: NextView): boolean {
+  if (!loaded) return true;
+  /* A truncated answer is a partial one. Panning inside it still needs asking
+     again, because the hills that were cut may be exactly the ones now on
+     screen. This belongs here and not in coversView: it is a reason to ask
+     again, not a reason to reject what came back. */
+  if (loaded.truncated) return true;
+  return !coversView(loaded, next);
 }
 
 /**
@@ -61,4 +78,8 @@ export function shouldRefetch(loaded: LoadedView | null, next: NextView): boolea
  */
 export function shouldRefetchSource(): string {
   return shouldRefetch.toString();
+}
+
+export function coversViewSource(): string {
+  return coversView.toString();
 }

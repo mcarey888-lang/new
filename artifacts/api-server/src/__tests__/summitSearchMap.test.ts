@@ -92,6 +92,7 @@ function harness() {
            searchList: function () { return searchList; }, goToSummit: goToSummit,
            showParkingFor: showParkingFor, hideSummitCard: hideSummitCard,
            keepSummitCardForPlanning: keepSummitCardForPlanning,
+           setSummitTicks: setSummitTicks,
            ensureSummitCard: ensureSummitCard,
            showSummitCard: showSummitCard, ensureParkingLayers: ensureParkingLayers,
            onDrawingFinished: onDrawingFinished,
@@ -114,6 +115,7 @@ function harness() {
     showParkingFor(s: Record<string, unknown>): void;
     hideSummitCard(keepParking?: boolean | { type: string }): void;
     keepSummitCardForPlanning(): void;
+    setSummitTicks(ids: string[]): void;
     ensureSummitCard(): El;
     showSummitCard(p: Record<string, unknown>, c: number[]): void;
     ensureParkingLayers(): void;
@@ -542,5 +544,94 @@ describe("car parks while planning a route to the hill", () => {
     );
     expect(handler).toContain("keepSummitCardForPlanning()");
     expect(handler).not.toContain("hideSummitCard(");
+  });
+
+  it("updates climbed state during planning without clearing parking or reopening the route button", async () => {
+    const h = harness();
+    h.api.showSummitCard(HILL, [HILL.lng, HILL.lat]);
+    h.queue[0]!.resolve({ parking: [park] });
+    await h.tick();
+    h.api.keepSummitCardForPlanning();
+    const requests = h.calls.length;
+    h.api.setSummitTicks([HILL.id]);
+    expect(h.byId.get("summitTick")!.textContent).toBe("\u2713 Climbed");
+    expect(h.byId.get("summitPlanRoute")!.style.display).toBe("none");
+    expect(h.api.ensureSummitCard().style.maxHeight).toBe("35vh");
+    expect(h.parking()!.features).toHaveLength(1);
+    expect(h.calls).toHaveLength(requests);
+    h.api.setSummitTicks([]);
+    expect(h.byId.get("summitTick")!.textContent).toBe("Tick off as climbed");
+    expect(h.parking()!.features).toHaveLength(1);
+  });
+});
+
+/**
+ * Ticking a hill off.
+ *
+ * The rules worth protecting here are about who decides. The map draws what
+ * the app tells it and reports taps; it never keeps its own idea of what is
+ * ticked, and it never asks the server — this page is public, and whose hills
+ * these are is not its business.
+ */
+describe("ticked summits", () => {
+  const body = summitLayerScript("/api/summits", "/api/summits/parking");
+
+  it("colours the pin from the feature, not from a second layer", () => {
+    /* One layer keeps clicking, clustering and draw order identical for
+       ticked and unticked hills. */
+    expect(body).toMatch(
+      /"circle-color": \["case", \["boolean", \["get", "done"\], false\], SUMMIT_DONE_COLOR, SUMMIT_COLOR\]/);
+    expect(body).not.toMatch(/id: "summit-point-done"/);
+  });
+
+  it("does not rely on colour alone to mark one", () => {
+    expect(body).toMatch(/"circle-radius": \["case", \["boolean", \["get", "done"\], false\], 7, 6\]/);
+  });
+
+  it("never asks the server which hills are ticked", () => {
+    /* The page is served unauthenticated to anyone. A request for one
+       person's hills from here would either leak or need a token this page
+       must not hold. */
+    const fetches = body.match(/fetch\(/g) ?? [];
+    expect(fetches.length).toBeGreaterThan(0);
+    expect(body).not.toMatch(/fetch\([^)]*tick/i);
+    expect(body).not.toMatch(/Authorization/i);
+  });
+
+  it("replaces the whole list rather than toggling one id", () => {
+    /* A toggle that misses leaves the two sides disagreeing for good. */
+    expect(body).toMatch(/function setSummitTicks\(ids\)/);
+    expect(body).toMatch(/summitTicked = Object\.create\(null\)/);
+  });
+
+  it("reports the tap and lets the app decide", () => {
+    /* The pin recolours when the app sends the list back, so what is drawn
+       is always what was really saved. */
+    expect(body).toMatch(/post\(\{ type: "summitTickToggled", id: p\.id, name: p\.name, done: !done \}\)/);
+    const tickHandler = body.slice(body.indexOf("tick.onclick = function"));
+    expect(tickHandler.slice(0, 400)).not.toMatch(/summitTicked\[/);
+  });
+
+  it("recolours what is already on screen without asking for it again", () => {
+    const setter = body.slice(body.indexOf("function setSummitTicks"));
+    const block = setter.slice(0, setter.indexOf("\n}"));
+    expect(block).toContain("summitCollection(summitPinsOnScreen)");
+    expect(block).not.toContain("requestSummits()");
+  });
+
+  it("builds every summit feature in one place", () => {
+    /* Two builders drift, and the same hill ends up drawn two ways. */
+    expect(body.match(/function summitCollection\(/g) ?? []).toHaveLength(1);
+    expect(body.match(/map\.getSource\("summits"\)\.setData\(summitCollection\(/g) ?? [])
+      .toHaveLength(2);
+  });
+
+  it("refreshes an open tick control without rebuilding the parking card", () => {
+    /* Closing would drop the parking markers and the person's place. */
+    const setter = body.slice(body.indexOf("function setSummitTicks"));
+    const block = setter.slice(0, setter.indexOf("\n}"));
+    expect(block).toContain("refreshSummitTick(summitCardLast.p)");
+    expect(block).not.toContain("showSummitCard(");
+    expect(block).not.toContain("hideSummitCard");
   });
 });
