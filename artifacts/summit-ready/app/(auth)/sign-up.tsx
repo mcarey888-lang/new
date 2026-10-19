@@ -62,6 +62,7 @@ export default function SignUpScreen() {
   const [verifyCode, setVerifyCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [signUpPhase, setSignUpPhase] = useState<"security" | "email" | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
@@ -88,6 +89,7 @@ export default function SignUpScreen() {
       return;
     }
     setLoading(true);
+    setSignUpPhase("security");
     setError(null);
     try {
       const { error: createErr } = await withTimeout(
@@ -99,6 +101,7 @@ export default function SignUpScreen() {
         return;
       }
 
+      setSignUpPhase("email");
       const { error: sendCodeErr } = await withTimeout(
         signUp.verifications.sendEmailCode(),
         20000,
@@ -119,6 +122,7 @@ export default function SignUpScreen() {
       const fallback = (e?.message as string) ?? JSON.stringify(err);
       setError(clerkMsg ?? fallback ?? "Sign-up failed — please try again.");
     } finally {
+      setSignUpPhase(null);
       setLoading(false);
     }
   }
@@ -426,6 +430,19 @@ export default function SignUpScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
+          {/* Keep Clerk's host mounted before submit and next to the action/status.
+              Clerk owns the challenge; we only explain the pending work. */}
+          <View style={Platform.OS === "web" && loading ? { minHeight: 90, marginTop: 10 } : undefined}>
+            {Platform.OS === "web" && loading && signUpPhase && (
+              <Text accessibilityLiveRegion="polite" style={[s.subtitle, { marginBottom: 10 }]} testID="sign-up-progress">
+                {signUpPhase === "security"
+                  ? "Verifying you're human… Complete the security check below if it appears."
+                  : "Sending your verification code…"}
+              </Text>
+            )}
+            <View nativeID="clerk-captcha" />
+          </View>
+
           <Text style={s.terms}>
             By creating an account you agree to our{" "}
             <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/terms")}>
@@ -444,7 +461,6 @@ export default function SignUpScreen() {
             </TouchableOpacity>
           </View>
 
-          <View nativeID="clerk-captcha" />
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>

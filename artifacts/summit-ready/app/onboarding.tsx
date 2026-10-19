@@ -103,16 +103,16 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.screen} testID="onboarding-screen">
-      {/* Keep the artwork full-bleed. Welcome has no content cards, so a
-          lighter middle reveals the mountain and foreground instead of
-          fading most of the screen to black. Other steps retain their scrim. */}
+      {/* Keep the artwork full-bleed. Use the same three-stop gradient shape
+          on every platform, with a clear middle on welcome. Other steps
+          retain their original scrim. */}
       <View style={styles.backdrop} pointerEvents="none" testID="onboarding-backdrop">
         <Image source={HERO} style={styles.backdropImage} resizeMode="cover" accessible={false} />
         <LinearGradient
           colors={first
-            ? ["rgba(5,9,11,0.62)", "rgba(5,9,11,0.25)", "rgba(5,9,11,0.08)", "rgba(5,9,11,0.72)"]
+            ? ["rgba(5,9,11,0.62)", "rgba(5,9,11,0.08)", "rgba(5,9,11,0.72)"]
             : ["rgba(5,9,11,0.58)", "rgba(5,9,11,0.86)", BASECAMP.ink]}
-          locations={first ? [0, 0.24, 0.62, 1] : [0, 0.46, 0.92]}
+          locations={first ? [0, 0.52, 1] : [0, 0.46, 0.92]}
           style={StyleSheet.absoluteFill}
         />
       </View>

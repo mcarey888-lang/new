@@ -23,7 +23,8 @@ describe("the flow is six screens", () => {
     const body = code(read("app/onboarding.tsx"));
     expect(body).toContain('colors={first');
     expect(body).toContain('"rgba(5,9,11,0.08)"');
-    expect(body).toContain('locations={first ? [0, 0.24, 0.62, 1] : [0, 0.46, 0.92]}');
+    expect(body).toContain('locations={first ? [0, 0.52, 1] : [0, 0.46, 0.92]}');
+    expect(body).toContain('? ["rgba(5,9,11,0.62)", "rgba(5,9,11,0.08)", "rgba(5,9,11,0.72)"]');
     expect(body).toContain('"rgba(5,9,11,0.86)", BASECAMP.ink');
   });
   it("bounds the original background artwork instead of using its intrinsic width", () => {
