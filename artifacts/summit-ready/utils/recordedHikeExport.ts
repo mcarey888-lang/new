@@ -3,10 +3,11 @@ import * as Linking from "expo-linking";
 import { activityApiBase } from "./activityAudience";
 import { cacheDirectory, writeAsStringAsync } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import { hasRecordedRoute } from "./recordedHikePresentation";
 const escape = (v: string) => v.replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&apos;" })[c]!);
 export function recordedGpx(hike: { name: string; trackPoints?: Array<{ lat:number;lon:number;alt?:number|null;ts?:number }> }) {
   const points = (hike.trackPoints ?? []).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon));
-  if (points.length<2) throw new Error("This activity has no recorded route to export.");
+  if (!hasRecordedRoute(points)) throw new Error("This activity has no recorded route to export.");
   return `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="SummitReady" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>${escape(hike.name)}</name><trkseg>${points.map(p=>`<trkpt lat="${p.lat}" lon="${p.lon}">${p.alt!=null&&Number.isFinite(p.alt)?`<ele>${p.alt}</ele>`:""}${p.ts!=null&&Number.isFinite(p.ts)?`<time>${new Date(p.ts).toISOString()}</time>`:""}</trkpt>`).join("")}</trkseg></trk></gpx>`;
 }
 export async function exportRecordedGpx(hike: Parameters<typeof recordedGpx>[0]) {

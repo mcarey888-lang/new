@@ -100,6 +100,7 @@ import {
 } from "@/utils/pendingHikeSelection";
 import { resolveTrainingSessionLocation } from "@/utils/trackingLaunchContext";
 import { buildActivityCompletionPresentation } from "@/utils/activityCompletionPresentation";
+import { buildRecordedHikeNotes } from "@/utils/recordedHikePresentation";
 import { useStage8 } from "@/context/Stage8Context";
 import { findElevationBankCreditForActivity } from "@/utils/elevationBankMatching";
 import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
@@ -1643,7 +1644,10 @@ function HikeTrackingScreenBody() {
         elevationGain: elevGain,
         elevationLoss: elevLoss,
         timeTaken: Math.round(elapsedSecs / 60),   // store in minutes
-        notes: `GPS tracked hike. Elevation loss: ${elevLoss} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
+        notes: buildRecordedHikeNotes({
+          trackPoints: trackPoints.current, distance: distKm, elevationGain: elevGain,
+          elevationLoss: elevLoss, elapsedSecs,
+        }),
         trackPoints: trackPoints.current,
         rawGPSFixes: rawGPSFixes.current,
         recordingEvents: recordingEvents.current,
@@ -1810,6 +1814,7 @@ function HikeTrackingScreenBody() {
           <ActivityAudiencePicker audience={activityAudience} onChange={chooseAudience} error={audienceError} />
           <ActivityCompleteView
             completionPresentation={completionPresentation}
+            recordedPoints={trackPoints.current}
             elevGainM={elevGainM}
             elevLossM={elevLossM}
             distanceKm={distanceKm}

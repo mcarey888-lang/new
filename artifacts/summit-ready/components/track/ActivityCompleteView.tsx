@@ -28,6 +28,7 @@ import { SRButton, SRPanel, SRSectionHeader, SRSubPanel } from "@/components/ui"
 import { ACTIVITY_DETAILS_COPY } from "@/utils/trackPresentation";
 import { STATUS_COPY, readinessStatus } from "@/utils/readinessPresentation";
 import type { CompletionPresentation } from "@/utils/activityCompletionPresentation";
+import { recordedMetricAvailability, type RecordedPoint } from "@/utils/recordedHikePresentation";
 
 export interface ActivityCompleteViewProps {
   /** The only source of consequences. Built by the screen, never here. */
@@ -38,6 +39,7 @@ export interface ActivityCompleteViewProps {
   distanceKm: number;
   elapsedSecs: number;
   currentAltM: number | null;
+  recordedPoints?: readonly RecordedPoint[];
   /** The screen's own formatters, passed in so both states format alike. */
   fmtM: (m: number) => string;
   fmtKm: (km: number) => string;
@@ -75,8 +77,11 @@ function RecordStat({ value, label }: { value: string | null; label: string }) {
 export function ActivityCompleteView({
   completionPresentation, elevGainM, elevLossM, distanceKm, elapsedSecs, currentAltM,
   fmtM, fmtKm, formatTime, trainingPlan, addToPlan, setAddToPlan, saving, onSave, onDiscard,
-  discarding = false, discardError, savedLocally = false,
+  discarding = false, discardError, savedLocally = false, recordedPoints = [],
 }: ActivityCompleteViewProps) {
+  const available = recordedMetricAvailability({
+    trackPoints: recordedPoints, distance: distanceKm, elevationGain: elevGainM,
+  });
   return (
           <Animated.View entering={FadeInDown.duration(400)}>
             {/* ── The result ────────────────────────────────────────────
@@ -107,7 +112,7 @@ export function ActivityCompleteView({
                   adjustsFontSizeToFit
                   minimumFontScale={0.6}
                 >
-                  {fmtM(elevGainM)}
+                  {available.ascent ? fmtM(elevGainM) : "—"}
                 </Text>
                 <Text style={s.rewardLabel}>ELEVATION GAINED</Text>
                 <View style={s.rewardRule} />
@@ -115,8 +120,8 @@ export function ActivityCompleteView({
     
               <View style={s.recordGrid}>
                 <RecordStat value={formatTime(elapsedSecs)} label="Duration" />
-                <RecordStat value={fmtKm(distanceKm)} label="Distance" />
-                <RecordStat value={fmtM(elevLossM)} label="Descended" />
+                <RecordStat value={available.distance ? fmtKm(distanceKm) : null} label="Distance" />
+                <RecordStat value={available.ascent ? fmtM(elevLossM) : null} label="Descended" />
                 <RecordStat
                   value={elapsedSecs > 0 && distanceKm > 0
                     ? `${(distanceKm / (elapsedSecs / 3600)).toFixed(1)} km/h`

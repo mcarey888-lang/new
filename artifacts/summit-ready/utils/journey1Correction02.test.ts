@@ -288,7 +288,7 @@ describe("Activity complete and details", () => {
 
   it("leads with the recorded ascent as the moment", () => {
     expect(view.indexOf("rewardValue")).toBeLessThan(view.indexOf("recordGrid"));
-    expect(view).toContain("{fmtM(elevGainM)}");
+    expect(view).toContain('{available.ascent ? fmtM(elevGainM) : "—"}');
     expect(view).toContain("ELEVATION GAINED");
   });
 

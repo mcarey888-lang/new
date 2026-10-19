@@ -29,6 +29,7 @@ import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { useApp, type ExploreHike } from "@/context/AppContext";
 import { LogHikeModal } from "@/components/LogHikeModal";
+import { recordedHikeNotes, recordedMetricAvailability } from "@/utils/recordedHikePresentation";
 
 // ── Logged hike row ───────────────────────────────────────────────────────────
 
@@ -42,6 +43,8 @@ function LoggedHikeRow({
   hasPlan?: boolean;
 }) {
   const dateStr = new Date(hike.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const notes = recordedHikeNotes(hike);
+  const available = recordedMetricAvailability(hike);
   return (
     <TouchableOpacity
       style={lh.row}
@@ -56,13 +59,13 @@ function LoggedHikeRow({
         <View style={lh.meta}>
           <Text style={lh.dim}>{dateStr}</Text>
           <Text style={lh.dot}>·</Text>
-          <Text style={lh.dim}>{hike.distance}km</Text>
+          <Text style={lh.dim}>{available.distance ? `${hike.distance}km` : "— km"}</Text>
           <Text style={lh.dot}>·</Text>
-          <Text style={lh.dim}>{hike.elevationGain}m gain</Text>
+          <Text style={lh.dim}>{available.ascent ? `${hike.elevationGain}m gain` : "— m gain"}</Text>
           <Text style={lh.dot}>·</Text>
           <Text style={lh.dim}>{hike.timeTaken}min</Text>
         </View>
-        {!!hike.notes && <Text style={lh.notes}>{hike.notes}</Text>}
+        {!!notes && <Text style={lh.notes}>{notes}</Text>}
         {hasPlan && (
           addedToPlan ? (
             <View style={lh.addedPill}>

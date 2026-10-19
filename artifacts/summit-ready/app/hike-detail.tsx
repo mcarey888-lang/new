@@ -9,7 +9,6 @@ import {
   Text,
   View,
   Pressable,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -26,6 +25,7 @@ import { ActivityAudiencePicker } from "@/components/track/ActivityAudiencePicke
 import { recordedHikeElevationQuality } from "@/utils/elevationQuality";
 import { exportRecordedGpx, shareRecordedRoute } from "@/utils/recordedHikeExport";
 import { useAuth } from "@clerk/expo";
+import { hasRecordedRoute, recordedHikeNotes, recordedMetricAvailability } from "@/utils/recordedHikePresentation";
 
 function buildMapHtml(points: Array<{ lat: number; lon: number }>): string {
   const coords = points.map(p => [p.lat, p.lon] as [number, number]);
@@ -99,6 +99,7 @@ export default function HikeDetail() {
   const { userId,getToken } = useAuth();
   const [showBasemap, setShowBasemap] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const hike = useMemo(() => exploreHikes.find(h => h.id === id), [exploreHikes, id]);
 
@@ -121,7 +122,9 @@ export default function HikeDetail() {
     );
   }
 
-  const hasRoute = (hike.trackPoints?.length ?? 0) > 1;
+  const hasRoute = hasRecordedRoute(hike.trackPoints);
+  const notes = recordedHikeNotes(hike);
+  const available = recordedMetricAvailability(hike);
   const mapHtml = hasRoute ? buildMapHtml(hike.trackPoints!) : null;
 
   const parsedDate = Date.parse(hike.date);
@@ -135,8 +138,8 @@ export default function HikeDetail() {
      carry shows an em dash — never a zero, and never a derived guess. */
   const paceStr = formatPace(hike.timeTaken, hike.distance);
   const durationStr = formatDuration(hike.timeTaken);
-  const distanceStr = hike.distance > 0 ? `${Number(hike.distance.toFixed(1))} km` : null;
-  const ascentStr = hike.elevationGain > 0
+  const distanceStr = available.distance ? `${Number(hike.distance.toFixed(1))} km` : null;
+  const ascentStr = available.ascent
     ? `${Math.round(hike.elevationGain).toLocaleString()} m` : null;
 
   /* The recorder's own sync state, surfaced rather than assumed. A local-only
@@ -182,10 +185,17 @@ export default function HikeDetail() {
               void updateExploreHike(hike.id,{ audience, sharingIntentConfirmed:true })
                 .then(()=>setDetailError(null)).catch(error=>setDetailError(error.message));
             }} />
-          <Pressable accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={() =>
-            void exportRecordedGpx(hike).catch(error=>Alert.alert("GPX not exported",error.message))}>
+          <Pressable accessibilityRole="button" disabled={!hasRoute}
+            accessibilityState={{ disabled: !hasRoute }}
+            style={{minHeight:48,padding:12,opacity:hasRoute ? 1 : 0.5}} onPress={() => {
+              setExportError(null);
+              void exportRecordedGpx(hike).catch(() =>
+                setExportError("GPX could not be exported. Please try again."));
+            }}>
             <Text style={s.notesText}>Export my recorded GPX</Text>
           </Pressable>
+          {!hasRoute ? <Text style={s.notesText}>No recorded route to export as GPX.</Text> : null}
+          {exportError ? <Text accessibilityRole="alert" style={s.notesText}>{exportError}</Text> : null}
           {hike.sharingIntentConfirmed && hike.audience !== "private" && userId ?
             <Pressable accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={() =>
               void shareRecordedRoute(userId,hike.id,()=>getToken({skipCache:true})).catch(error=>setDetailError(error.message))}>
@@ -215,7 +225,9 @@ export default function HikeDetail() {
                   icon={<Map size={22} color={BASECAMP.textDim} />}
                   title="No route recorded"
                   body={
-                    hike.notes?.startsWith("GPS tracked")
+                    notes.startsWith("Time-only recording")
+                      ? "This is a time-only recording. No GPS track, measured distance or ascent was recorded."
+                      : hike.activityId || hike.recordingDurationSeconds != null || hike.notes?.startsWith("GPS tracked")
                       ? "Route data was not saved for this activity. Its distance and elevation still count."
                       : "This activity was logged manually. Track one with GPS to see the route here."
                   }
@@ -229,11 +241,11 @@ export default function HikeDetail() {
         </View>
 
         {/* ── Notes ────────────────────────────────────────────────── */}
-        {hike.notes ? (
+        {notes ? (
           <View style={s.section}>
             <SRSectionHeader title="Notes" />
             <SRPanel radius={8} style={{ marginTop: 10 }}>
-              <Text style={s.notesText}>{hike.notes}</Text>
+              <Text style={s.notesText}>{notes}</Text>
             </SRPanel>
           </View>
         ) : null}
