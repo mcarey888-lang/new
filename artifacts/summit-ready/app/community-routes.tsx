@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { T } from "@/constants/theme";
 import { CommunityRecordingLibrary } from "@/components/track/CommunityRecordingLibrary";
@@ -114,6 +114,9 @@ function RouteCard({ route, index }: { route: CommunityRoute; index: number }) {
 export default function CommunityRoutes(){
   const insets=useSafeAreaInsets();
   const[legacy,setLegacy]=useState(false);
+  const params=useLocalSearchParams<{q?:string|string[]}>();
+  const rawQ=Array.isArray(params.q)?params.q[0]:params.q;
+  const initialQuery=(rawQ??"").trim().slice(0,120);
   if(legacy)return <View style={{flex:1,backgroundColor:T.bg}}>
     <TouchableOpacity accessibilityRole="button" onPress={()=>setLegacy(false)} style={{padding:16,paddingTop:insets.top+12,minHeight:48}}>
       <Text style={{color:T.green}}>Back to member recordings</Text>
@@ -125,7 +128,7 @@ export default function CommunityRoutes(){
       <TouchableOpacity accessibilityRole="button" onPress={()=>router.back()} style={{padding:16,minHeight:48}}>
         <Text style={{color:T.green}}>Back</Text>
       </TouchableOpacity>
-      <CommunityRecordingLibrary/>
+      <CommunityRecordingLibrary initialQuery={initialQuery}/>
       <CommunityRecordingLibrary saved/>
       <TouchableOpacity accessibilityRole="button" onPress={()=>setLegacy(true)} style={{padding:16,minHeight:48}}>
         <Text style={{color:T.green}}>Earlier shared recordings (unverified)</Text>

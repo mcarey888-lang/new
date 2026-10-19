@@ -66,3 +66,15 @@ discussing how other members should discover shared routes.
 **How to apply:** Make the user's saved library accessible from You. Do not
 interpret this navigation requirement as permission to expose private saved
 routes to other members.
+
+Community route discovery should also be accessible from Explore, with a separate
+member-route section on each catalogue mountain's information page. Mountain
+association must be explicit, not inferred from similar names or nearby starts.
+
+**Why:** The owner requested discovery during mountain search, not only from the
+personal profile. A nearby recording or a duplicated mountain name is not reliable
+evidence that a route belongs to that mountain.
+
+**How to apply:** Preserve audience checks and the distinction between member
+recordings and verified trails. Keep older unlinked recordings in general
+discovery rather than silently attaching them to a mountain.

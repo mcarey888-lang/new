@@ -67,6 +67,10 @@ paths:
       summary: Signed-in community recordings, never verified trails; audience enforced server-side
       parameters:
         - { name: q, in: query, schema: { type: string, maxLength: 120 } }
+        - name: mountainId
+          in: query
+          description: Exact catalogue mountain association; accepts a raw ID or sde:mountain-prefixed ID. Unlinked recordings are excluded.
+          schema: { type: string, minLength: 1, maxLength: 256 }
         - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 1000 } }
         - { name: saved, in: query, schema: { type: string, enum: ["1"] } }
         - { name: lat, in: query, schema: { type: number, minimum: -90, maximum: 90 } }

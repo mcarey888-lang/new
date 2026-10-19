@@ -17,7 +17,7 @@ import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ChevronRight, Clock, Compass, Map as MapIcon, MapPin, Mountain as MountainIcon,
-  Route as RouteIcon, Search, TrendingUp, X, Activity
+  Route as RouteIcon, Search, TrendingUp, X, Activity, Users
 } from "lucide-react-native";
 import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
 import { SREmptyState, SRPanel, SRSectionHeader } from "@/components/ui";
@@ -879,6 +879,24 @@ export default function ExploreScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.plannerTitle}>Plan a route</Text>
               <Text style={styles.plannerSubtitle}>Draw and save your own route</Text>
+            </View>
+            <ChevronRight size={18} color={BASECAMP.textMuted} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push({
+              pathname: "/community-routes" as any,
+              params: textQuery ? { q: textQuery.slice(0, 120) } : {},
+            })}
+            style={styles.plannerLaunch}
+            accessibilityRole="button"
+            accessibilityLabel={textQuery ? `Community routes matching ${textQuery}` : "Community routes"}
+            accessibilityHint="Opens member recordings. These are not verified trails."
+            testID="open-community-routes"
+          >
+            <Users size={22} color={BASECAMP.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.plannerTitle}>Community routes</Text>
+              <Text style={styles.plannerSubtitle}>{textQuery ? `Search member recordings for "${textQuery}"` : "Member recordings, not verified trails"}</Text>
             </View>
             <ChevronRight size={18} color={BASECAMP.textMuted} />
           </Pressable>

@@ -42,6 +42,7 @@ import { Footnote } from "@/components/mountain/parts";
 import { RouteCard } from "@/components/mountain/RouteCard";
 import { SelectedRoute } from "@/components/mountain/SelectedRoute";
 import { RouteActionBar } from "@/components/mountain/RouteActionBar";
+import { CommunityRecordingLibrary } from "@/components/track/CommunityRecordingLibrary";
 import { useScreenView } from "@/lib/analytics";
 import { useApp } from "@/context/AppContext";
 import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
@@ -695,6 +696,10 @@ export default function MountainDetailScreen() {
         <SafetySection hazards={hazards} />
         <AboutSection text={summitDescription} state={descriptionState} />
         <KeyFacts facts={mountain.practical} />
+
+        {canonicalMountainId ? (
+          <CommunityRecordingLibrary mountainId={canonicalMountainId} mountainName={mountain.name} />
+        ) : null}
 
         <View onLayout={mark("routes")} style={styles.routesSection}>
           <View style={styles.gutter}>

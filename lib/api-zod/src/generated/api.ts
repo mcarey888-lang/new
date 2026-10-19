@@ -28,6 +28,8 @@ export const SetActivityAudiencePreferenceBody = zod.object({
  */
 export const getActivityRoutesQueryQMax = 120;
 
+export const getActivityRoutesQueryMountainIdMax = 256;
+
 export const getActivityRoutesQueryPageMin = 0;
 export const getActivityRoutesQueryPageMax = 1000;
 
@@ -41,6 +43,14 @@ export const getActivityRoutesQueryRadiusKmMax = 100;
 
 export const GetActivityRoutesQueryParams = zod.object({
   q: zod.coerce.string().max(getActivityRoutesQueryQMax).optional(),
+  mountainId: zod.coerce
+    .string()
+    .min(1)
+    .max(getActivityRoutesQueryMountainIdMax)
+    .optional()
+    .describe(
+      "Exact catalogue mountain association; accepts a raw ID or sde:mountain-prefixed ID. Unlinked recordings are excluded.",
+    ),
   page: zod.coerce
     .number()
     .min(getActivityRoutesQueryPageMin)

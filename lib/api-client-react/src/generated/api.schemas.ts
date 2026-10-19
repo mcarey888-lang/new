@@ -598,6 +598,12 @@ export type GetActivityRoutesParams = {
    */
   q?: string;
   /**
+   * Exact catalogue mountain association; accepts a raw ID or sde:mountain-prefixed ID. Unlinked recordings are excluded.
+   * @minLength 1
+   * @maxLength 256
+   */
+  mountainId?: string;
+  /**
    * @minimum 0
    * @maximum 1000
    */

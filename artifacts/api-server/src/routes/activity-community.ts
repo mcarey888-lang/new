@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { publicDisplayName } from "../lib/publicDisplayName";
+import { activityDiscoveryQuery, communityDiscoveryFilters } from "../services/activityCommunityDiscovery";
 
 const router = Router();
 const audience = z.enum(["public", "followers", "private"]);
@@ -72,12 +73,8 @@ router.delete("/activity-community/follows/:owner", handler(async (req, res, vie
   res.status(204).end();
 }));
 router.get("/activity-community", handler(async (req, res, viewer) => {
-  const q = z.object({
-    q: z.string().max(120).default(""), page: z.coerce.number().int().min(0).max(1000).default(0),
-    saved: z.enum(["1"]).optional(),
-    lat: z.coerce.number().min(-90).max(90).optional(), lng: z.coerce.number().min(-180).max(180).optional(),
-    radiusKm: z.coerce.number().min(1).max(100).default(25),
-  }).parse(req.query);
+  const q = activityDiscoveryQuery.parse(req.query);
+  const discovery = communityDiscoveryFilters(q);
   const nearby = q.lat != null && q.lng != null ? sql`AND b.snapshot->'trackPoints'->0 IS NOT NULL
     AND 6371*2*asin(least(1.0,sqrt(
       power(sin(radians((b.snapshot->'trackPoints'->0->>'lat')::float-${q.lat})/2),2) +
@@ -87,7 +84,7 @@ router.get("/activity-community", handler(async (req, res, viewer) => {
   const saved = q.saved ? sql`AND EXISTS(SELECT 1 FROM activity_bookmarks s WHERE s.viewer=${viewer} AND s.owner=p.owner AND s.hike_id=p.hike_id)` : sql``;
   const data = await rows(sql`SELECT p.owner,p.hike_id,p.audience,b.snapshot FROM activity_publications p
     JOIN recorded_hike_backups b ON b.owner_user_id=p.owner AND b.hike_id=p.hike_id
-    WHERE ${canRead(viewer)} AND b.snapshot->>'name' ILIKE ${`%${q.q}%`} ${nearby} ${saved}
+    WHERE ${canRead(viewer)} ${discovery} ${nearby} ${saved}
     AND NOT EXISTS(SELECT 1 FROM activity_route_reports r WHERE r.reporter=${viewer} AND r.owner=p.owner AND r.hike_id=p.hike_id)
     ORDER BY p.updated_at DESC,p.owner,p.hike_id LIMIT 21 OFFSET ${q.page*20}`);
   res.json({ routes: await Promise.all(data.slice(0,20).map(r => response(r, false))), hasMore: data.length>20 });
