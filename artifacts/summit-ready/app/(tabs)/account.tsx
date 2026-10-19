@@ -27,6 +27,7 @@ import { useChallenges } from "@/context/ChallengesContext";
 import { getChallenge, DIFF_COLOR as CHALLENGE_DIFF_COLOR } from "@/constants/challenges";
 import { logoutRevenueCat, useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
+import { publicDisplayName } from "@/utils/publicDisplayName";
 import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import {
   SREmptyState, SREyebrow, SRSectionHeader,
@@ -300,8 +301,8 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
 
   // Clerk user info
   const displayEmail = user?.primaryEmailAddress?.emailAddress ?? null;
-  const displayName = user?.fullName ?? user?.firstName ?? displayEmail ?? "Account";
-  const avatarInitial = (user?.firstName ?? user?.primaryEmailAddress?.emailAddress ?? "?")[0].toUpperCase();
+  const displayName = publicDisplayName(user);
+  const avatarInitial = displayName[0].toUpperCase();
   const userId = user?.id ?? null;
 
   /* SummitReady stores photos per expedition journal, on this device — there

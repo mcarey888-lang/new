@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { publicDisplayName } from "../lib/publicDisplayName";
 
 const router = Router();
 const audience = z.enum(["public", "followers", "private"]);
@@ -22,7 +23,7 @@ async function response(row: Row, geometry: boolean) {
   let author = { name: "SummitReady member", avatarUrl: null as string | null };
   try {
     const user = await clerkClient.users.getUser(row.owner);
-    author = { name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || author.name, avatarUrl: user.imageUrl };
+    author = { name: publicDisplayName(user), avatarUrl: user.imageUrl };
   } catch { /* Optional enrichment cannot invalidate an acknowledged read. */ }
   const snapshot = safeSnapshot(row.snapshot);
   const trace = snapshot.trackPoints;

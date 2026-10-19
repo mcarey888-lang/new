@@ -4,6 +4,7 @@
  */
 
 import { useUser } from "@clerk/expo";
+import { publicDisplayName } from "@/utils/publicDisplayName";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -335,7 +336,7 @@ export default function BaseCampScreen() {
     : null;
   const { user } = useUser();
 
-  const firstName = user?.firstName ?? "Adventurer";
+  const firstName = publicDisplayName(user);
 
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState<string | null>(null);

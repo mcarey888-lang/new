@@ -5,6 +5,12 @@ description: Product consent boundaries for community posts and user-shared rout
 
 Member sharing is an opt-in, per-post audience choice between Only me and all signed-in SummitReady members. Existing activity, journal photos, qualified Elevation Bank totals, and location are never published automatically. An owned photo post must remain private until its media upload finishes; changing a private post to members requires an explicit confirmation.
 
+Public display names must not default to login email addresses. Use a safe existing name or a generic member label; legacy email-like names with unknown intent must be hidden rather than assumed to be deliberate. An email is permitted only when explicitly chosen as the public name.
+
+**Why:** The owner identified automatic email publication in profiles and member content as a privacy risk. Historical account values do not establish consent.
+
+**How to apply:** Enforce this at server author serialization as well as profile presentation. Do not rewrite accounts or infer consent from image-only profile saves; preserve an explicit public-name choice separately from authentication identity.
+
 **Why:** The user asked for Facebook-like audience controls rather than an automatically public profile. Journal photos are device-local and may reveal people or private locations, while Elevation Bank credits have a separate evidence standard.
 
 **How to apply:** Preserve private defaults on all new posting surfaces, isolate cached private posts and photo URLs by active account on shared devices, strip photo metadata before storing, and enforce member/owner checks on every media read.

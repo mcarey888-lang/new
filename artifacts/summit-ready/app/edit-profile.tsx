@@ -10,12 +10,13 @@ import {SRScreenHeader} from "@/components/ui";
 import {ActivityAudiencePicker} from "@/components/track/ActivityAudiencePicker";
 import {loadActivityAudience,saveActivityAudience,activityApiBase,type ActivityAudience} from "@/utils/activityAudience";
 import {BASECAMP} from "@/constants/tokens";
+import {editableDisplayName} from "@/utils/publicDisplayName";
 export default function EditProfile(){
   const{user}=useUser();const{userId,getToken}=useAuth();
   const{image:requestedImage}=useLocalSearchParams<{image?:string}>();
   const ownerRef=useRef(userId);ownerRef.current=userId;
   const saveInFlight=useRef(false);
-  const[name,setName]=useState(user?.firstName??""),[avatar,setAvatar]=useState<ImagePicker.ImagePickerAsset|null>(null);
+  const[name,setName]=useState(editableDisplayName(user)),[avatar,setAvatar]=useState<ImagePicker.ImagePickerAsset|null>(null);
   const[cover,setCover]=useState<ImagePicker.ImagePickerAsset|null>(null),[busy,setBusy]=useState(false);
   const[error,setError]=useState<string|null>(null),[message,setMessage]=useState<string|null>(null);
   const[audience,setAudience]=useState<ActivityAudience|null>(null);
@@ -24,7 +25,7 @@ export default function EditProfile(){
     if(userId)void loadActivityAudience(userId,()=>getToken({skipCache:true})).then(a=>{if(active)setAudience(a);});
     return()=>{active=false;};
   },[userId]);
-  useEffect(()=>{if(user?.firstName)setName(user.firstName);},[user?.firstName]);
+  useEffect(()=>{setName(editableDisplayName(user));},[userId,user?.firstName,user?.unsafeMetadata?.summitReadyDisplayName]);
   async function pick(kind:"avatar"|"cover"){
     const owner=userId;setError(null);setMessage(null);
     try{
@@ -53,7 +54,13 @@ export default function EditProfile(){
     };
     try{
       assertOwner();
-      await user.update({firstName:name.trim()||null});
+      // Image-only saves must not turn a legacy/default name into explicit consent.
+      if(name.trim()!==editableDisplayName(user)){
+        await user.update({firstName:name.trim()||null,unsafeMetadata:{
+          ...user.unsafeMetadata,summitReadyDisplayName:name.trim()||null,
+        }});
+        assertOwner();
+      }
       if(avatar){
         // Clerk's user API owns the public identity avatar, not private photos.
         const file=await profileAvatarFile(avatar,transport);assertOwner();
@@ -76,6 +83,7 @@ export default function EditProfile(){
   return <ScrollView style={{backgroundColor:BASECAMP.ink}} contentContainerStyle={{padding:20,paddingTop:50,paddingBottom:80,gap:16}}>
     <SRScreenHeader title="Edit profile" onBack={()=>router.back()}/>
     <Text style={{color:BASECAMP.textMuted}}>Your name/avatar identify you to members. Your cover photo is private and synced only to your account.</Text>
+    <Text style={{color:BASECAMP.textMuted}}>Without a name, you appear as SummitReady member. Only enter an email address here if you want other members to see it.</Text>
     <TextInput accessibilityLabel="Profile display name" placeholder="Display name" value={name} onChangeText={setName} maxLength={80}
       style={{minHeight:48,padding:14,color:BASECAMP.textStrong,borderWidth:1,borderColor:BASECAMP.panelBorder}}/>
     <Text style={{color:BASECAMP.textStrong}}>Profile photo{requestedImage==="avatar"?" · selected":""}</Text>

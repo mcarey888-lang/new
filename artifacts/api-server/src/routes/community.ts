@@ -6,6 +6,7 @@ import rateLimit from "express-rate-limit";
 import sharp from "sharp";
 import { communityPosts, communityReports, db } from "@workspace/db";
 import { ObjectStorageService, objectStorageClient } from "../lib/objectStorage";
+import { publicDisplayName } from "../lib/publicDisplayName";
 import {
   canReadCommunityPost,
   canReportCommunityPost,
@@ -68,8 +69,7 @@ function postResponse(post: typeof communityPosts.$inferSelect, author: { name: 
 async function getAuthor(userId: string): Promise<{ name: string; avatarUrl: string | null }> {
   try {
     const user = await clerkClient.users.getUser(userId);
-    const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
-      || user.username || "SummitReady member";
+    const name = publicDisplayName(user);
     return { name, avatarUrl: user.imageUrl || null };
   } catch {
     // A durable post and everyone else's feed must survive profile outages.
