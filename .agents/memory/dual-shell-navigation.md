@@ -45,6 +45,18 @@ Never navigate from Expedition directly into a `(tabs)` route. The Training layo
 **How to apply:** Keep shell-owned tab links within their current route group. For shared screens, reuse the implementation behind a shell-local hidden route and link to that route.
 
 ## Expedition discovery from Training
+The Training no-goal Basecamp uses the current Basecamp styling, retains goal
+setup, and replaces its legacy Start Hiking / Find Hills / Challenges shortcuts
+with one explicit link to Expedition Explore. This empty-state redesign does
+not apply to Expedition Basecamp or goal-selected Training Basecamp.
+
+**Why:** The owner clarified that the screenshots showing legacy pages were
+from Training with no goal, not Expedition mode. The Explore link is an explicit
+mode switch, not permission to restyle or change Expedition behavior.
+
+**How to apply:** Await the existing shell switch before navigating to
+Expedition's mountain browser; preserve both shells' stored goals and progress.
+
 Opening the Expeditions tab while Training is selected is discovery, not a mode switch. Starting an expedition is an explicit commitment and may open its own Basecamp, but the Training goal and plan remain intact. Real eligible hikes completed as expedition stages can contribute to Training readiness; selection and simulated elevation cannot.
 
 **Why:** The user wants expeditions to be usable as part of mountain training and to compare potential readiness impact before choosing one, without losing Training context merely by browsing.
