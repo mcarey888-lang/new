@@ -1,11 +1,12 @@
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import { clerkTokenStoragePrefix } from "./clerkTokenStorage";
 
 const OPTS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
 };
 
-const STORAGE_PREFIX = "summitready_clerk_v2_";
+const STORAGE_PREFIX = clerkTokenStoragePrefix(process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY);
 const STORAGE_TIMEOUT_MS = 2000;
 const trackedKeys = new Set<string>();
 

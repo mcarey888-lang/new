@@ -4,11 +4,18 @@ description: Prevent native SDK startup and Keychain access from blocking Clerk 
 ---
 
 ## Rule
-Let Clerk finish its initial load before starting nonessential native SDKs such as subscriptions or analytics. Put a short timeout around Clerk token-cache Keychain operations, and version the storage key when moving between Clerk instances.
+Let Clerk finish its initial load before starting nonessential native SDKs such as subscriptions or analytics. Put a short timeout around Clerk token-cache Keychain operations, and automatically isolate stored tokens by Clerk instance.
 
 **Why:** On iOS with the new React Native architecture, an early native/TurboModule call can delay the JS event loop that Clerk needs to process its initial response. SecureStore can also retain stale values after an app is deleted and can occasionally stall, leaving `isLoaded` false even when the Clerk endpoint itself is healthy.
 
-**How to apply:** Keep subscription and analytics initialization below the Clerk loading gate. Token-cache reads, writes, and deletes must settle quickly with a safe in-memory or signed-out fallback. When a production Clerk instance changes, use a new storage-key namespace so old client JWTs are never reused.
+**How to apply:** Keep subscription and analytics initialization below the Clerk loading gate. Token-cache reads, writes, and deletes must settle quickly with a safe in-memory or signed-out fallback. Derive the storage namespace from the configured publishable key rather than relying on a manual version bump. Never migrate old unscoped client JWTs into an instance-scoped cache.
+
+**Why automatic isolation matters:** Preview-to-production upgrades can change
+Clerk instances while retaining the same application storage. A public
+environment endpoint responding in Chrome does not prove the native SDK
+initialized or that a cached client credential belongs to its instance.
+Treat cache contamination as a verified risk, not a confirmed diagnosis for
+a particular phone until native sign-in succeeds after the correction.
 
 ## SummitReady authentication client
 SummitReady's custom email, Google, and Apple screens use Clerk's JavaScript client. Keep the additional native Clerk session synchronization disabled while this architecture remains in place.
