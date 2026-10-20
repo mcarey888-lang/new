@@ -331,7 +331,11 @@ function showSummitCard(p, coordinates) {
     lat: summitCardFor.lat, lng: summitCardFor.lng,
   });
 
-  document.getElementById("summitCardClose").onclick = hideSummitCard;
+  document.getElementById("summitCardClose").onclick = function () {
+    /* Dismiss the information panel, not the parking being used to choose
+       a route start. A different summit replaces these pins on selection. */
+    hideSummitCard(true);
+  };
 
   var open = document.getElementById("summitCardOpen");
   var openMountain = function () {
@@ -458,12 +462,9 @@ function summitRouteExists() {
 }
 
 /**
- * Close the card.
- *
- * The car parks normally go with it: left behind, they sit on the map
- * claiming to be the parking for whatever gets opened next. The exception is
- * planning a route to this very hill now keeps the card open, with scrollable
- * parking information. Ordinary dismissal still removes both card and pins.
+ * Refresh the app-owned climbed state without rebuilding the card or its
+ * parking lookup. Closing the card with X retains parking for route planning;
+ * selecting another summit replaces it, and disabling summits clears it.
  */
 function refreshSummitTick(p) {
   var tick = document.getElementById("summitTick");
@@ -734,8 +735,8 @@ function showParkingFor(summit) {
   fetch(url)
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (data) {
-      /* An answer for a card that has since been closed or replaced belongs
-         to nothing: drawn anyway, it claims to be this hill's parking. */
+      /* Closing only the panel retains this lookup. Replacing the summit or
+         explicitly clearing its context invalidates it, including late replies. */
       if (token !== parkingToken) return;
       var places = (data && data.parking) || [];
       if (!places.length) { setParkingNote([]); return; }

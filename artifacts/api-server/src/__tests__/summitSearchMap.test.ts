@@ -379,7 +379,7 @@ describe("the car parks on the summit card", () => {
     expect(h.byId.get("summitParking")!.style["display"]).toBe("none");
   });
 
-  it("does not mistake the close button's click event for keepParking", async () => {
+  it("closes the panel with X without removing parking markers", async () => {
     const h = harness();
     h.api.showSummitCard(HILL, [HILL.lng, HILL.lat]);
     h.queue[0]!.resolve({ parking: [confirmed, guess] });
@@ -388,7 +388,34 @@ describe("the car parks on the summit card", () => {
 
     const close = h.byId.get("summitCardClose")!.onclick! as (event: { type: string }) => void;
     close({ type: "click" });
+    expect(h.api.ensureSummitCard().style.display).toBe("none");
+    expect(h.parking()!.features).toHaveLength(2);
+    expect(h.parking()!.features.map(f => f.properties["label"])).toContain("Roadside (unconfirmed)");
+  });
+
+  it("allows pending parking to arrive after closing the panel", async () => {
+    const h = harness();
+    h.api.showSummitCard(HILL, [HILL.lng, HILL.lat]);
+    h.byId.get("summitCardClose")!.onclick!();
+    h.queue[0]!.resolve({ parking: [confirmed, guess] });
+    await h.tick();
+    expect(h.api.ensureSummitCard().style.display).toBe("none");
+    expect(h.parking()!.features).toHaveLength(2);
+  });
+
+  it("replaces retained parking when another summit is selected", async () => {
+    const h = harness();
+    h.api.showSummitCard(HILL, [HILL.lng, HILL.lat]);
+    h.queue[0]!.resolve({ parking: [confirmed, guess] });
+    await h.tick();
+    h.byId.get("summitCardClose")!.onclick!();
+    const other = { ...HILL, id: "other", name: "Great Gable", lat: 54.482, lng: -3.219 };
+    h.api.showSummitCard(other, [other.lng, other.lat]);
     expect(h.parking()!.features).toHaveLength(0);
+    h.queue[1]!.resolve({ parking: [{ ...confirmed, name: "Honister" }] });
+    await h.tick();
+    expect(h.parking()!.features).toHaveLength(1);
+    expect(h.parking()!.features[0]!.properties["name"]).toBe("Honister");
   });
 
   it("does not let a slow answer land on the card that replaced it", async () => {
