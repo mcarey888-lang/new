@@ -24,3 +24,16 @@ verification reason. Compare only public token issuer/key-ID metadata with
 the intended instance. Never share JWTs or relax signature verification to
 make development accounts work against production. A real authenticated
 success requires a fresh session from the matching instance.
+
+Two keys labelled live are not proof of alignment. Compare the installed
+profile's decoded frontend hostname with the deployed backend's safe
+diagnostics and investigate `jwk-kid-mismatch` before changing route code.
+
+**Why:** A production Android build used the reachable `clerk.auth.summitready.uk`
+frontend while the published API reported `clerk.summitready.uk` and rejected
+Bearer-authenticated route saves. Merely checking live/test prefixes missed it.
+
+**How to apply:** Privately verify the backend key pair belongs to the intended
+existing-account instance before any replacement. Never change account
+namespaces, relax JWT verification, or assume a workspace secret update has
+changed the running deployment.
