@@ -72,6 +72,22 @@ describe("Explore", () => {
 describe("Mountain Detail", () => {
   const body = code(read("app/mountain.tsx"));
 
+  it("offers View on map using this mountain's verified coordinates and the shared map", () => {
+    const actions = read("components/mountain/HubActions.tsx");
+    expect(actions).toContain('testID="mountain-view-map" label="View on map"');
+    expect(actions).toContain("disabled={!onMap}");
+    expect(actions).toContain("A verified map location is not available");
+    expect(body).toContain("onMap={mountain.summitCoordinates ? () => planRoute() : null}");
+    expect(body).toContain("const c = focus ?? mountain?.summitCoordinates;");
+    expect(body).toContain("focusLat: String(c.latitude), focusLng: String(c.longitude)");
+    expect(body).toContain('...(focus?.label ? { startLabel: focus.label } : {})');
+    const planner = read("app/route-planner.tsx");
+    expect(planner).toContain('toPage({ type: "locate", lat, lng, zoom: 13 });');
+    // Only an explicit parking/start-point choice seeds a personal route.
+    // Viewing a mountain passes no startLabel, so it only moves the camera.
+    expect(planner).toMatch(/if \(startLabel\?\.trim\(\)\) \{[\s\S]*?type: "route"/);
+  });
+
   it("raises the hero title and places safety and information before routes", () => {
     expect(body).toContain("minHeight={260}");
     const actions = body.indexOf("<ActionGrid");

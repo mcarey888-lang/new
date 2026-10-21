@@ -1,7 +1,7 @@
 /** Primary action grid and the Track mountain choices. */
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Download, Footprints, MapPin, PenLine, Play, Route as RouteIcon, Save } from "lucide-react-native";
+import { Download, Footprints, Map as MapIcon, MapPin, PenLine, Play, Route as RouteIcon, Save } from "lucide-react-native";
 import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import { SRPanel } from "@/components/ui";
 
@@ -29,9 +29,10 @@ export function ActionTile({
 }
 
 export function ActionGrid({
-  resumable, busy, onRoutes, onParking, onTrack, onResume, onOffline,
+  resumable, busy, onRoutes, onParking, onMap, onTrack, onResume, onOffline,
 }: {
   resumable: boolean; busy: boolean;
+  onMap: (() => void) | null;
   onRoutes: () => void; onParking: () => void; onTrack: () => void; onResume: () => void; onOffline?: () => void;
 }) {
   return (
@@ -40,12 +41,17 @@ export function ActionGrid({
         icon={<RouteIcon size={17} color={EXPLORE.accent} />} hint="Scrolls to the routes section" />
       <ActionTile testID="mountain-parking" label="Parking directions" onPress={onParking}
         icon={<MapPin size={17} color={EXPLORE.accent} />} hint="Scrolls to parking and start points" />
+      <ActionTile testID="mountain-view-map" label="View on map"
+        onPress={() => onMap?.()} disabled={!onMap}
+        icon={<MapIcon size={17} color={EXPLORE.accent} />}
+        hint={onMap ? "Opens the map centred on this mountain" : "No verified map location is available for this mountain yet"} />
       <ActionTile testID="mountain-track" primary disabled={busy}
         label={resumable ? "Resume activity" : "Track mountain"}
         onPress={resumable ? onResume : onTrack}
         icon={<Play size={17} color={EXPLORE.accent} />} />
       {onOffline ? <ActionTile testID="mountain-offline" label="Download offline" onPress={onOffline}
         icon={<Download size={17} color={EXPLORE.accent} />} hint="Scrolls to offline downloads" /> : null}
+      {!onMap ? <Text style={styles.mapUnavailable}>A verified map location is not available for this mountain yet.</Text> : null}
     </View>
   );
 }
@@ -81,6 +87,7 @@ const styles = StyleSheet.create({
     backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
   tilePrimary: { borderColor: EXPLORE.accentLine },
+  mapUnavailable: { flexBasis: "100%", ...TYPE.small, color: BASECAMP.textMuted },
   tileText: { flex: 1, ...TYPE.smallBold, color: BASECAMP.textStrong },
   choices: { marginHorizontal: BASECAMP.gutter, marginTop: 10, padding: 12, gap: SP.sm },
   choiceTitle: { ...TYPE.bodyBold, color: BASECAMP.text, marginBottom: 2 },

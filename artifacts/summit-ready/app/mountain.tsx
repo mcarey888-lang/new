@@ -679,6 +679,7 @@ export default function MountainDetailScreen() {
           busy={launching}
           onRoutes={() => scrollTo("routes")}
           onParking={() => scrollTo("parking")}
+          onMap={mountain.summitCoordinates ? () => planRoute() : null}
           onTrack={() => setTrackOpen(v => !v)}
           onResume={resume}
           />
