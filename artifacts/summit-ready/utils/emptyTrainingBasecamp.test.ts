@@ -46,6 +46,13 @@ describe("Training Basecamp without a goal", () => {
     expect(navigate).toHaveBeenCalledTimes(1);
   });
 
+  it("uses the same green action treatment for goal setup and Explore", () => {
+    expect(empty.match(/style=\{s\.primary\}/g)).toHaveLength(2);
+    expect(empty.match(/colors=\{\[BASECAMP\.accentDim, "transparent"\]\}/g)).toHaveLength(2);
+    expect(empty.match(/<View style=\{s\.icon\}>/g)).toHaveLength(2);
+    expect(empty).not.toContain("s.secondary");
+  });
+
   it("does not navigate if changing shells fails", async () => {
     const navigate = vi.fn();
     await expect(openExpeditionExplore(

@@ -83,17 +83,18 @@ export function BasecampNoGoal() {
         <TouchableOpacity
           onPress={() => { void explore(); }}
           disabled={switching}
-          activeOpacity={0.8}
-          style={s.secondary}
+          activeOpacity={0.88}
+          style={s.primary}
           accessibilityRole="button"
           accessibilityLabel="Explore mountains"
           accessibilityHint="Switches to Expedition mode and opens Explore"
           accessibilityState={{ disabled: switching, busy: switching }}
           testID="no-goal-explore"
         >
-          <Compass size={16} color={BASECAMP.text} />
-          <Text style={s.secondaryText}>{switching ? "Opening Explore…" : "Explore mountains"}</Text>
-          <ChevronRight size={16} color={BASECAMP.textDim} />
+          <LinearGradient colors={[BASECAMP.accentDim, "transparent"]} style={StyleSheet.absoluteFill} />
+          <View style={s.icon}><Compass size={22} color={BASECAMP.accent} /></View>
+          <Text style={[s.primaryTitle, { flex: 1 }]}>{switching ? "Opening Explore…" : "Explore mountains"}</Text>
+          <ChevronRight size={20} color={BASECAMP.accent} />
         </TouchableOpacity>
         <Text style={s.small}>Browse mountains in Expedition mode. Come back to Training whenever you are ready to choose your goal.</Text>
         {exploreError && <Text accessibilityRole="alert" style={s.small}>{exploreError}</Text>}
@@ -122,9 +123,4 @@ const s = StyleSheet.create({
   },
   row: { paddingVertical: SP.md, gap: 4 },
   rowDivider: { borderTopWidth: 1, borderTopColor: BASECAMP.hairline },
-  secondary: {
-    minHeight: 48, flexDirection: "row", alignItems: "center", gap: SP.sm, paddingHorizontal: SP.lg,
-    borderRadius: RADIUS.lg, borderWidth: 1, borderColor: BASECAMP.glassBorder, backgroundColor: BASECAMP.glass,
-  },
-  secondaryText: { ...TYPE.bodyBold, color: BASECAMP.text, flex: 1 },
 });
