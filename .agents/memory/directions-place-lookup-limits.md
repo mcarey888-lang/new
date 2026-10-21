@@ -20,3 +20,9 @@ Shared, source-backed parking research is now explicitly requested: show options
 **Why:** On 2026-10-07 the user asked for AI parking lookup when locations are missing, with reusable answers so the next visitor can press Get directions. This supersedes the earlier blanket prohibition on caching unvisited candidates, not the GPS-confirmation or access-rights boundary.
 
 **How to apply:** Ground research in actual retrieved sources, preserve mountain/region identity and source dates, refresh old answers, and keep brief access/signage guidance. A cached suggestion must not alter canonical route eligibility or shared confirmed parking.
+
+Browser directions must remain user-initiated after asynchronous parking research. Offer an explicit destination link and inline failure feedback rather than relying solely on a delayed popup or native alerts.
+
+**Why:** A browser can block a map tab opened after a network lookup, and React Native alerts can be invisible on web, making working buttons appear unresponsive.
+
+**How to apply:** Keep the researched destination available for a fresh tap, bound lookup time, and never substitute driving directions to the summit when parking research fails.

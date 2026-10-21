@@ -74,7 +74,8 @@ interface HillDetail {
   };
 }
 
-import { openMapPin, openMapDirections, openMapsForHill } from "@/utils/openMaps";
+import { openMapDirections } from "@/utils/openMaps";
+import { hillMapTarget, hillMapNavigation } from "@/utils/hillMapTarget";
 import { RouteIntelligencePresentation } from "@/components/RouteIntelligencePresentation";
 import { mapTrainingTarget, mapExploreRoute, mapExpeditionStage, selectCanonicalRoute, type RouteReadResult, type RouteIntelligence } from "@/utils/routeIntelligence";
 import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
@@ -113,6 +114,7 @@ export default function HillDetailScreen() {
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState(false);
   const [directionsBusy, setDirectionsBusy] = useState(false);
+  const [mapActionError, setMapActionError] = useState<string | null>(null);
   const [gpsBusy, setGpsBusy] = useState(false);
   const [directionResult, setDirectionResult] = useState<{
     status: "internet_lookup" | "gps_confirmed";
@@ -302,60 +304,79 @@ export default function HillDetailScreen() {
   const mapSearchContext = detail?.mapSearchContext ?? location;
   const hasVerifiedStartPoint = detail?.provenance?.startPoint === "verified" &&
     Number.isFinite(startPoint?.lat) && Number.isFinite(startPoint?.lng);
-  const hasVerifiedMapCoordinates = detail?.provenance?.mapCoordinates === "verified" &&
-    Number.isFinite(detail?.summitLat) && Number.isFinite(detail?.summitLng);
+  const mapTarget = hillMapTarget({ lat: hillLat, lng: hillLng, routeIdentityKey, detail });
 
   const directionTarget = {
     hillName: name ?? "",
     location: mapSearchContext ?? "",
     routeIdentityKey: routeIdentityKey || undefined,
     summitIdentityKey: summitIdentityKey || undefined,
-    summitLat: hillLat,
-    summitLng: hillLng,
+    summitLat: mapTarget?.lat,
+    summitLng: mapTarget?.lng,
   };
-  const candidateKey = `directions:candidate:${routeIdentityKey || summitIdentityKey || name}:${hillLat}:${hillLng}`;
+  const candidateKey = `directions:candidate:${routeIdentityKey || summitIdentityKey || name}:${mapTarget?.lat}:${mapTarget?.lng}`;
 
   async function openStartPointDirections() {
     if (directionsBusy) return;
-    if (!Number.isFinite(hillLat) || !Number.isFinite(hillLng)) {
-      Alert.alert("Location needed", "This hill has no mapped location. Check its official access information before travelling.");
+    setMapActionError(null);
+    if (!mapTarget) {
+      setMapActionError("This hill has no mapped location. Search for it again in Explore to refresh its location before getting directions.");
       return;
     }
     setDirectionsBusy(true);
     try {
       let result = directionResult;
       if (!result) {
-        const cached = await AsyncStorage.getItem(candidateKey);
-        if (cached) {
-          const record = JSON.parse(cached) as { result: NonNullable<typeof directionResult>; expires: number };
-          if (record.expires > Date.now() && record.result?.status === "internet_lookup" &&
-              Number.isFinite(record.result.lat) && Number.isFinite(record.result.lng) && record.result.placeId) {
-            result = record.result;
+        try {
+          const cached = await AsyncStorage.getItem(candidateKey);
+          if (cached) {
+            const record = JSON.parse(cached) as { result: NonNullable<typeof directionResult>; expires: number };
+            if (record.expires > Date.now() && record.result?.status === "internet_lookup" &&
+                Number.isFinite(record.result.lat) && Number.isFinite(record.result.lng) && record.result.placeId) {
+              result = record.result;
+            }
           }
-        }
+        } catch { /* An unavailable or corrupt optional cache requires a fresh lookup. */ }
       }
       if (!result) {
-        const response = await fetch(`${API_BASE}/directions/lookup`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(directionTarget),
-        });
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error || "No suitable parking place was found.");
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        let body;
+        try {
+          const response = await fetch(`${API_BASE}/directions/lookup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(directionTarget),
+            signal: controller.signal,
+          });
+          body = await response.json();
+          if (!response.ok) throw new Error(body.error || "No suitable parking place was found.");
+        } finally {
+          clearTimeout(timeout);
+        }
         result = body;
         if (result?.status === "internet_lookup") {
           await AsyncStorage.setItem(candidateKey, JSON.stringify({
             result, expires: Date.now() + 24 * 60 * 60 * 1000,
-          }));
+          })).catch(() => {}); // An optional cache failure must not prevent directions.
         }
       }
-      if (!result || !Number.isFinite(result.lat) || !Number.isFinite(result.lng)) {
+      if (!result || !Number.isFinite(result.lat) || !Number.isFinite(result.lng) ||
+          Math.abs(result.lat) > 90 || Math.abs(result.lng) > 180 ||
+          typeof result.name !== "string" || !result.name.trim()) {
         throw new Error("No mapped destination was returned.");
       }
       setDirectionResult(result);
-      openMapDirections(result.lat, result.lng, result.name);
+      // Web browsers may block a new tab after an asynchronous lookup. Render
+      // an explicit link below so opening it has a fresh user gesture instead.
+      if (Platform.OS !== "web") {
+        const opened = await openMapDirections(result.lat, result.lng, result.name);
+        if (!opened) setMapActionError("Could not open your maps app. Tap Open parking directions below to retry.");
+      }
     } catch (error) {
-      Alert.alert("Directions unavailable", error instanceof Error ? error.message : "Please try again later.");
+      setMapActionError(error instanceof Error && error.name === "AbortError"
+        ? "Parking lookup took too long. Check your connection and try again."
+        : error instanceof Error ? error.message : "Directions are unavailable. Please try again later.");
     } finally {
       setDirectionsBusy(false);
     }
@@ -502,18 +523,11 @@ export default function HillDetailScreen() {
               <TouchableOpacity
                 style={styles.mapActionBtn}
                 onPress={() => {
-                  if (hasVerifiedMapCoordinates) {
-                    openMapPin(detail!.summitLat!, detail!.summitLng!, name ?? "");
-                  } else if ((routeIdentityKey?.startsWith("route:v1:osm_overpass:") ||
-                    routeIdentityKey?.startsWith("route:v1:osm_nominatim:")) &&
-                    hillLat !== null && hillLng !== null &&
-                    Number.isFinite(hillLat) && Number.isFinite(hillLng) &&
-                    Math.abs(hillLat) <= 90 && Math.abs(hillLng) <= 180) {
-                    openMapPin(hillLat, hillLng, name ?? "");
-                  } else {
-                    Alert.alert("Hill map location unavailable", "Search for this hill again to load its mapped summit location. We won't guess a street address from its name.");
-                  }
+                  setMapActionError(null);
+                  if (mapTarget) router.push(hillMapNavigation(mapTarget));
+                  else setMapActionError("Map location unavailable. Search for this hill again in Explore to refresh its location. We won't guess an address from its name.");
                 }}
+                accessibilityRole="button"
                 activeOpacity={0.8}
               >
                 <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
@@ -532,8 +546,27 @@ export default function HillDetailScreen() {
                 <Text style={[styles.mapActionText, { color: T.blue }]}>{directionsBusy ? "Finding parking…" : "Get directions"}</Text>
               </TouchableOpacity>
             </View>
+            {mapTarget && !mapTarget.verified ? (
+              <Text style={{ color: T.textMuted, fontSize: 12, paddingHorizontal: 18, paddingBottom: 10 }}>
+                Map shows the selected route location, not a verified summit or route start.
+              </Text>
+            ) : null}
+            {mapActionError ? (
+              <Text accessibilityRole="alert" style={{ color: T.orange, fontSize: 13, paddingHorizontal: 18, paddingBottom: 12 }}>
+                {mapActionError}
+              </Text>
+            ) : null}
             {directionResult && (
               <View style={{ paddingHorizontal: 18, paddingBottom: 12 }}>
+                <TouchableOpacity
+                  accessibilityRole="link"
+                  onPress={() => void openMapDirections(directionResult.lat, directionResult.lng, directionResult.name).then(opened => {
+                    setMapActionError(opened ? null : "Could not open directions. Check that your browser allows map links and try again.");
+                  })}
+                  style={{ paddingVertical: 12 }}
+                >
+                  <Text style={{ color: T.blue, fontWeight: "600" }}>Open parking directions ↗</Text>
+                </TouchableOpacity>
                 <Text style={{ color: T.textMuted, fontSize: 12 }}>
                   {directionResult.status === "gps_confirmed" ? "GPS-confirmed arrival" : "OpenStreetMap parking pin — not yet GPS-confirmed"}
                   {" · "}{directionResult.name}

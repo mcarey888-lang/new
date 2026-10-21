@@ -94,8 +94,9 @@ describe("session hill information and directions", () => {
   });
   it("pins mapped summit coordinates rather than asking a map app to guess a street", () => {
     const source = readFileSync(join(__dirname, "../app/hill-detail.tsx"), "utf8");
-    expect(source).toContain('routeIdentityKey?.startsWith("route:v1:osm_overpass:")');
-    expect(source).toContain('openMapPin(hillLat, hillLng, name ?? "")');
+    expect(source).toContain('router.push(hillMapNavigation(mapTarget))');
+    expect(source).toContain('hillMapTarget({ lat: hillLat, lng: hillLng, routeIdentityKey, detail })');
+    expect(source).toContain('accessibilityRole="alert"');
     expect(source).not.toContain('openMapsForHill(null, null, name ?? "", false');
   });
   it("does not reuse old AI climb figures just because they have coordinates", () => {
