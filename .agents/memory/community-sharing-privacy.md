@@ -5,6 +5,16 @@ description: Product consent boundaries for community posts and user-shared rout
 
 Member sharing is an opt-in, per-post audience choice between Only me and all signed-in SummitReady members. Existing activity, journal photos, qualified Elevation Bank totals, and location are never published automatically. An owned photo post must remain private until its media upload finishes; changing a private post to members requires an explicit confirmation.
 
+Photo selection must return clearly to the composer, with publishing performed
+only by its explicit Post button. Avoid a forced native crop confirmation, and
+do not label a selection-only confirmation as Post.
+
+**Why:** The owner interpreted Android's Crop confirmation as the publishing
+action. Selecting or editing a photo must not be confused with consent to share.
+
+**How to apply:** Keep selection and publication separate, preserve the draft
+when submission fails, and explain any required editing step as editing.
+
 Public display names must not default to login email addresses. Use a safe existing name or a generic member label; legacy email-like names with unknown intent must be hidden rather than assumed to be deliberate. An email is permitted only when explicitly chosen as the public name.
 
 **Why:** The owner identified automatic email publication in profiles and member content as a privacy risk. Historical account values do not establish consent.

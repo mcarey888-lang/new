@@ -176,6 +176,10 @@ describe("no fabricated social data", () => {
     expect(ACCOUNT_CODE).toMatch(/sharedPhotos\.slice\(0, visiblePhotoCount\)/);
     expect(hub).toMatch(/useState<"private" \| "members">\("private"\)/);
     expect(hub).toMatch(/launchImageLibraryAsync/);
+    expect(hub).toContain('allowsEditing: false');
+    const pickingPhoto = hub.slice(hub.indexOf("const pickPhoto = async"), hub.indexOf("const submit = async"));
+    expect(pickingPhoto).toContain("setPhotoUri(asset.uri)");
+    expect(pickingPhoto).not.toMatch(/await onCreate\(|void onCreate\(/);
     expect(hub).toMatch(/onCreate\(\{[\s\S]*?kind:/);
     expect(hub).toMatch(/onVisibility\(post\.id/);
     expect(hub).toMatch(/onDelete\(id\)/);

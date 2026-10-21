@@ -92,7 +92,9 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
       Alert.alert("Photo access needed", "Allow photo access in Settings to choose a photo. Nothing is uploaded until you post.");
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, quality: 0.7 });
+    // Picking a photo only attaches it to the draft. Avoid Android's separate
+    // "Crop" confirmation; the composer's explicit Post action publishes it.
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 0.7 });
     if (!result.canceled && result.assets[0]?.uri) {
       const asset = result.assets[0];
       const mime = asset.mimeType?.toLowerCase();
