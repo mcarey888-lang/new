@@ -76,6 +76,8 @@ interface HillDetail {
 
 import { openMapDirections } from "@/utils/openMaps";
 import { hillMapTarget, hillMapNavigation } from "@/utils/hillMapTarget";
+import { chooseNextExpeditionStage, findExpeditionStage } from "@/utils/expeditionStageOrder";
+import { isRouteCompleted, routeCompletionKey } from "@/utils/stateReliability";
 import { RouteIntelligencePresentation } from "@/components/RouteIntelligencePresentation";
 import { mapTrainingTarget, mapExploreRoute, mapExpeditionStage, selectCanonicalRoute, type RouteReadResult, type RouteIntelligence } from "@/utils/routeIntelligence";
 import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
@@ -85,8 +87,8 @@ import type { CanonicalRouteRecord } from "@/utils/routeIntelligence";
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
   const { userId, getToken } = useAuth();
-  const { activeExpedition } = useApp();
-  const { name, location, lat, lng, elevation, elevationEstimated, distance, routeDistance, estimatedTime, routeType, grade, surface, emoji, expeditionMode, expeditionId, routeIdentityKey, summitIdentityKey, objectiveType } =
+  const { activeExpedition, patchExpedition } = useApp();
+  const { name, location, lat, lng, elevation, elevationEstimated, distance, routeDistance, estimatedTime, routeType, grade, surface, emoji, expeditionMode, expeditionId, routeIdentityKey, summitIdentityKey, objectiveType, stageCompletionKey } =
     useLocalSearchParams<{
       name: string;
       location: string;
@@ -106,9 +108,42 @@ export default function HillDetailScreen() {
       routeIdentityKey?: string;
       summitIdentityKey?: string;
       objectiveType?: string;
+      stageCompletionKey?: string;
     }>();
 
   const isExpeditionMode = expeditionMode === "true";
+  const [stageSaving, setStageSaving] = useState(false);
+  const [stageError, setStageError] = useState<string | null>(null);
+  const stageExpedition = isExpeditionMode && expeditionId === activeExpedition?.id
+    ? activeExpedition : null;
+  const selectedStage = stageExpedition && stageCompletionKey
+    ? findExpeditionStage(stageExpedition.virtualHills ?? [], stageCompletionKey) : null;
+  const stageCompleted = !!selectedStage && isRouteCompleted(stageExpedition?.completedRoutes ?? [], selectedStage);
+  const currentStage = stageExpedition?.virtualHills?.find(hill => !isRouteCompleted(stageExpedition.completedRoutes ?? [], hill));
+  const stageIsNext = !!selectedStage && !!currentStage &&
+    routeCompletionKey(selectedStage) === routeCompletionKey(currentStage);
+
+  async function chooseThisStageNext() {
+    if (stageSaving || !stageExpedition || !stageCompletionKey ||
+        stageExpedition.expeditionStatus === "complete") return;
+    const hills = chooseNextExpeditionStage(
+      stageExpedition.virtualHills ?? [], stageExpedition.completedRoutes ?? [], stageCompletionKey,
+    );
+    if (!hills) {
+      setStageError("This stage is no longer available to choose. Return to Basecamp and try again.");
+      return;
+    }
+    setStageSaving(true);
+    setStageError(null);
+    try {
+      // Field-only update: never reset the expedition, activity, or training goal.
+      await patchExpedition(stageExpedition.id, { virtualHills: hills });
+    } catch {
+      setStageError("Could not save your stage order. Please try again before leaving this page.");
+    } finally {
+      setStageSaving(false);
+    }
+  }
 
   const [detail, setDetail] = useState<HillDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
@@ -517,6 +552,36 @@ export default function HillDetailScreen() {
         ) : null}
 
         <View style={styles.body}>
+          {selectedStage ? (
+            <View style={{ marginHorizontal: 18, marginBottom: 16 }}>
+              <Text style={{ color: T.textMuted, fontSize: 13, marginBottom: 8 }}>
+                {stageCompleted ? "You have completed this expedition stage."
+                  : stageIsNext ? "This is your next expedition stage."
+                  : "You can do the unfinished stages in the order that suits you."}
+              </Text>
+              {!stageCompleted && stageExpedition?.expeditionStatus !== "complete" ? (
+                <TouchableOpacity
+                  testID="expedition-choose-stage-next"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Do ${selectedStage.name} next`}
+                  disabled={stageSaving || (stageIsNext && !stageError)}
+                  onPress={() => void chooseThisStageNext()}
+                  style={{
+                    backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green,
+                    borderRadius: 12, padding: 16, alignItems: "center",
+                    opacity: stageSaving ? 0.6 : 1,
+                  }}
+                >
+                  <Text style={{ color: T.green, fontWeight: "700" }}>
+                    {stageSaving ? "Saving stage order…" : stageIsNext && !stageError ? "Selected as your next stage" : "Do this stage next"}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              {stageError ? (
+                <Text accessibilityRole="alert" style={{ color: T.orange, marginTop: 8 }}>{stageError}</Text>
+              ) : null}
+            </View>
+          ) : null}
           {/* Quick map actions */}
           <Animated.View entering={FadeInDown.delay(60).duration(400)}>
             <View style={styles.mapActionsRow}>

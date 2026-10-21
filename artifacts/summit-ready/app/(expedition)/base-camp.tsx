@@ -51,6 +51,8 @@ import { SRHeroFrame, SRPanel, SRSectionHeader, SRStatusPill } from "@/component
 import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
 import { CurrentStageCard } from "@/components/expedition/CurrentStageCard";
 import { StageRail } from "@/components/expedition/StageRail";
+import { findExpeditionStage } from "@/utils/expeditionStageOrder";
+import { hillDetailNavigation } from "@/utils/hillDetailNavigation";
 import { JourneyHistory } from "@/components/JourneyHistory";
 import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 import { resolveApprovedMatterhornArtwork } from "@/utils/artworkResolver";
@@ -1330,7 +1332,27 @@ export default function BaseCampScreen() {
                 onAction={() => router.push("/(expedition)/progress" as any)}
               />
             </View>
-            <StageRail stages={presentation.stages} />
+            <StageRail
+              stages={presentation.stages}
+              onSelect={stage => {
+                const hill = findExpeditionStage(activeExpedition?.virtualHills ?? [], stage.routeIdentityKey);
+                if (!hill || !activeExpeditionId) return;
+                const destination = hillDetailNavigation(hill, activeExpedition?.location ?? "");
+                router.push({
+                  ...destination,
+                  params: {
+                    ...destination.params,
+                    expeditionMode: "true",
+                    expeditionId: activeExpeditionId,
+                    stageCompletionKey: stage.routeIdentityKey,
+                    objectiveType: hill.objectiveType ?? "",
+                  },
+                });
+              }}
+            />
+            <Text style={{ ...TYPE.caption, color: BASECAMP.textDim, paddingHorizontal: BASECAMP.gutter, marginTop: SP.sm }}>
+              Tap a stage for details or to choose it as your next stage.
+            </Text>
           </Animated.View>
         ) : null}
 

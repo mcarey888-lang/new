@@ -15,3 +15,13 @@ award completion while canonical simulated progress was below 100%.
 **How to apply:** Any future tracking, recovery, deep-link, replay, or completion
 change must preserve the Basecamp handoff, use the shared Expedition presentation
 state, and keep completion idempotent and scoped to the active expedition.
+
+Users may inspect every stage and choose which unfinished stage to do next; the
+generated stage sequence is not a mandatory walking order.
+
+**Why:** The owner explicitly requested clickable stage information and control
+over which stage they do first.
+
+**How to apply:** Preserve stage identities, completed stages, activity evidence
+and total targets when changing the order. Choosing a stage never completes it,
+starts recording, or resets the expedition or the separate Training goal.
