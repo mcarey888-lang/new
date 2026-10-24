@@ -860,6 +860,16 @@ function requestProfile() {
 
 function addPoint(lngLat) {
   anchors.push({ lat: lngLat.lat, lng: lngLat.lng });
+  if (anchors.length === 1 && snapping && SNAP_URL) {
+    /* Start loading the first point's network while the person chooses the
+       next point. This read never moves anchors or marks a leg as routed;
+       subsequent leg requests reuse the server's cached/in-flight region. */
+    fetch(SNAP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from: null, to: anchors[0], radiusM: snapRadiusM() })
+    }).catch(function () { /* The actual leg request reports any failure. */ });
+  }
   if (anchors.length > 1) {
     var i = anchors.length - 2;
     legs[i] = { kind: "straight", points: null };

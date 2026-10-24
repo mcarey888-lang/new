@@ -228,6 +228,28 @@ describe("a drawn line is never dressed as a surveyed one", () => {
     expect(bodyOf(page(), "function addPoint")).toContain('legs[i] = { kind: "straight", points: null };');
   });
 
+  it("warms paths at the first anchor without changing the anchors or claiming a routed leg", async () => {
+    const anchors: { lat: number; lng: number }[] = [];
+    const fetcher = vi.fn(async (_url: string, _init: { body: string }) => ({ ok: true }));
+    const snapLeg = vi.fn();
+    const context = {
+      anchors, legs: [], snapping: true, SNAP_URL: "/api/path-snap",
+      snapRadiusM: () => 45, fetch: fetcher, snapLeg, redraw: vi.fn(), emit: vi.fn(),
+    };
+    runInNewContext(`function addPoint${bodyOf(page(), "function addPoint")}
+      addPoint({lat: 53.11, lng: -4.01});`, context);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetcher.mock.calls[0]![1].body)).toEqual({
+      from: null, to: { lat: 53.11, lng: -4.01 }, radiusM: 45,
+    });
+    expect(anchors).toEqual([{ lat: 53.11, lng: -4.01 }]);
+    expect(context.legs).toEqual([]);
+    expect(snapLeg).not.toHaveBeenCalled();
+    runInNewContext("addPoint({lat: 53.115, lng: -4.015});", context);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(snapLeg).toHaveBeenCalledWith(0);
+  });
+
   it("drops the routed geometry the moment a point is dragged", () => {
     /* Keeping it would leave the line following a path it no longer touches. */
     const move = bodyOf(page(), "function move(e)");

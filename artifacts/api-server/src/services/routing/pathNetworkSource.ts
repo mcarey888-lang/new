@@ -163,7 +163,10 @@ export function cacheKey(b: BBox): string {
  * `out geom` returns each way's coordinates inline, which avoids a second pass
  * to resolve node ids — the ways are what we need and the nodes come with them.
  */
-export function overpassQuery(b: BBox, timeoutS = 25): string {
+export const PATH_FETCH_TIMEOUT_MS = 8000;
+const PROVIDER_RETRY_COOLDOWN_MS = 30_000;
+
+export function overpassQuery(b: BBox, timeoutS = 6): string {
   const s = snapBBox(b);
   const box = `${s.minLat},${s.minLng},${s.maxLat},${s.maxLng}`;
   return `[out:json][timeout:${timeoutS}];
@@ -257,11 +260,15 @@ const cache = new Map<string, CacheEntry>();
  * Sharing the promise means the first tap fetches and the other fourteen wait
  * on the same result.
  */
-const inFlight = new Map<string, Promise<PathWay[] | null>>();
+const inFlight = new Map<string, { box: BBox; work: Promise<PathWay[] | null> }>();
+const providerFailures = new Map<string, number>();
+let preferredProvider: string | null = null;
 
 export function clearNetworkCache(): void {
   cache.clear();
   inFlight.clear();
+  providerFailures.clear();
+  preferredProvider = null;
 }
 export function networkCacheSize(): number {
   return cache.size;
@@ -289,6 +296,37 @@ function covering(want: BBox, now: number): CacheEntry | null {
 /** Injectable so tests can exercise this without a network. */
 export type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
 
+/** Bound the whole attempt, including a stalled response body. Abort alone
+ * does not bound a fetch adapter that ignores its signal. Never race mirrors:
+ * one query at a time keeps pressure on the public services down. */
+async function readProvider(
+  fetcher: Fetcher, endpoint: string, body: string,
+): Promise<{ status: number; ok: boolean; body?: unknown }> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      (async () => {
+        const response = await fetcher(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": USER_AGENT },
+          body, signal: controller.signal,
+        });
+        return { ok: response.ok, status: response.status,
+          ...(response.ok ? { body: await response.json() } : {}) };
+      })(),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new Error("Path service timed out"));
+        }, PATH_FETCH_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function fetchPathWays(
   bbox: BBox,
   opts: { fetcher?: Fetcher; now?: () => number } = {},
@@ -309,9 +347,12 @@ export async function fetchPathWays(
 
   /* Someone already asked for this region and has not been answered yet. Wait
      on their request instead of starting another — see the note on inFlight. */
-  const pending = inFlight.get(key);
+  // A smaller leg can share a larger download that has not finished yet.
+  // Mere overlap is insufficient: it would omit real paths at the edge.
+  const pending = inFlight.get(key) ??
+    [...inFlight.values()].find(entry => contains(entry.box, want));
   if (pending) {
-    const ways = await pending;
+    const ways = await pending.work;
     if (ways) return { kind: "ways", ways, cached: true };
     /* The shared request failed. Say so rather than silently reporting empty
        ground, and do not retry here: fifteen waiters all retrying on failure
@@ -330,20 +371,17 @@ export async function fetchPathWays(
        waiting and asking the same busy queue again is how a person ends up
        staring at a half-drawn route, and the next instance is a better bet
        than the same one later. */
-    for (let i = 0; i < OVERPASS_ENDPOINTS.length; i += 1) {
-      const endpoint = OVERPASS_ENDPOINTS[i]!;
-      let res: Response;
+    const endpoints = [...OVERPASS_ENDPOINTS].sort((a, b) => {
+      const cooling = (url: string) => now() - (providerFailures.get(url) ?? -Infinity) < PROVIDER_RETRY_COOLDOWN_MS;
+      return Number(cooling(a)) - Number(cooling(b)) ||
+        Number(b === preferredProvider) - Number(a === preferredProvider);
+    });
+    for (const endpoint of endpoints) {
+      let res: Awaited<ReturnType<typeof readProvider>>;
       try {
-        res = await doFetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": USER_AGENT,
-          },
-          body: query,
-          signal: AbortSignal.timeout(30_000),
-        });
+        res = await readProvider(doFetch, endpoint, query);
       } catch (err) {
+        providerFailures.set(endpoint, now());
         failure = {
           kind: "upstream_failed",
           status: null,
@@ -353,6 +391,7 @@ export async function fetchPathWays(
       }
 
       if (!res.ok) {
+        if (worthRetrying(res.status)) providerFailures.set(endpoint, now());
         failure = { kind: "upstream_failed", status: res.status, detail: `overpass ${res.status}` };
         /* A rejection that is about the query rather than the load would be
            rejected identically everywhere, so stop rather than make the same
@@ -361,12 +400,17 @@ export async function fetchPathWays(
         continue;
       }
 
-      try {
-        body = await res.json();
-      } catch {
-        failure = { kind: "upstream_failed", status: res.status, detail: "response was not JSON" };
+      const candidate = res.body as { elements?: unknown; remark?: unknown } | null;
+      // Overpass may return HTTP 200 with a timeout remark and partial data.
+      // Do not cache that as an empty/complete path network for an hour.
+      if (!candidate || !Array.isArray(candidate.elements) || candidate.remark) {
+        providerFailures.set(endpoint, now());
+        failure = { kind: "upstream_failed", status: res.status, detail: "incomplete path response" };
         continue;
       }
+      body = res.body;
+      preferredProvider = endpoint;
+      providerFailures.delete(endpoint);
       failure = null;
       break;
     }
@@ -386,7 +430,7 @@ export async function fetchPathWays(
     return ways;
   })();
 
-  inFlight.set(key, work);
+  inFlight.set(key, { box: want, work });
   try {
     const ways = await work;
     if (ways) return { kind: "ways", ways, cached: false };

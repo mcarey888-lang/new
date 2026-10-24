@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   OVERPASS_ENDPOINTS,
+  PATH_FETCH_TIMEOUT_MS,
   worthRetrying,
   contains,
   inFlightCount,
@@ -102,7 +103,7 @@ describe("the Overpass query", () => {
   });
 
   it("carries a timeout, so a slow query is dropped rather than held", () => {
-    expect(overpassQuery(box(53.1, -4.02, 53.14, -3.98))).toContain("timeout:25");
+    expect(overpassQuery(box(53.1, -4.02, 53.14, -3.98))).toContain("timeout:6");
   });
 
   it("queries the snapped box, matching what gets cached", () => {
@@ -473,5 +474,72 @@ describe("when one Overpass instance will not answer", () => {
     const results = await Promise.all(all);
     expect(results.every(r => r.kind === "ways")).toBe(true);
     expect(calls).toBe(2); // one refusal, one success — not thirty
+  });
+});
+
+describe("interactive path lookup latency", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("shares a larger in-flight region with smaller legs, not just identical keys", async () => {
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const fetcher = vi.fn(async () => { await held; return ok(ogwen()); });
+    const larger = fetchPathWays(box(53.08, -4.04, 53.16, -3.96), { fetcher });
+    const smaller = fetchPathWays(box(53.101, -4.009, 53.119, -3.991), { fetcher });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    release();
+    const results = await Promise.all([larger, smaller]);
+    expect(results.every(result => result.kind === "ways")).toBe(true);
+    expect(results[1]!.kind === "ways" && results[1]!.cached).toBe(true);
+  });
+
+  it("does not share an overlapping but incomplete network", async () => {
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const fetcher = vi.fn(async () => { await held; return ok(ogwen()); });
+    const a = fetchPathWays(box(53.08, -4.04, 53.12, -4.00), { fetcher });
+    const b = fetchPathWays(box(53.10, -4.02, 53.14, -3.98), { fetcher });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    release();
+    await Promise.all([a, b]);
+  });
+
+  it("tries the healthy mirror after eight seconds instead of waiting thirty", async () => {
+    vi.useFakeTimers();
+    const signals: AbortSignal[] = [];
+    const fetcher = vi.fn(async (_url: string, init: RequestInit) => {
+      signals.push(init.signal as AbortSignal);
+      if (signals.length === 1) return new Promise<Response>(() => {});
+      return ok(ogwen());
+    });
+    const result = fetchPathWays(box(53.1, -4.02, 53.14, -3.98), { fetcher });
+    await vi.advanceTimersByTimeAsync(PATH_FETCH_TIMEOUT_MS);
+    expect((await result).kind).toBe("ways");
+    expect(signals[0]!.aborted).toBe(true);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    // Another area goes straight to the mirror that just worked.
+    await fetchPathWays(box(54.1, -4.02, 54.14, -3.98), { fetcher });
+    expect(fetcher.mock.calls[2]![0]).toBe(OVERPASS_ENDPOINTS[1]);
+  });
+
+  it("bounds a stalled response body too, returning unavailable rather than no paths", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn(async () => ({
+      ok: true, status: 200, json: () => new Promise(() => {}),
+    }) as unknown as Response);
+    const result = fetchPathWays(box(53.1, -4.02, 53.14, -3.98), { fetcher });
+    await vi.advanceTimersByTimeAsync(PATH_FETCH_TIMEOUT_MS * OVERPASS_ENDPOINTS.length);
+    expect((await result).kind).toBe("upstream_failed");
+    expect(networkCacheSize()).toBe(0);
+    expect(inFlightCount()).toBe(0);
+  });
+
+  it("does not cache partial HTTP-200 timeout results as a complete network", async () => {
+    const fetcher = vi.fn(async () => ok({
+      elements: [], remark: "runtime error: Query timed out",
+    }));
+    expect((await fetchPathWays(box(53.1, -4.02, 53.14, -3.98), { fetcher })).kind)
+      .toBe("upstream_failed");
+    expect(networkCacheSize()).toBe(0);
   });
 });
