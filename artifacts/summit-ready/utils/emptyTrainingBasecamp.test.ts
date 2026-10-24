@@ -26,7 +26,8 @@ describe("Training Basecamp without a goal", () => {
 
   it("has one accessible Explore action with loading, retry and explicit mode-switch messaging", () => {
     expect(empty.match(/testID="no-goal-explore"/g)).toHaveLength(1);
-    expect(empty).toContain('router.replace("/(expedition)/mountains")');
+    expect(empty).toContain('router.replace("/(tabs)/explore")');
+    expect(empty).not.toContain('router.replace("/(expedition)/mountains")');
     expect(empty).toContain("if (busy.current) return;");
     expect(empty).toContain('accessibilityState={{ disabled: switching, busy: switching }}');
     expect(empty).toContain('accessibilityRole="alert"');

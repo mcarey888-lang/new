@@ -29,7 +29,7 @@ export function BasecampNoGoal() {
     setSwitching(true);
     setExploreError(null);
     try {
-      await openExpeditionExplore(setShellMode, () => router.replace("/(expedition)/mountains"));
+      await openExpeditionExplore(setShellMode, () => router.replace("/(tabs)/explore"));
     } catch {
       setExploreError("Couldn't open Explore. Please try again.");
     } finally {
