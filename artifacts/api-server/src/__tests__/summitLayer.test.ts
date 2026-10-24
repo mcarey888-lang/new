@@ -305,7 +305,8 @@ describe("the map keeps its own furniture clear of the host", () => {
        the tap having done nothing. */
     const s = script();
     expect(s).toMatch(/function liftSummitCard\(/);
-    expect(s).toMatch(/summitCard\.style\.bottom = \(Math\.max\(0, inset\) \+ attributionHeight\(\) \+ 12\)/);
+    expect(s).toContain("var bottom = Math.max(0, inset) + attributionHeight() + 12;");
+    expect(s).toContain("summitCard.style.bottom = bottom");
   });
 
   it("lifts the search box below the host's header", () => {
@@ -330,6 +331,39 @@ describe("the map keeps its own furniture clear of the host", () => {
 
 
 describe("the lifted card and the attribution", () => {
+  it.each([360, 568, 874])("keeps the card above Save and the readout in a %ipx viewport", (height) => {
+    const card = { style: {} as Record<string, string>, id: "", setAttribute() {} };
+    const nodes: Record<string, unknown> = {
+      hud: { hidden: false, style: {}, getBoundingClientRect: () => ({ top: height - 66, height: 40 }) },
+      routeActions: { hidden: false, style: {}, getBoundingClientRect: () => ({ top: height - 126, height: 50 }) },
+    };
+    const api = new Function("map", "post", "document", "window", `${script()}
+      return { ensure: ensureSummitCard, lift: liftSummitCard };`)(
+      { on() {} }, () => {},
+      { createElement: () => card, body: { appendChild() {} },
+        getElementById: (id: string) => nodes[id],
+        querySelector: () => ({ getBoundingClientRect: () => ({ height: 20 }) }) },
+      { innerHeight: height },
+    );
+    api.ensure();
+    api.lift(24);
+    expect(Number.parseFloat(card.style.bottom!)).toBe(136);
+    expect(Number.parseFloat(card.style.maxHeight!)).toBe(height - 136 - 64 - 12);
+    expect(card.style.cssText).toContain("overflow-y:auto");
+  });
+
+  it("does not reserve space for a hidden Save bar", () => {
+    const api = new Function("map", "post", "document", "window", `${script()}
+      return summitCardBottom;`)(
+      { on() {} }, () => {},
+      { getElementById: () => ({ hidden: false, style: { display: "none" },
+          getBoundingClientRect: () => ({ top: 100, height: 50 }) }),
+        querySelector: () => ({ getBoundingClientRect: () => ({ height: 20 }) }) },
+      { innerHeight: 874 },
+    );
+    expect(api(24)).toBe(56);
+  });
+
   it("leaves room for the attribution rather than covering it", () => {
     /* Lifting the card by the host's inset alone put it straight over
        "Contains OS data (c) Crown copyright", which sits in the same band.

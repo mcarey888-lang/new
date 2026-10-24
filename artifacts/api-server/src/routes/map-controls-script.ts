@@ -301,6 +301,7 @@ function buildRouteBar() {
      screen they still overlapped and the distance, ascent and save messages
      disappeared behind Save route. Stacking cannot collide at any width. */
   routeBar.style.left = "12px";
+  routeBar.id = "routeActions";
   routeBar.style.padding = "7px";
 
   var row = document.createElement("div");
@@ -349,6 +350,9 @@ function placeRouteBar() {
     }
   }
   routeBar.style.bottom = bottom + "px";
+  if (typeof liftSummitCard === "function") {
+    liftSummitCard(typeof hostBottomInset === "number" ? hostBottomInset : 0);
+  }
 }
 
 function mirror(controlId, originalId) {

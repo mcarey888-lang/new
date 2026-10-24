@@ -679,6 +679,7 @@ function updateHud() {
   document.getElementById("hudNote").textContent = note;
   var retryPaths = document.getElementById("retryPaths");
   if (retryPaths) retryPaths.hidden = !snapping || !!pending || !straight;
+  if (typeof placeRouteBar === "function") placeRouteBar();
 }
 
 /** Tell the host what the route is now, so it can hold the authoritative copy. */

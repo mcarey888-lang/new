@@ -186,6 +186,7 @@ function addSummitLayers() {
 var summitCard = null;
 var summitCardLast = null;
 var summitCardFor = null;
+var summitCardPlanning = false;
 
 /**
  * Keep the card clear of the host's furniture, and of the attribution.
@@ -205,9 +206,28 @@ function attributionHeight() {
   return box && box.height ? Math.ceil(box.height) : 0;
 }
 
+function summitCardBottom(inset) {
+  var bottom = Math.max(0, inset) + attributionHeight() + 12;
+  if (typeof window === "undefined") return bottom;
+  ["hud", "routeActions"].forEach(function (id) {
+    var node = document.getElementById(id);
+    if (!node || node.hidden || node.style.display === "none" ||
+        typeof node.getBoundingClientRect !== "function") return;
+    var box = node.getBoundingClientRect();
+    if (box.height > 0) bottom = Math.max(bottom, window.innerHeight - box.top + 10);
+  });
+  return Math.ceil(bottom);
+}
+
 function liftSummitCard(inset) {
   if (!summitCard) return;
-  summitCard.style.bottom = (Math.max(0, inset) + attributionHeight() + 12) + "px";
+  var bottom = summitCardBottom(inset);
+  summitCard.style.bottom = bottom + "px";
+  if (typeof window !== "undefined") {
+    var top = typeof hostTopInset === "number" ? Math.max(64, hostTopInset + 12) : 64;
+    var available = Math.max(0, window.innerHeight - bottom - top - 12) + "px";
+    summitCard.style.maxHeight = summitCardPlanning ? "min(35vh, " + available + ")" : available;
+  }
 }
 
 function liftSummitNotice(inset) {
@@ -230,11 +250,12 @@ function ensureSummitCard() {
      call that starts this layer. */
   summitCard.style.cssText = [
     "position:absolute", "left:12px", "right:12px", "bottom:12px", "z-index:5",
-    "max-width:420px", "margin:0 auto", "display:none",
+    "max-width:360px", "margin:0 auto", "display:none",
+    "box-sizing:border-box", "overflow-y:auto", "overscroll-behavior:contain",
     "background:rgba(11,20,24,.96)", "color:#F4F7F6",
     "border:1px solid rgba(242,193,78,.35)", "border-radius:10px",
-    "padding:14px 16px", "box-shadow:0 10px 30px rgba(0,0,0,.45)",
-    "font:400 14px/1.45 system-ui,-apple-system,sans-serif",
+    "padding:10px 12px", "box-shadow:0 10px 30px rgba(0,0,0,.45)",
+    "font:400 13px/1.35 system-ui,-apple-system,sans-serif",
   ].join(";");
   document.body.appendChild(summitCard);
   if (typeof hostBottomInset === "number") liftSummitCard(hostBottomInset);
@@ -272,6 +293,7 @@ function escapeSummitText(value) {
 }
 
 function showSummitCard(p, coordinates) {
+  summitCardPlanning = false;
   var card = ensureSummitCard();
   summitCardFor = { id: p.id, lat: coordinates[1], lng: coordinates[0], name: p.name };
   /* Kept so a tick arriving from the app can redraw this card in place. */
@@ -293,16 +315,16 @@ function showSummitCard(p, coordinates) {
     (p.alternativeName
       ? '<div style="color:#9FB0AC;font-size:13px;margin-top:2px">' + escapeSummitText(p.alternativeName) + '</div>'
       : '') +
-    '<div style="color:#C8D4D1;margin-top:7px">' + escapeSummitText(summitCardText(p)) + '</div>' +
+    '<div style="color:#C8D4D1;margin-top:4px">' + escapeSummitText(summitCardText(p)) + '</div>' +
     (ascent ? '<div style="color:#C8D4D1;margin-top:3px">' + escapeSummitText(ascent) + '</div>' : '') +
-    '<div id="summitParking" style="font-size:12px;margin-top:7px;display:none"></div>' +
-    '<div style="color:#8E9D99;font-size:12px;margin-top:8px">Tap for routes and detail</div>' +
+    '<div id="summitParking" style="font-size:12px;margin-top:4px;display:none"></div>' +
+    '<div style="color:#8E9D99;font-size:12px;margin-top:4px">Tap for routes and detail</div>' +
     '</div>' +
     /* Secondary to planning a route: this is a thing you do occasionally,
        and the button you came for is the one below it. Says what it will do
        when it is not done, and what is true when it is. */
     '<button type="button" id="summitTick" aria-pressed="' + (done ? 'true' : 'false') + '" ' +
-      'style="margin-top:10px;width:100%;padding:9px;border-radius:7px;cursor:pointer;' +
+      'style="margin-top:6px;width:100%;min-height:44px;padding:8px;border-radius:7px;cursor:pointer;' +
       'font:600 14px system-ui,sans-serif;' +
       (done
         ? 'border:1px solid rgba(62,207,117,0.55);background:rgba(62,207,117,0.14);color:#3ECF75"'
@@ -310,7 +332,7 @@ function showSummitCard(p, coordinates) {
       (done ? '\u2713 Climbed' : 'Tick off as climbed') +
       '</button>' +
     '<button type="button" id="summitPlanRoute" ' +
-      'style="margin-top:12px;width:100%;padding:10px;border:0;border-radius:7px;' +
+      'style="margin-top:6px;width:100%;min-height:44px;padding:8px;border:0;border-radius:7px;' +
       'background:#F2C14E;color:#0B1418;font:600 14px system-ui,sans-serif;cursor:pointer">' +
       /* A hill is where a walk ends, not where it starts: you park at the
          bottom and go up. So the summit is the destination, and the label
@@ -482,6 +504,7 @@ function refreshSummitTick(p) {
 
 function keepSummitCardForPlanning() {
   if (!summitCard) return;
+  summitCardPlanning = true;
   summitCard.style.maxHeight = "35vh";
   summitCard.style.overflowY = "auto";
   var plan = document.getElementById("summitPlanRoute");
