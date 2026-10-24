@@ -78,6 +78,7 @@ router.post("/route-gpx", async (req, res) => {
 
   const name = typeof body?.["name"] === "string" ? (body["name"] as string) : undefined;
   const gpx = buildGpx({
+    routingAttribution: "Any openrouteservice-derived geometry: © openrouteservice by HeiGIT | Data from OpenStreetMap. Licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/",
     points: withHeights,
     name,
     unsnappedSections: typeof body?.["unsnappedSections"] === "number"

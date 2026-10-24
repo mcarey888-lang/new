@@ -157,6 +157,7 @@ export function buildRouteMapHtml(
   /** True when this page is hosting a recording: the overlay starts switched
    *  on, so the walker never sees the planning chrome at all. */
   recording?: boolean,
+  hostedRouting = false,
 ): string {
   const layers = baseLayers(osKey, tilePrefix, hasMapbox);
   const initial = layers[0];
@@ -212,6 +213,8 @@ export function buildRouteMapHtml(
   padding: 7px 11px; border-radius: 6px; max-width: 62vw; }
   #hud[hidden]{display:none}
   #hudNote{display:block;margin-top:3px;font-weight:500;color:#E9B949}
+  #retryPaths{margin-top:6px;padding:6px 10px;border:1px solid #E9B949;border-radius:6px;background:#152329;color:#E9B949;cursor:pointer}
+  #retryPaths[hidden]{display:none}
   ${chrome === "none" ? ".panel,#hud{display:none}" : ""}
 </style>
 </head>
@@ -240,12 +243,13 @@ export function buildRouteMapHtml(
   <button id="gpx" disabled${gpxUrl ? "" : " hidden"}>Download GPX</button>
   <button id="save" disabled>Save route</button>
 </div>
-<div id="hud" hidden><span id="hudMain"></span><span id="hudNote"></span></div>
+<div id="hud" hidden><span id="hudMain"></span><span id="hudNote"></span><button id="retryPaths" hidden>Retry paths</button></div>
 <div id="summitNote" style="display:none"></div>
 <script>
 var LAYERS = ${JSON.stringify(layers)};
 var TERRAIN = ${JSON.stringify(TERRAIN_TILES)};
 var SNAP_URL = ${JSON.stringify(snapUrl ?? null)};
+var HOSTED_ROUTING = ${JSON.stringify(hostedRouting)};
 var PROFILE_URL = ${JSON.stringify(profileUrl ?? null)};
 var GPX_URL = ${JSON.stringify(gpxUrl ?? null)};
 /* The smallest tolerance a tap is ever given, in metres. Covers the offset
@@ -308,7 +312,9 @@ var map = new maplibregl.Map({
   style: { version: 8, sources: sources, layers: styleLayers },
   // An overview while permission/a GPS fix is pending, not a pretend location.
   center: [-3, 54.5], zoom: 5, pitch: 0, bearing: 0,
-  attributionControl: { compact: true }
+  attributionControl: { compact: true, customAttribution: ${JSON.stringify(hostedRouting
+    ? '© <a href="https://openrouteservice.org/">openrouteservice</a> by HeiGIT | Data from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>'
+    : "")} }
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-left");
 
@@ -641,15 +647,15 @@ function updateHud() {
   if (pending) note = "Finding paths…";
   else if (!snapping) note = "Snapping off — straight lines";
   else if (straight) {
-    note = straight + (straight === 1 ? " section" : " sections") + " not on a path";
+    note = straight + (straight === 1 ? " section" : " sections") + " unconfirmed";
     /* One reason, the most actionable first. Listing all of them on a phone
        produces a sentence nobody reads; naming the one to act on is the point.
        A service that would not answer comes first because it is the only one
        that fixes itself by waiting, and the only one that is our fault. */
     /* Throttling first: it is the one that clears by itself, and the one
        where carrying on tapping makes it worse rather than better. */
-    if (throttled) note += " · too many requests — wait a moment";
-    else if (unavailable) note += " · map service busy, try again";
+    if (throttled) note += " · routing limit reached — try again later";
+    else if (unavailable) note += " · couldn’t check paths — try again";
     else if (noPaths) note += " · no paths mapped here";
     else if (gaps) note += " · no path across the gap";
     else if (offPath) note += " · tap further onto the path";
@@ -671,6 +677,8 @@ function updateHud() {
       : "Climb not available";
   }
   document.getElementById("hudNote").textContent = note;
+  var retryPaths = document.getElementById("retryPaths");
+  if (retryPaths) retryPaths.hidden = !snapping || !!pending || !straight;
 }
 
 /** Tell the host what the route is now, so it can hold the authoritative copy. */
@@ -759,6 +767,36 @@ function snapRadiusM() {
 }
 
 var legToken = 0;
+var pathQueue = [];
+var pathRequestsActive = 0;
+/* Keep rapid drawing from producing a burst of upstream requests. Requests
+   superseded by Undo/Clear/dragging are discarded before using any quota. */
+function requestPath(body, isCurrent) {
+  return new Promise(function (resolve) {
+    pathQueue.push({ body: body, isCurrent: isCurrent, resolve: resolve });
+    drainPathQueue();
+  });
+}
+function drainPathQueue() {
+  while (pathRequestsActive < 2 && pathQueue.length) {
+    const job = pathQueue.shift();
+    if (!job.isCurrent()) { job.resolve({ outcome: "cancelled" }); continue; }
+    pathRequestsActive++;
+    fetch(SNAP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(job.body)
+    }).then(function (r) {
+      if (!r.ok) return { outcome: r.status === 429 ? "rate_limited" : "http_" + r.status };
+      return r.json();
+    }).catch(function () {
+      return { outcome: "unavailable" };
+    }).then(job.resolve).finally(function () {
+      pathRequestsActive--;
+      drainPathQueue();
+    });
+  }
+}
 function snapLeg(i) {
   if (!snapping || !SNAP_URL) return;
   var from = anchors[i], to = anchors[i + 1];
@@ -772,17 +810,8 @@ function snapLeg(i) {
   legs[i] = { kind: "pending", token: token, points: null };
   redraw();
 
-  fetch(SNAP_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ from: from, to: to, radiusM: snapRadiusM() })
-  }).then(function (r) {
-    /* A rejected request still has a body, and it parses as JSON, so without
-       this check a rate-limit reply becomes an object with no outcome field and
-       the leg fails with nothing to say. That is the one readout state that
-       cannot tell a throttled server from unmapped ground. */
-    if (!r.ok) return { outcome: r.status === 429 ? "rate_limited" : "http_" + r.status };
-    return r.json();
+  requestPath({ from: from, to: to, radiusM: snapRadiusM() }, function () {
+    return snapping && legs[i] && legs[i].token === token;
   }).then(function (data) {
     if (!legs[i] || legs[i].token !== token) return;
     if (!data || typeof data.outcome !== "string") {
@@ -800,6 +829,8 @@ function snapLeg(i) {
       legs[i] = { kind: "gap", token: token, points: null, gapM: data.gapM };
     } else if (data.outcome === "off_path") {
       legs[i] = { kind: "offPath", token: token, points: null, offPath: data.which };
+    } else if (data.outcome === "unavailable" && data.status === 429) {
+      legs[i] = { kind: "straight", token: token, points: null, reason: "rate_limited" };
     } else {
       /* no_paths, unavailable, or anything unrecognised. The reason is kept
          rather than flattened, because "Overpass refused" and "nothing is
@@ -860,7 +891,7 @@ function requestProfile() {
 
 function addPoint(lngLat) {
   anchors.push({ lat: lngLat.lat, lng: lngLat.lng });
-  if (anchors.length === 1 && snapping && SNAP_URL) {
+  if (anchors.length === 1 && snapping && SNAP_URL && !HOSTED_ROUTING) {
     /* Start loading the first point's network while the person chooses the
        next point. This read never moves anchors or marks a leg as routed;
        subsequent leg requests reuse the server's cached/in-flight region. */
@@ -1059,6 +1090,12 @@ document.getElementById("draw").onclick = function () { setDrawing(!drawing); };
 document.getElementById("undo").onclick = undoPoint;
 document.getElementById("clear").onclick = clearRoute;
 document.getElementById("snap").onclick = function () { setSnapping(!snapping); };
+document.getElementById("retryPaths").onclick = function () {
+  if (!snapping) return;
+  for (var i = 0; i < legs.length; i++) {
+    if (legs[i] && legs[i].kind !== "pending" && !legIsSurveyed(legs[i])) snapLeg(i);
+  }
+};
 
 /**
  * Hand the route to the app to be saved.
@@ -1184,7 +1221,7 @@ router.get("/route-map", (req, res) => {
      both were fixed. The ETag above still makes a revalidation cheap: an
      unchanged page comes back 304 with no body. */
   res.setHeader("Cache-Control", "no-cache");
-  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl, summitsUrl, parkingUrl, recording));
+  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl, summitsUrl, parkingUrl, recording, Boolean(process.env.OPENROUTESERVICE_API_KEY)));
 });
 
 export default router;

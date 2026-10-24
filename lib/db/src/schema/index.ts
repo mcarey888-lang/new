@@ -21,3 +21,4 @@ export * from "./community";
 export * from "./user-demo-profiles";
 export * from "./planned-routes";
 export * from "./recorded-hike-backups";
+export * from "./path-routing";

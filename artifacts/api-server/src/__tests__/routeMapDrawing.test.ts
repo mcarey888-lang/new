@@ -207,7 +207,7 @@ describe("a drawn line is never dressed as a surveyed one", () => {
        sections" says how much of a route is a guess and "partly snapped"
        does not. */
     const html = page();
-    expect(html).toContain('" not on a path"');
+    expect(html).toContain('" unconfirmed"');
     expect(html).toContain("no path across the gap");
     expect(html).toContain("Snapping off — straight lines");
   });
@@ -234,7 +234,7 @@ describe("a drawn line is never dressed as a surveyed one", () => {
     const snapLeg = vi.fn();
     const context = {
       anchors, legs: [], snapping: true, SNAP_URL: "/api/path-snap",
-      snapRadiusM: () => 45, fetch: fetcher, snapLeg, redraw: vi.fn(), emit: vi.fn(),
+      HOSTED_ROUTING: false, snapRadiusM: () => 45, fetch: fetcher, snapLeg, redraw: vi.fn(), emit: vi.fn(),
     };
     runInNewContext(`function addPoint${bodyOf(page(), "function addPoint")}
       addPoint({lat: 53.11, lng: -4.01});`, context);
@@ -367,6 +367,38 @@ describe("the route the host receives", () => {
 });
 
 describe("a reply that is not a snap result", () => {
+  it("provides a retry without discarding the route", () => {
+    expect(page()).toContain('id="retryPaths" hidden>Retry paths');
+    expect(page()).toContain('legs[i].kind !== "pending" && !legIsSurveyed(legs[i])');
+  });
+
+  it("queues rapid taps and skips superseded legs before they use quota", async () => {
+    const finish: Array<(reply: unknown) => void> = [];
+    const fetcher = vi.fn(() => new Promise(resolve => finish.push(resolve)));
+    const context: any = { SNAP_URL: "/api/path-snap", fetch: fetcher };
+    runInNewContext(`
+      var pathQueue = [], pathRequestsActive = 0;
+      function requestPath${bodyOf(page(), "function requestPath")}
+      function drainPathQueue${bodyOf(page(), "function drainPathQueue")}
+    `, context);
+    const first = context.requestPath({}, () => true);
+    const second = context.requestPath({}, () => true);
+    const obsolete = context.requestPath({}, () => false);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    finish.forEach(resolve => resolve({ ok: true, json: async () => ({ outcome: "routed" }) }));
+    await Promise.all([first, second]);
+    expect(await obsolete).toMatchObject({ outcome: "cancelled" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("credits the hiking provider and result licence on hosted maps", () => {
+    const html = buildRouteMapHtml(undefined, "full", undefined, false,
+      "/api/path-snap", undefined, undefined, undefined, undefined, false, true);
+    expect(html).toContain("https://openrouteservice.org/");
+    expect(html).toContain("https://creativecommons.org/licenses/by-sa/4.0/");
+    expect(html).toContain("var HOSTED_ROUTING = true");
+  });
+
   /* The readout said "3 sections not on a path" and nothing else, on a route
      drawn directly over mapped rights of way. The cause was a reply that was
      not a snap result at all — it parsed as JSON, carried no `outcome`, and
@@ -380,7 +412,7 @@ describe("a reply that is not a snap result", () => {
   it("names throttling as itself", () => {
     const html = page();
     expect(html).toContain('"rate_limited"');
-    expect(html).toContain("too many requests — wait a moment");
+    expect(html).toContain("routing limit reached — try again later");
   });
 
   it("does not mistake a reply with no outcome for unmapped ground", () => {
@@ -395,8 +427,8 @@ describe("a reply that is not a snap result", () => {
 
   it("leads with throttling, because tapping on makes it worse", () => {
     const html = page();
-    const throttledAt = html.indexOf("too many requests — wait a moment");
-    const busyAt = html.indexOf("map service busy, try again");
+    const throttledAt = html.indexOf("routing limit reached — try again later");
+    const busyAt = html.indexOf("couldn’t check paths — try again");
     expect(throttledAt).toBeGreaterThan(-1);
     expect(busyAt).toBeGreaterThan(throttledAt);
   });

@@ -41,6 +41,7 @@ export interface GpxInput {
   lengthM?: number | null;
   /** Fixed by the caller in tests; defaults to now. */
   time?: Date;
+  routingAttribution?: string;
 }
 
 /** XML text escaping. A route named with an ampersand must not produce a file
@@ -81,11 +82,12 @@ export function buildGpx(input: GpxInput): string {
   const provenance: string[] = [
     "Drawn in SummitReady — a planned line, not a recorded track.",
   ];
+  if (input.routingAttribution) provenance.push(input.routingAttribution);
   if (input.unsnappedSections && input.unsnappedSections > 0) {
     const one = input.unsnappedSections === 1;
     provenance.push(
       `${input.unsnappedSections} section${one ? "" : "s"} ` +
-        `${one ? "does" : "do"} not follow a mapped path and ` +
+        `could not be confirmed as following a mapped path and ` +
         `${one ? "is a straight line" : "are straight lines"} between points.`,
     );
   } else {

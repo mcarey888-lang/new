@@ -9,9 +9,14 @@ import {
 } from "../services/routing/pathSnapping";
 import {
   fetchPathWays,
+  bboxAreaDeg2,
+  snapBBox,
+  MAX_BBOX_AREA_DEG2,
   type BBox,
   type Fetcher,
 } from "../services/routing/pathNetworkSource";
+import { createHikingRouter } from "../services/routing/openRouteService";
+import { logger } from "../lib/logger";
 
 /**
  * Snap a drawn leg onto the path network.
@@ -185,6 +190,27 @@ export async function snapLeg(
 }
 
 const router: IRouter = Router();
+let hostedRouter: Promise<ReturnType<typeof createHikingRouter>> | null = null;
+let hostedKey: string | undefined;
+
+/** Provider selection stays behind the existing endpoint. Missing credentials
+ * retain the old engine; a configured provider's failures never silently retry
+ * the slow public network or switch hiking to a road profile. */
+export async function snapForMap(from: LatLng | null, to: LatLng, radiusM?: number): Promise<SnapResponse> {
+  const area = bboxAreaDeg2(snapBBox(legBBox(from ? [from, to] : [to])));
+  if (area > MAX_BBOX_AREA_DEG2) return { outcome: "area_too_large" };
+  const key = process.env.OPENROUTESERVICE_API_KEY;
+  if (!key) return snapLeg(from, to, { radiusM });
+  if (!hostedRouter || hostedKey !== key) {
+    hostedKey = key;
+    hostedRouter = import("../services/routing/hostedRoutingStore").then(({ hostedRoutingStore }) =>
+      createHikingRouter({
+        key, store: hostedRoutingStore,
+        onStorageError: () => logger.warn("Hiking routing cache or quota storage unavailable"),
+      }));
+  }
+  return (await hostedRouter).snap(from, to, clampRadius(radiusM));
+}
 
 router.post("/path-snap", async (req, res) => {
   const body = req.body as Record<string, unknown> | undefined;
@@ -199,7 +225,7 @@ router.post("/path-snap", async (req, res) => {
   if (hasFrom && !from) { res.status(400).json({ outcome: "bad_request" }); return; }
 
   try {
-    const result = await snapLeg(from, to, { radiusM: body?.["radiusM"] as number | undefined });
+    const result = await snapForMap(from, to, body?.["radiusM"] as number | undefined);
     /* Logged because the page can only say that a leg is not on a path; it
        cannot say whether Overpass refused, whether the region has nothing
        mapped, or whether the tap simply missed. Without this the only way to

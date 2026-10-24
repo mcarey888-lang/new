@@ -109,7 +109,7 @@ describe("the file says where it came from", () => {
 
   it("counts the sections that do not follow a path", () => {
     const g = buildGpx({ points: PTS, unsnappedSections: 3, time: AT });
-    expect(g).toContain("3 sections do not follow a mapped path");
+    expect(g).toContain("3 sections could not be confirmed as following a mapped path");
   });
 
   it("says so plainly when every section does follow one", () => {
@@ -122,15 +122,20 @@ describe("the file says where it came from", () => {
        was meant to catch. Written against correct English now, not against
        whatever the code happened to emit. */
     const one = buildGpx({ points: PTS, unsnappedSections: 1, time: AT });
-    expect(one).toContain("1 section does not follow a mapped path and is a straight line");
+    expect(one).toContain("1 section could not be confirmed as following a mapped path and is a straight line");
     expect(one).not.toContain("1 sections");
     const many = buildGpx({ points: PTS, unsnappedSections: 3, time: AT });
-    expect(many).toContain("3 sections do not follow a mapped path and are straight lines");
+    expect(many).toContain("3 sections could not be confirmed as following a mapped path and are straight lines");
   });
 
   it("does not let the heights pass as surveyed", () => {
     expect(buildGpx({ points: PTS, time: AT }))
       .toContain("terrain model of about 30 m resolution, not a survey");
+  });
+
+  it("retains routing attribution and licence in exported metadata", () => {
+    const result = buildGpx({ points: PTS, routingAttribution: "openrouteservice by HeiGIT | CC BY-SA 4.0" });
+    expect(result).toContain("openrouteservice by HeiGIT | CC BY-SA 4.0");
   });
 
   it("says when there are no heights at all", () => {
