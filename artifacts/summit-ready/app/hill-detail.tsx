@@ -618,7 +618,7 @@ export default function HillDetailScreen() {
               ) : null}
             </View>
           ) : null}
-          <View style={{ marginHorizontal: -16 }}><MountainWeatherCard latitude={hillLat} longitude={hillLng} /></View>
+          <View style={{ marginHorizontal: -16 }}><MountainWeatherCard latitude={hillLat} longitude={hillLng} subjectName={name} /></View>
           {/* Quick map actions */}
           <Animated.View entering={FadeInDown.delay(60).duration(400)}>
             <View style={styles.mapActionsRow}>

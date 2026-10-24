@@ -3,21 +3,32 @@ import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { ChevronRight, CloudSun, X } from "lucide-react-native";
-import { getGetMountainWeatherQueryKey, useGetMountainWeather } from "@workspace/api-client-react";
+import { getGetMountainWeatherQueryKey, getGetMountainDiscoveryQueryKey, useGetMountainWeather, useGetMountainDiscovery } from "@workspace/api-client-react";
 import { BASECAMP, EXPLORE, RADIUS, SP, TYPE } from "@/constants/tokens";
 import {
-  ageMinutes, currentHourIndex, formatDayLabel, formatHourLabel, formatUpdated, localDateKey, validWeatherCoords,
+  ageMinutes, catalogueWeatherCoords, currentHourIndex, formatDayLabel, formatHourLabel, formatUpdated, localDateKey, validWeatherCoords,
 } from "@/utils/mountainWeather";
 
 const STALE_MIN = 60;
 const open = (url: string) => { void Linking.openURL(url).catch(() => {}); };
 
-export function MountainWeatherCard({ latitude, longitude, testID }: {
+export function MountainWeatherCard({ latitude, longitude, subjectName, country, catalogueId, testID }: {
   latitude: number | null | undefined; longitude: number | null | undefined; testID?: string;
+  subjectName?: string; country?: string; catalogueId?: string;
 }) {
   const insets = useSafeAreaInsets();
   const net = useNetInfo();
-  const coords = validWeatherCoords(latitude, longitude);
+  const directCoords = validWeatherCoords(latitude, longitude);
+  const subject = subjectName?.trim() ?? "";
+  const needsCatalogue = !directCoords && subject.length >= 2;
+  const discoveryParams = { q: subject, limit: 50 };
+  const discovery = useGetMountainDiscovery(discoveryParams, {
+    query: {
+      queryKey: getGetMountainDiscoveryQueryKey(discoveryParams),
+      enabled: needsCatalogue, retry: false, staleTime: 24 * 60 * 60 * 1000,
+    },
+  });
+  const coords = directCoords ?? catalogueWeatherCoords(discovery.data, subject, country, catalogueId);
   const params = { lat: coords?.lat ?? 0, lng: coords?.lng ?? 0 };
   const q = useGetMountainWeather(params, {
     query: {
@@ -27,7 +38,6 @@ export function MountainWeatherCard({ latitude, longitude, testID }: {
   });
   const [sheet, setSheet] = useState(false);
   const [dayIdx, setDayIdx] = useState(0);
-  if (!coords) return null;
 
   const w = q.data;
   const offline = net.isConnected === false;
@@ -47,6 +57,17 @@ export function MountainWeatherCard({ latitude, longitude, testID }: {
   if (stale) notices.push(`This forecast is ${age! >= 120 ? `${Math.round(age! / 60)} hours` : `${age} minutes`} old.`);
 
   const body = (() => {
+    if (!coords) {
+      if (needsCatalogue && discovery.isPending && discovery.fetchStatus === "fetching") {
+        return <Text style={st.body}>Finding the forecast location…</Text>;
+      }
+      return <View style={{ gap: 8 }}>
+        <Text style={st.body}>Weather is unavailable because this mountain's forecast location could not be confirmed.</Text>
+        {needsCatalogue ? <Pressable accessibilityRole="button" onPress={() => void discovery.refetch()} style={st.btn}>
+          <Text style={st.btnText}>Try location again</Text>
+        </Pressable> : null}
+      </View>;
+    }
     if (q.isPending && q.fetchStatus === "fetching") {
       return <View testID="weather-loading" style={{ gap: 8 }}>
         <View style={[st.skel, { width: "55%", height: 28 }]} />

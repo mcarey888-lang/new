@@ -695,7 +695,13 @@ export default function MountainDetailScreen() {
           />
         ) : null}
 
-        <MountainWeatherCard latitude={mountain.summitCoordinates?.latitude} longitude={mountain.summitCoordinates?.longitude} />
+        <MountainWeatherCard
+          latitude={mountain.summitCoordinates?.latitude}
+          longitude={mountain.summitCoordinates?.longitude}
+          subjectName={lookup?.mountainName ?? name}
+          country={lookup?.country ?? country}
+          catalogueId={catalogueId}
+        />
         <SafetySection hazards={hazards} />
         <AboutSection text={summitDescription} state={descriptionState} />
         <KeyFacts facts={mountain.practical} />

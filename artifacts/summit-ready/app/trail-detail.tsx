@@ -465,7 +465,7 @@ export default function TrailDetailScreen() {
           {/* Weather */}
           <Animated.View entering={FadeInDown.delay(140).duration(400)} style={s.section}>
             <Text style={s.sectionTitle}>Weather & conditions</Text>
-            <View style={{ marginHorizontal: -16 }}><MountainWeatherCard latitude={trail.lat} longitude={trail.lng} /></View>
+            <View style={{ marginHorizontal: -16 }}><MountainWeatherCard latitude={trail.lat} longitude={trail.lng} subjectName={trail.name} /></View>
             <View style={s.infoCard}>
               <Wind size={18} color={T.blue} />
               <View style={{ flex: 1, gap: 3 }}>

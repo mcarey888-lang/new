@@ -1,9 +1,39 @@
 import { describe, expect, it } from "vitest";
 import {
-  ageMinutes, currentHourIndex, formatDayLabel, formatHourLabel, localDateKey, parseCoord, validWeatherCoords,
+  ageMinutes, catalogueWeatherCoords, currentHourIndex, formatDayLabel, formatHourLabel, localDateKey, parseCoord, validWeatherCoords,
 } from "./mountainWeather";
+import type { MountainDiscoveryPage } from "@workspace/api-client-react";
+
+const catalogue: MountainDiscoveryPage = {
+  items: [{
+    id: "ben-nevis", name: "Ben Nevis [Beinn Nibheis]", country: "Scotland", region: "Highlands",
+    area: null, elevationM: 1344.53, latitude: 56.796891, longitude: -5.003675,
+    source: "catalogue", verificationStatus: "imported",
+  }],
+  hasMore: false, catalogueStatus: "available",
+};
 
 describe("mountain weather helpers", () => {
+  it("can use an exact imported catalogue mountain for weather without canonical navigation trust", () => {
+    expect(catalogueWeatherCoords(catalogue, "Ben Nevis", "Scotland")).toEqual({
+      lat: 56.796891, lng: -5.003675,
+    });
+    expect(catalogueWeatherCoords(catalogue, "Beinn Nibheis")).not.toBeNull();
+    expect(catalogueWeatherCoords(catalogue, "Ben Nevis [Beinn Nibheis]")).not.toBeNull();
+    expect(catalogueWeatherCoords(catalogue, "Ben Nevis", "Scotland, United Kingdom")).not.toBeNull();
+    expect(catalogueWeatherCoords(catalogue, "Ben Nevis", "United Kingdom")).not.toBeNull();
+    expect(catalogueWeatherCoords(catalogue, "Ben Nevis North Ridge")).toBeNull();
+    expect(catalogueWeatherCoords(catalogue, "Ben Nevis", "Wales")).toBeNull();
+    expect(catalogueWeatherCoords(catalogue, "Ben Nevis", "Wales, United Kingdom")).toBeNull();
+  });
+  it("refuses ambiguous, incomplete, invalid or AI-only weather identities", () => {
+    expect(catalogueWeatherCoords({ ...catalogue, items: [...catalogue.items, { ...catalogue.items[0], id: "other" }] }, "Ben Nevis")).toBeNull();
+    expect(catalogueWeatherCoords({ ...catalogue, hasMore: true }, "Ben Nevis")).toBeNull();
+    expect(catalogueWeatherCoords({ ...catalogue, items: [{ ...catalogue.items[0], source: "ai", verificationStatus: "ai_unverified" }] }, "Ben Nevis")).toBeNull();
+    expect(catalogueWeatherCoords({ ...catalogue, items: [{ ...catalogue.items[0], latitude: NaN }] }, "Ben Nevis")).toBeNull();
+    expect(catalogueWeatherCoords(catalogue, "Ben Nevis", undefined, "wrong-id")).toBeNull();
+    expect(catalogueWeatherCoords({ ...catalogue, hasMore: true }, "Ben Nevis", undefined, "ben-nevis")).not.toBeNull();
+  });
   it("rejects invalid and 0,0 coordinates", () => {
     expect(validWeatherCoords(0, 0)).toBeNull();
     expect(validWeatherCoords(91, 0)).toBeNull();

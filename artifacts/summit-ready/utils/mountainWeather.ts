@@ -1,3 +1,38 @@
+import type { MountainDiscoveryPage } from "@workspace/api-client-react";
+
+const weatherName = (name: string) => name.normalize("NFKD").replace(/\p{Diacritic}/gu, "")
+  .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+function weatherCountryMatches(actual: string, requested: string): boolean {
+  const expected = requested.split(",").map(weatherName);
+  const value = weatherName(actual);
+  if (expected.includes(value)) return true;
+  if (expected.some(c => ["scotland", "england", "wales", "northern ireland"].includes(c))) return false;
+  return expected.some(c => ["united kingdom", "uk", "great britain"].includes(c)) &&
+    ["scotland", "england", "wales", ...(expected.includes("great britain") ? [] : ["northern ireland"])].includes(value);
+}
+
+/** Catalogue points can locate regional weather, but must never authorize navigation. */
+export function catalogueWeatherCoords(
+  page: MountainDiscoveryPage | undefined,
+  subject: string,
+  country?: string,
+  catalogueId?: string,
+): { lat: number; lng: number } | null {
+  if (!page || (!catalogueId && page.hasMore)) return null;
+  const matches = page.items.filter(item => {
+    if (item.source !== "catalogue" || item.verificationStatus === "ai_unverified") return false;
+    if (!validWeatherCoords(item.latitude, item.longitude)) return false;
+    if (country && !weatherCountryMatches(item.country, country)) return false;
+    if (catalogueId) return item.id === catalogueId;
+    // Bracketed catalogue names explicitly carry the mountain's alternative name.
+    const names = [item.name, item.name.replace(/\[[^\]]*\]/g, "").trim(),
+      ...Array.from(item.name.matchAll(/\[([^\]]+)\]/g), m => m[1])];
+    return names.some(name => weatherName(name) === weatherName(subject));
+  });
+  return matches.length === 1 ? validWeatherCoords(matches[0].latitude, matches[0].longitude) : null;
+}
+
 export function validWeatherCoords(lat: unknown, lng: unknown): { lat: number; lng: number } | null {
   if (typeof lat !== "number" || typeof lng !== "number") return null;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
