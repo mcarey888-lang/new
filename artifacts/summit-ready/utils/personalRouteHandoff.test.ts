@@ -87,13 +87,16 @@ describe("tracking integration invariants", () => {
     expect(tracker).toContain('params.restore === "1" || params.plannedRouteId');
     expect(tracker).toContain('params.referenceRouteName || params.plannedRouteId || params.restore === "1"');
   });
-  it("protects an existing recording and exposes Follow route in both entry points", () => {
+  it("opens saved plans on the map without touching an existing recording", () => {
     const button = read("components/track/FollowRouteButton.tsx");
-    expect(button).toContain("readActiveHike<HikeCheckpoint>(owner)");
-    expect(button).toContain("Resume current hike");
-    expect(button).toContain("currentOwner.current !== owner");
+    expect(button).toContain("onFollow(route)");
+    expect(button).toContain('pathname: "/route-planner"');
+    expect(button).not.toContain('pathname: "/hike-tracking"');
+    expect(button).not.toContain("savePersonalRouteHandoff");
+    expect(button).not.toContain("readActiveHike");
     expect(read("components/track/SavedRoutesSection.tsx")).toContain("<FollowRouteButton route={route}");
     expect(read("app/route-planner.tsx")).toContain("<FollowRouteButton route={selectedSavedRoute.route}");
+    expect(read("app/route-planner.tsx")).toContain("onFollow={open}");
     expect(read("app/route-planner.tsx")).toContain('if (msg.type === "routeChanged") setSelectedSavedRoute(null)');
   });
 });

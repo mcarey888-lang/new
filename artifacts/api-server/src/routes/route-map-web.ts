@@ -989,6 +989,50 @@ function showCommunityPins(routes) {
   });
   if (communityPins.length) map.fitBounds(bounds, {padding:60,maxZoom:12,duration:0});
 }
+/* Reopen the stored line without recomputing it. Leg boundaries follow the
+   closest saved anchor in route order; no stored vertex is discarded. */
+function savedRouteLegs(savedAnchors, geometry, savedLegs) {
+  var restored = [], start = 0;
+  for (var i = 0; i < savedAnchors.length - 1; i++) {
+    var end = geometry.length - 1;
+    if (i < savedAnchors.length - 2 && geometry.length) {
+      var nearest = Infinity;
+      end = start;
+      for (var j = start; j < geometry.length; j++) {
+        var distance = metres(savedAnchors[i + 1], geometry[j]);
+        if (distance < nearest) { nearest = distance; end = j; }
+      }
+    }
+    var saved = savedLegs[i] || {};
+    var kind = saved.kind === "routed" ? "routed"
+      : saved.kind === "gap" || saved.kind === "offPath" ? saved.kind : "straight";
+    restored.push({
+      kind: geometry.length > 1 ? kind : "straight",
+      points: geometry.length > 1 ? geometry.slice(start, end + 1) : null,
+      lengthM: typeof saved.lengthM === "number" ? saved.lengthM : null
+    });
+    start = end;
+  }
+  return restored;
+}
+
+function fitSavedRoute(points) {
+  if (!points.length) return;
+  var height = map.getContainer().clientHeight;
+  var bottom = typeof hostBottomInset === "number" ? hostBottomInset : 0;
+  ["hud", "routeActions"].forEach(function (id) {
+    var node = document.getElementById(id);
+    if (!node || node.hidden || node.style.display === "none") return;
+    var box = node.getBoundingClientRect();
+    if (box.height) bottom = Math.max(bottom, height - box.top);
+  });
+  map.fitBounds(recBounds(points.map(function (p) { return [p.lng, p.lat]; })), {
+    padding: { top: 64, right: 32, left: 32,
+      bottom: Math.min(Math.max(32, height - 96), bottom + 24) },
+    maxZoom: 16, duration: 450
+  });
+}
+
 function handleMsg(ev) {
   var msg;
   try { msg = JSON.parse(ev.data); } catch (err) { return; }
@@ -1053,23 +1097,18 @@ function handleMsg(ev) {
      from the line alone would lose both. */
   if (msg.type === "loadRoute" && msg.route) {
     var r = msg.route;
+    if (typeof clearSummitDestination === "function") clearSummitDestination();
+    if (typeof hideSummitCard === "function") hideSummitCard();
+    flying = false;
+    setDrawing(false);
+    profileToken++;
     anchors = Array.isArray(r.anchors) ? r.anchors.slice() : [];
-    legs = [];
     var savedLegs = Array.isArray(r.legs) ? r.legs : [];
     var geom = Array.isArray(r.geometry) ? r.geometry : [];
-    for (var li = 0; li < anchors.length - 1; li++) {
-      var k = savedLegs[li] && savedLegs[li].kind ? savedLegs[li].kind : "straight";
-      /* Only a leg saved as routed is redrawn as routed. Anything else — and
-         anything missing — is a straight line, which is the cautious reading. */
-      legs.push(k === "routed"
-        ? { kind: "routed", points: null }
-        : { kind: k === "gap" || k === "offPath" ? k : "straight", points: null });
-    }
-    /* The saved line is the truth about shape. Where it exists, the whole
-       route is drawn from it rather than from straight hops between anchors. */
-    if (geom.length > 1 && legs.length === 1) legs[0] = { kind: legs[0].kind, points: geom };
+    legs = savedRouteLegs(anchors, geom, savedLegs);
     redraw();
     emit();
+    fitSavedRoute(geom.length > 1 ? geom : anchors);
     if (typeof r.name === "string") post({ type: "routeLoaded", name: r.name });
   }
 

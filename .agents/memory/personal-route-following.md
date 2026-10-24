@@ -3,7 +3,11 @@ name: Personal saved-route following
 description: Product intent and safety boundaries for using custom route plans during live GPS recording.
 ---
 
-Saved personal routes must be usable as recording targets, not only reopenable in the planner. The user confirmed saved-route access works and explicitly requested loading a saved route to start tracking/following it.
+Saved personal routes remain usable as recording targets when explicitly starting GPS recording. However, **Follow route** itself loads and frames the saved route on the existing planner map; it must not launch Free Hike or replace the current map screen.
+
+**Why:** The user explicitly rejected Follow route opening a separate Free Hike window. They want the current map to navigate to the saved route when selected.
+
+**How to apply:** Reuse the current planner's route-loading message and camera. From a saved-route list outside the map, open the same planner experience. Starting or resuming a GPS recording remains a separate, explicit action; do not create or modify an active hike merely to view a plan.
 
 A saved route selected on Track must also appear as a map preview before Start,
 not merely as a named card. Frame its saved geometry in the visible area above

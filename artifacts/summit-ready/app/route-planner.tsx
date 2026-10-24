@@ -321,7 +321,7 @@ export default function RoutePlannerScreen() {
         {selectedSavedRoute?.owner === userId && selectedSavedRoute ? (
           <View style={styles.followRoutePanel}>
             <Text style={[styles.backLabel, { flexShrink: 1 }]} numberOfLines={1}>{selectedSavedRoute.route.name}</Text>
-            <FollowRouteButton route={selectedSavedRoute.route} />
+            <FollowRouteButton route={selectedSavedRoute.route} onFollow={open} />
           </View>
         ) : null}
       </View>
