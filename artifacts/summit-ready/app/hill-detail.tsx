@@ -1,7 +1,7 @@
 import { ArrowLeft, TrendingUp, MapPin, Map, Navigation, AlertCircle, Flag, Info, Compass, Star, Clock, Pencil, RotateCcw, CheckCircle, Play, PlusCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
@@ -28,6 +28,8 @@ import { BASECAMP, EXPLORE, TYPE } from "@/constants/tokens";
 import { SRHeroFrame, SRScreenHeader } from "@/components/ui";
 import { loadOverride, saveOverride, clearOverride, type StartPointOverride } from "@/utils/startPointOverrides";
 import { appendApprovedImageRevision } from "@/utils/mountainImage";
+import { expeditionStageArtwork } from "@/utils/expeditionStageArtwork";
+import { refreshedMountainArtworkUri, watchMountainArtwork } from "@/utils/mountainArtworkSlots";
 import {
   clearPersonalHillCover, personalHillCoverKey, readJourneyPhotos, readPersonalHillCover,
   savePersonalHillCover, type JourneyPhoto,
@@ -162,6 +164,35 @@ export default function HillDetailScreen() {
   const [canonicalRecord, setCanonicalRecord] = useState<CanonicalRouteRecord | null>(null);
 
   const [imageError, setImageError] = useState(false);
+  const tokenRef = useRef(getToken);
+  tokenRef.current = getToken;
+  const [stageArtwork, setStageArtwork] = useState<{
+    key: string; uri: string;
+  } | null>(null);
+  const stageArtworkKey = JSON.stringify([userId, name, lat, lng, isExpeditionMode]);
+  useEffect(() => {
+    if (!isExpeditionMode || !userId || !name) return;
+    const controller = new AbortController();
+    let stop: (() => void) | undefined;
+    void expeditionStageArtwork({
+      name, latitude: lat?.trim() ? Number(lat) : NaN,
+      longitude: lng?.trim() ? Number(lng) : NaN,
+    }, API_BASE, controller.signal).then(uri => {
+      if (!uri || controller.signal.aborted) return;
+      // Keep the stage's existing identity-bound image until shared artwork is
+      // ready. Status-first polling preserves approvals and server rate limits.
+      stop = watchMountainArtwork(uri, userId, () => tokenRef.current(),
+        (revision, mountainId) => {
+          if (controller.signal.aborted) return;
+          setImageError(false);
+          setStageArtwork({ key: stageArtworkKey,
+            uri: refreshedMountainArtworkUri(uri, revision, mountainId) });
+        });
+    }).catch(error => {
+      if (!controller.signal.aborted) console.warn("Stage mountain artwork unavailable", error);
+    });
+    return () => { controller.abort(); stop?.(); };
+  }, [stageArtworkKey, isExpeditionMode, userId, name, lat, lng]);
   const [coverUri, setCoverUri] = useState<string | null>(null);
   const [coverFailed, setCoverFailed] = useState(false);
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
@@ -487,7 +518,9 @@ export default function HillDetailScreen() {
         {/* Expedition routes keep their identity-bound artwork. Training hills
             use a clearly illustrative local asset or the owner's chosen journal photo. */}
         <SRHeroFrame
-          uri={isExpeditionMode ? heroImageUri : showPersonalCover ? coverUri : null}
+          uri={isExpeditionMode
+            ? !imageError && stageArtwork?.key === stageArtworkKey ? stageArtwork.uri : heroImageUri
+            : showPersonalCover ? coverUri : null}
           source={!isExpeditionMode && !showPersonalCover
             ? require("../assets/images/local-hill-illustration.png")
             : undefined}
@@ -506,6 +539,8 @@ export default function HillDetailScreen() {
             <Text style={styles.coverLabel}>
               {showPersonalCover ? "YOUR JOURNEY PHOTO" : "ILLUSTRATIVE IMAGE"}
             </Text>
+          ) : stageArtwork?.key === stageArtworkKey && !imageError ? (
+            <Text style={styles.coverLabel}>AI MOUNTAIN ILLUSTRATION</Text>
           ) : null}
 
           <View style={{ paddingHorizontal: BASECAMP.gutter, paddingBottom: 16 }}>
