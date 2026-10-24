@@ -95,3 +95,4 @@
 - [Production loopback QA](production-loopback-qa.md) — owner explicitly approves opt-in localhost access to the production API for local web QA.
 - [Canonical GitHub branch](canonical-github-branch.md) — use claude/route-map-server as the single source of truth after branch reconciliation.
 - [Publish verification](publish-source-and-routing.md) — Publish snapshots the workspace; distinguish completed promotion from old running versions and reject HTML manifest fallbacks.
+- [Routing cost scope](routing-cost-scope.md) — keep routing costs low until paying usage grows; a hosted paid hiking subscription is not yet approved.
