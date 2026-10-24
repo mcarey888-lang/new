@@ -38,6 +38,7 @@ import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import {
   SREmptyState, SREyebrow, SRHeroFrame, SRPanel, SRScreenHeader, SRSectionHeader, SRSegmented,
 } from "@/components/ui";
+import { MountainWeatherCard } from "@/components/weather/MountainWeatherCard";
 import { Footnote } from "@/components/mountain/parts";
 import { RouteCard } from "@/components/mountain/RouteCard";
 import { SelectedRoute } from "@/components/mountain/SelectedRoute";
@@ -694,6 +695,7 @@ export default function MountainDetailScreen() {
           />
         ) : null}
 
+        <MountainWeatherCard latitude={mountain.summitCoordinates?.latitude} longitude={mountain.summitCoordinates?.longitude} />
         <SafetySection hazards={hazards} />
         <AboutSection text={summitDescription} state={descriptionState} />
         <KeyFacts facts={mountain.practical} />

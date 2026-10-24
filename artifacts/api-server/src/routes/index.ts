@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import weatherRouter from "./weather";
 import mountainRouter from "./mountain";
 import mountainDiscoveryRouter from "./mountain-discovery";
 import mountainImageRouter from "./mountain-image";
@@ -49,6 +50,7 @@ const router: IRouter = Router();
 
 // ── Public routes (no auth required) ─────────────────────────────────────────
 router.use(healthRouter);
+router.use(weatherRouter);
 router.use(redditConversionsRouter);
 router.use(mountainRouter);
 router.use(mountainDiscoveryRouter);

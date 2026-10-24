@@ -42,6 +42,7 @@ import type {
   GetCommunityPosts200,
   GetCommunityPostsParams,
   GetMountainDiscoveryParams,
+  GetMountainWeatherParams,
   HealthStatus,
   ListRecordedHikeBackups200,
   ListRecordedHikeBackupsParams,
@@ -51,6 +52,7 @@ import type {
   MountainHeroPrompt,
   MountainParkingLookupInput,
   MountainParkingLookupResult,
+  MountainWeather,
   PrivateRecordedHikeBackupInput,
   ReportCommunityPost201,
   SearchVirtualExpedition200,
@@ -67,6 +69,96 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getGetMountainWeatherUrl = (params: GetMountainWeatherParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/weather/forecast?${stringifiedParams}`
+    : `/api/weather/forecast`;
+};
+
+export const getMountainWeather = async (
+  params: GetMountainWeatherParams,
+  options?: RequestInit,
+): Promise<MountainWeather> => {
+  return customFetch<MountainWeather>(getGetMountainWeatherUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMountainWeatherQueryKey = (
+  params?: GetMountainWeatherParams,
+) => {
+  return [`/api/weather/forecast`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetMountainWeatherQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMountainWeather>>,
+  TError = ErrorType<void>,
+>(
+  params: GetMountainWeatherParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMountainWeather>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMountainWeatherQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMountainWeather>>
+  > = ({ signal }) => getMountainWeather(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMountainWeather>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMountainWeatherQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMountainWeather>>
+>;
+export type GetMountainWeatherQueryError = ErrorType<void>;
+
+export function useGetMountainWeather<
+  TData = Awaited<ReturnType<typeof getMountainWeather>>,
+  TError = ErrorType<void>,
+>(
+  params: GetMountainWeatherParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMountainWeather>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMountainWeatherQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getGetPersonalProfileCoverUrl = () => {
   return `/api/activity-community/profile-cover`;
@@ -149,7 +241,7 @@ export const uploadPersonalProfileCover = async (
     ...options,
     method: "PUT",
     headers: { "Content-Type": "image/jpeg", ...options?.headers },
-    body: JSON.stringify(uploadPersonalProfileCoverBody),
+    body: uploadPersonalProfileCoverBody,
   });
 };
 
@@ -2865,7 +2957,7 @@ export const uploadCommunityPostPhoto = async (
       ...options,
       method: "PUT",
       headers: { "Content-Type": "image/jpeg", ...options?.headers },
-      body: JSON.stringify(uploadCommunityPostPhotoBody),
+      body: uploadCommunityPostPhotoBody,
     },
   );
 };

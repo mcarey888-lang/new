@@ -80,6 +80,7 @@ import { openMapDirections } from "@/utils/openMaps";
 import { hillMapTarget, hillMapNavigation } from "@/utils/hillMapTarget";
 import { chooseNextExpeditionStage, findExpeditionStage } from "@/utils/expeditionStageOrder";
 import { isRouteCompleted, routeCompletionKey } from "@/utils/stateReliability";
+import { MountainWeatherCard } from "@/components/weather/MountainWeatherCard";
 import { RouteIntelligencePresentation } from "@/components/RouteIntelligencePresentation";
 import { mapTrainingTarget, mapExploreRoute, mapExpeditionStage, selectCanonicalRoute, type RouteReadResult, type RouteIntelligence } from "@/utils/routeIntelligence";
 import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
@@ -617,6 +618,7 @@ export default function HillDetailScreen() {
               ) : null}
             </View>
           ) : null}
+          <View style={{ marginHorizontal: -16 }}><MountainWeatherCard latitude={hillLat} longitude={hillLng} /></View>
           {/* Quick map actions */}
           <Animated.View entering={FadeInDown.delay(60).duration(400)}>
             <View style={styles.mapActionsRow}>

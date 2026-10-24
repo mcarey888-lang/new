@@ -96,3 +96,4 @@
 - [Canonical GitHub branch](canonical-github-branch.md) — use claude/route-map-server as the single source of truth after branch reconciliation.
 - [Publish verification](publish-source-and-routing.md) — Publish snapshots the workspace; distinguish completed promotion from old running versions and reject HTML manifest fallbacks.
 - [Routing cost scope](routing-cost-scope.md) — keep routing costs low until paying usage grows; a hosted paid hiking subscription is not yet approved.
+- [Weather provider scope](weather-provider-scope.md) — WeatherAPI free three-day forecasts first; seven days needs later approval; location weather is not summit weather.

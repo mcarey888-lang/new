@@ -38,6 +38,7 @@ import { useApp } from "@/context/AppContext";
 import { CURATED_HILLS } from "@/constants/trailData";
 import type { Trail, TrailBenefit } from "@/constants/trailData";
 import { buildFreeHikeLaunchContext } from "@/utils/trackingLaunchContext";
+import { MountainWeatherCard } from "@/components/weather/MountainWeatherCard";
 import { LogHikeModal } from "@/components/LogHikeModal";
 import { openMapSearch } from "@/utils/openMaps";
 import { appendApprovedImageRevision } from "@/utils/mountainImage";
@@ -464,11 +465,12 @@ export default function TrailDetailScreen() {
           {/* Weather */}
           <Animated.View entering={FadeInDown.delay(140).duration(400)} style={s.section}>
             <Text style={s.sectionTitle}>Weather & conditions</Text>
+            <View style={{ marginHorizontal: -16 }}><MountainWeatherCard latitude={trail.lat} longitude={trail.lng} /></View>
             <View style={s.infoCard}>
               <Wind size={18} color={T.blue} />
               <View style={{ flex: 1, gap: 3 }}>
                 <Text style={s.infoTitle}>Check before you go</Text>
-                <Text style={s.infoBody}>Mountain weather can change rapidly. Always check a reliable forecast (Met Office, Mountain Weather) before setting out, and be prepared to turn back if conditions deteriorate.</Text>
+                <Text style={s.infoBody}>Mountain weather can change rapidly. Check a specialist forecast for your area and be prepared to turn back if conditions deteriorate.</Text>
               </View>
             </View>
           </Animated.View>

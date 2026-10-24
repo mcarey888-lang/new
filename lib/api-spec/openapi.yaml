@@ -15,6 +15,21 @@ tags:
   - name: community
     description: Authenticated SummitReady member sharing
 paths:
+  /weather/forecast:
+    get:
+      operationId: getMountainWeather
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number, minimum: -90, maximum: 90 } }
+        - { name: lng, in: query, required: true, schema: { type: number, minimum: -180, maximum: 180 } }
+      responses:
+        "200":
+          description: Location forecast, not a verified summit forecast
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MountainWeather" }
+        "400": { description: Invalid coordinates }
+        "429": { description: Request limit reached }
+        "503": { description: Forecast temporarily unavailable }
   /activity-community/profile-cover:
     get:
       operationId: getPersonalProfileCover
@@ -733,6 +748,42 @@ paths:
 
 components:
   schemas:
+    WeatherHour:
+      type: object
+      required: [time, temperatureC, feelsLikeC, rainChance, windMph, condition, conditionCode, isDay]
+      properties:
+        time: { type: number, description: Unix seconds }
+        temperatureC: { type: number }
+        feelsLikeC: { type: number }
+        rainChance: { type: number, minimum: 0, maximum: 100 }
+        windMph: { type: number }
+        gustMph: { type: ["number", "null"] }
+        condition: { type: string }
+        conditionCode: { type: integer }
+        isDay: { type: boolean }
+    WeatherDay:
+      type: object
+      required: [date, minC, maxC, rainChance, condition, conditionCode, hours]
+      properties:
+        date: { type: string }
+        minC: { type: number }
+        maxC: { type: number }
+        rainChance: { type: number }
+        condition: { type: string }
+        conditionCode: { type: integer }
+        hours: { type: array, items: { $ref: "#/components/schemas/WeatherHour" } }
+    MountainWeather:
+      type: object
+      required: [provider, fetchedAt, updatedAt, timezone, locationName, latitude, longitude, days]
+      properties:
+        provider: { type: string, enum: [WeatherAPI.com] }
+        fetchedAt: { type: string }
+        updatedAt: { type: string }
+        timezone: { type: string }
+        locationName: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        days: { type: array, items: { $ref: "#/components/schemas/WeatherDay" } }
     ActivityRouteActionInput:
       type: object
       required: [action]

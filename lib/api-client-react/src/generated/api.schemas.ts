@@ -5,6 +5,52 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface WeatherHour {
+  /** Unix seconds */
+  time: number;
+  temperatureC: number;
+  feelsLikeC: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  rainChance: number;
+  windMph: number;
+  /** @nullable */
+  gustMph?: number | null;
+  condition: string;
+  conditionCode: number;
+  isDay: boolean;
+}
+
+export interface WeatherDay {
+  date: string;
+  minC: number;
+  maxC: number;
+  rainChance: number;
+  condition: string;
+  conditionCode: number;
+  hours: WeatherHour[];
+}
+
+export type MountainWeatherProvider =
+  (typeof MountainWeatherProvider)[keyof typeof MountainWeatherProvider];
+
+export const MountainWeatherProvider = {
+  WeatherAPIcom: "WeatherAPI.com",
+} as const;
+
+export interface MountainWeather {
+  provider: MountainWeatherProvider;
+  fetchedAt: string;
+  updatedAt: string;
+  timezone: string;
+  locationName: string;
+  latitude: number;
+  longitude: number;
+  days: WeatherDay[];
+}
+
 export type ActivityRouteActionInputAction =
   (typeof ActivityRouteActionInputAction)[keyof typeof ActivityRouteActionInputAction];
 
@@ -572,6 +618,19 @@ export interface CanonicalHistoryResponse {
   reason: string | null;
   items: CanonicalHistoryItem[];
 }
+
+export type GetMountainWeatherParams = {
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  lat: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  lng: number;
+};
 
 /**
  * @nullable

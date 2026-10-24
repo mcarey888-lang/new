@@ -7,6 +7,62 @@
  */
 import * as zod from "zod";
 
+export const getMountainWeatherQueryLatMin = -90;
+export const getMountainWeatherQueryLatMax = 90;
+
+export const getMountainWeatherQueryLngMin = -180;
+export const getMountainWeatherQueryLngMax = 180;
+
+export const GetMountainWeatherQueryParams = zod.object({
+  lat: zod.coerce
+    .number()
+    .min(getMountainWeatherQueryLatMin)
+    .max(getMountainWeatherQueryLatMax),
+  lng: zod.coerce
+    .number()
+    .min(getMountainWeatherQueryLngMin)
+    .max(getMountainWeatherQueryLngMax),
+});
+
+export const getMountainWeatherResponseDaysItemHoursItemRainChanceMin = 0;
+export const getMountainWeatherResponseDaysItemHoursItemRainChanceMax = 100;
+
+export const GetMountainWeatherResponse = zod.object({
+  provider: zod.enum(["WeatherAPI.com"]),
+  fetchedAt: zod.string(),
+  updatedAt: zod.string(),
+  timezone: zod.string(),
+  locationName: zod.string(),
+  latitude: zod.number(),
+  longitude: zod.number(),
+  days: zod.array(
+    zod.object({
+      date: zod.string(),
+      minC: zod.number(),
+      maxC: zod.number(),
+      rainChance: zod.number(),
+      condition: zod.string(),
+      conditionCode: zod.number(),
+      hours: zod.array(
+        zod.object({
+          time: zod.number().describe("Unix seconds"),
+          temperatureC: zod.number(),
+          feelsLikeC: zod.number(),
+          rainChance: zod
+            .number()
+            .min(getMountainWeatherResponseDaysItemHoursItemRainChanceMin)
+            .max(getMountainWeatherResponseDaysItemHoursItemRainChanceMax),
+          windMph: zod.number(),
+          gustMph: zod.number().nullish(),
+          condition: zod.string(),
+          conditionCode: zod.number(),
+          isDay: zod.boolean(),
+        }),
+      ),
+    }),
+  ),
+});
+
 export const GetActivityAudiencePreferenceResponse = zod.object({
   audience: zod
     .union([
