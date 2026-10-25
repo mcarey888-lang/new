@@ -29,6 +29,7 @@ import { AddToChallengeSheet } from "@/components/AddToChallengeSheet";
 import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { logHillSessionCompleted } from "@/lib/analytics";
+import { manualStageDistance } from "@/utils/manualStageDistance";
 import {
   addUniqueCompletedRoute,
   creditExpeditionHike,
@@ -137,12 +138,14 @@ export default function LogHillScreen() {
       const now = new Date();
       const dateStr = now.toISOString().split("T")[0];
       const elevGain = logTarget.elevation * reps;
-      const dist = Math.round(logTarget.distance * reps * 2 * 10) / 10;
       const expeditionRoute = activeExpedition?.virtualHills.find(route =>
         expeditionRouteIdentityMatches(route, logTarget)
       );
       const expeditionId = params.expeditionId || (expeditionRoute ? activeExpedition?.id : undefined);
       const creditedRoute = expeditionRoute ?? logTarget;
+      const dist = expeditionId
+        ? manualStageDistance(creditedRoute, reps)
+        : Math.round(logTarget.distance * reps * 2 * 10) / 10;
       const sessionId = await addSession({
         date: now.toISOString(),
         type: "hill",
@@ -745,7 +748,9 @@ export default function LogHillScreen() {
                   <View style={styles.summaryDivider} />
                   <View style={styles.summaryItem}>
                     <MapPin size={14} color={T.green} />
-                    <Text style={styles.summaryVal}>{Math.round(logTarget.distance * reps * 2 * 10) / 10}km</Text>
+                    <Text style={styles.summaryVal}>{params.expeditionId || params.returnTo === "expedition-basecamp"
+                      ? manualStageDistance(logTarget, reps)
+                      : Math.round(logTarget.distance * reps * 2 * 10) / 10}km</Text>
                     <Text style={styles.summaryLbl}>distance</Text>
                   </View>
                 </View>

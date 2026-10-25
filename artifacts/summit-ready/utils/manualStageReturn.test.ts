@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import { manualStageDistance } from "./manualStageDistance";
 import {
   addUniqueCompletedRoute, creditExpeditionHike,
   expeditionRouteIdentityMatches, routeCompletionKey,
@@ -28,7 +29,7 @@ function harness(params: Record<string, string> = {
       id: "expedition", virtualHills: [route], completedRoutes: [],
       virtualHikeProgress: undefined,
     },
-    addSession, patchExpedition,
+    addSession, patchExpedition, manualStageDistance,
     addUniqueCompletedRoute, creditExpeditionHike, expeditionRouteIdentityMatches, routeCompletionKey,
     setLogging: vi.fn(), logHillSessionCompleted: vi.fn(),
     setLoggedHill: vi.fn(), closeLogModal: vi.fn(),
@@ -54,7 +55,7 @@ describe("manual expedition stage Basecamp handoff", () => {
       completedRoutes: ["stage-one"],
     })]);
     expect(h.ctx.addSession.mock.calls[0]?.[0]).toMatchObject({
-      expeditionId: "expedition", routeIdentityKey: "stage-one", completed: true,
+      expeditionId: "expedition", routeIdentityKey: "stage-one", completed: true, distance: 3,
     });
   });
 

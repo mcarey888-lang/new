@@ -25,6 +25,7 @@ import { ConfettiCelebration } from "@/components/ConfettiCelebration";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
+import { completedStageSessionDistance } from "@/utils/manualStageDistance";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -81,7 +82,7 @@ export default function ExpeditionCompleteScreen() {
     ...linkedSessions.map(item => ({
       key: item.activityId ?? `session:${item.id}`,
       elevationGain: item.elevationGain,
-      distance: item.distance,
+      distance: completedStageSessionDistance(item, expeditionSnapshot?.virtualHills ?? []),
     })),
   ].filter((item, index, all) => all.findIndex(candidate => candidate.key === item.key) === index);
   const totalElevationM = Math.round(
