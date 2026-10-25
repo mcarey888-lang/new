@@ -47,10 +47,19 @@ Future callers must supply their own pinned active policy, never user-selected
 values. Its result is development-scoped eligibility, not permission to disclose
 geometry in the current API.
 
-An ingestion/review service is still required to verify actual profile files,
-their geometry conversion and DEM lineage before asserting human review flags.
-Hashes and explicit flags are storage/attestation boundaries, not an automatic
-validator of unseen files or legal clearance for an uploaded rights assertion.
+A development-only admin ingestion/review service is now available; see
+`docs/ROUTE_REVIEW_ADMIN.md`. It checks uploaded file hashes, GeoJSON structure,
+profile/geometry/source linkage and exact sample positions. File bytes live in a
+private App Storage namespace, not PostgreSQL. It does not import canonical
+geometries or automatically approve any route. Unbound candidates can be saved,
+reviewed or rejected, but cannot be accepted/approved.
+
+Human review of actual DEM evidence, source reuse and route/access remains
+required. Hashes and explicit flags are storage/attestation boundaries, not
+independent replay of unseen terrain tiles or legal clearance for an uploaded
+rights assertion. Watkin's six exact tile bytes now have contributor evidence
+identifying EU-DEM, documented in `docs/WATKIN_TERRAIN_RIGHTS.md`; this does not
+clear any other candidate.
 
 ### Verification and future promotion
 

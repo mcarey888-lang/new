@@ -15,6 +15,105 @@ tags:
   - name: community
     description: Authenticated SummitReady member sharing
 paths:
+  /admin/route-reviews:
+    get:
+      operationId: listRouteReviews
+      tags: [RouteReviews]
+      responses:
+        "200":
+          description: Development candidates, never public routes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RouteReviewEnvelope" }
+  /admin/route-reviews/preview:
+    post:
+      operationId: previewRouteReview
+      tags: [RouteReviews]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RouteCandidateInput" }
+      responses:
+        "200":
+          description: Preview only, no writes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RouteReviewPreview" }
+  /admin/route-reviews/import:
+    post:
+      operationId: importRouteReview
+      tags: [RouteReviews]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RouteCandidateInput" }
+      responses:
+        "201":
+          description: Immutable quarantined candidate saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RouteReviewCreated" }
+  /admin/route-reviews/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getRouteReview
+      tags: [RouteReviews]
+      responses:
+        "200":
+          description: Exact revision and append-only review history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RouteReviewEnvelope" }
+  /admin/route-reviews/{id}/validate:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: validateRouteReview
+      tags: [RouteReviews]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RouteReviewValidationInput" }
+      responses:
+        "201":
+          description: Validation appended; accepted requires exact binding and human review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RouteReviewCreated" }
+  /admin/route-reviews/{id}/decision:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: decideRouteReview
+      tags: [RouteReviews]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RouteReviewDecisionInput" }
+      responses:
+        "201":
+          description: Development decision appended; stale head returns 409
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RouteReviewCreated" }
+  /admin/route-reviews/{id}/files/{name}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: name, in: path, required: true, schema: { type: string, enum: [geometry, profile, terrain-manifest] } }
+    get:
+      operationId: downloadRouteReviewFile
+      tags: [RouteReviews]
+      responses:
+        "200":
+          description: Admin-only integrity-checked original JSON evidence
+          content:
+            application/json:
+              schema: { type: string }
   /admin/expeditions:
     get:
       operationId: listAdminExpeditions
@@ -879,6 +978,75 @@ paths:
 
 components:
   schemas:
+    RouteCandidateInput:
+      type: object
+      additionalProperties: false
+      required: [candidateKey, revisionVersion, geometryFile, sourceManifest]
+      properties:
+        candidateKey: { type: string, minLength: 1, maxLength: 160 }
+        revisionVersion: { type: string, minLength: 1, maxLength: 100 }
+        geometryFile: { type: string, maxLength: 2000000 }
+        sourceManifest:
+          type: array
+          minItems: 1
+          maxItems: 2000
+          items: { type: object, additionalProperties: true }
+        canonicalGeometryId: { type: string, format: uuid }
+        profileFile: { type: string, maxLength: 2000000 }
+        terrainManifestFile: { type: string, maxLength: 500000 }
+    RouteReviewEnvelope:
+      type: object
+      description: Admin-only version metadata and review histories
+      additionalProperties: true
+    RouteReviewCreated:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+    RouteReviewPreview:
+      type: object
+      required: [valid, errors, warnings, blockers, pointCount, bindingCurrent, profileIncluded, elevationCoverageComplete, files]
+      properties:
+        valid: { type: boolean }
+        errors: { type: array, items: { type: string } }
+        warnings: { type: array, items: { type: string } }
+        blockers: { type: array, items: { type: string } }
+        pointCount: { type: integer }
+        bindingCurrent: { type: boolean }
+        profileIncluded: { type: boolean }
+        elevationCoverageComplete: { type: boolean }
+        files:
+          type: array
+          items:
+            type: object
+            required: [name, sha256, bytes]
+            properties:
+              name: { type: string }
+              sha256: { type: string }
+              bytes: { type: integer }
+    RouteReviewValidationInput:
+      type: object
+      additionalProperties: false
+      required: [outcome, sourceRightsReviewed, routeAccessReviewed, terrainRightsReviewed, profileReviewed, authority, reason]
+      properties:
+        outcome: { type: string, enum: [needs_review, rejected, accepted] }
+        sourceRightsReviewed: { type: boolean }
+        routeAccessReviewed: { type: boolean }
+        terrainRightsReviewed: { type: boolean }
+        profileReviewed: { type: boolean }
+        authority: { type: string, minLength: 1, maxLength: 160 }
+        reason: { type: string, minLength: 1, maxLength: 2000 }
+        validUntil: { type: string, format: date-time }
+    RouteReviewDecisionInput:
+      type: object
+      additionalProperties: false
+      required: [decision, validationId, expectedDecisionId, authority, reason]
+      properties:
+        decision: { type: string, enum: [approved, revoked] }
+        validationId: { type: string, format: uuid }
+        expectedDecisionId: { type: [string, "null"], format: uuid }
+        authority: { type: string, minLength: 1, maxLength: 160 }
+        reason: { type: string, minLength: 1, maxLength: 2000 }
     ExpeditionUpdateRequest:
       type: object
       required: [expedition, expectedUpdatedAt]

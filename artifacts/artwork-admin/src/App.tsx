@@ -5,6 +5,7 @@ import ArtworkManager from './pages/ArtworkManager';
 import MountainQueue from './pages/MountainQueue';
 import ActivityReview from './pages/ActivityReview';
 import Expeditions from './pages/Expeditions';
+import RouteReviews from './pages/RouteReviews';
 import { Toaster } from '@/components/ui/sonner';
 
 const UiAssetsPage = lazy(() => import('./pages/UiAssetsPage'));
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/mountains" component={MountainQueue} />
       <Route path="/activity-review" component={ActivityReview} />
       <Route path="/expeditions" component={Expeditions} />
+      {import.meta.env.DEV && <Route path="/route-reviews" component={RouteReviews} />}
       <Route path="/ui-assets" component={UiAssetsRoute} />
       {import.meta.env.DEV && <Route path="/assets" component={DevAssetGalleryRoute} />}
       <Route component={NotFound} />

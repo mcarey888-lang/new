@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import pg from "pg";
+export type { PoolClient } from "pg";
 import * as schema from "./schema";
 
 const { Pool } = pg;

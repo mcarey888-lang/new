@@ -5,6 +5,115 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type RouteCandidateInputSourceManifestItem = { [key: string]: unknown };
+
+export interface RouteCandidateInput {
+  /**
+   * @minLength 1
+   * @maxLength 160
+   */
+  candidateKey: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  revisionVersion: string;
+  /** @maxLength 2000000 */
+  geometryFile: string;
+  /**
+   * @minItems 1
+   * @maxItems 2000
+   */
+  sourceManifest: RouteCandidateInputSourceManifestItem[];
+  canonicalGeometryId?: string;
+  /** @maxLength 2000000 */
+  profileFile?: string;
+  /** @maxLength 500000 */
+  terrainManifestFile?: string;
+}
+
+/**
+ * Admin-only version metadata and review histories
+ */
+export interface RouteReviewEnvelope {
+  [key: string]: unknown;
+}
+
+export interface RouteReviewCreated {
+  id: string;
+}
+
+export type RouteReviewPreviewFilesItem = {
+  name: string;
+  sha256: string;
+  bytes: number;
+};
+
+export interface RouteReviewPreview {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  blockers: string[];
+  pointCount: number;
+  bindingCurrent: boolean;
+  profileIncluded: boolean;
+  elevationCoverageComplete: boolean;
+  files: RouteReviewPreviewFilesItem[];
+}
+
+export type RouteReviewValidationInputOutcome =
+  (typeof RouteReviewValidationInputOutcome)[keyof typeof RouteReviewValidationInputOutcome];
+
+export const RouteReviewValidationInputOutcome = {
+  needs_review: "needs_review",
+  rejected: "rejected",
+  accepted: "accepted",
+} as const;
+
+export interface RouteReviewValidationInput {
+  outcome: RouteReviewValidationInputOutcome;
+  sourceRightsReviewed: boolean;
+  routeAccessReviewed: boolean;
+  terrainRightsReviewed: boolean;
+  profileReviewed: boolean;
+  /**
+   * @minLength 1
+   * @maxLength 160
+   */
+  authority: string;
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  reason: string;
+  validUntil?: string;
+}
+
+export type RouteReviewDecisionInputDecision =
+  (typeof RouteReviewDecisionInputDecision)[keyof typeof RouteReviewDecisionInputDecision];
+
+export const RouteReviewDecisionInputDecision = {
+  approved: "approved",
+  revoked: "revoked",
+} as const;
+
+export interface RouteReviewDecisionInput {
+  decision: RouteReviewDecisionInputDecision;
+  validationId: string;
+  /** @nullable */
+  expectedDecisionId: string | null;
+  /**
+   * @minLength 1
+   * @maxLength 160
+   */
+  authority: string;
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  reason: string;
+}
+
 export type AdminExpeditionInputStatus =
   (typeof AdminExpeditionInputStatus)[keyof typeof AdminExpeditionInputStatus];
 

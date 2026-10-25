@@ -110,6 +110,29 @@ The acceptance-contract document records this boundary and the migration-owned
 SQL approach. Native generated manifest digests intentionally use immutable
 `jsonb_send`; PostgreSQL's STABLE `convert_to` cannot back a generated column.
 
+Development candidate review does not authorise canonical catalogue imports or
+production activation. Reviewer labels use the existing shared admin protection,
+not new Clerk identities.
+
+**Why:** The owner approved the review interface and terrain-rights investigation
+while protecting expeditions, saved progress, artwork and authentication. Review
+file ingestion must not quietly become permission to rewrite canonical data.
+
+**How to apply:** Unbound candidates may be quarantined/rejected, never accepted.
+Keep original evidence immutable and add companion rights findings rather than
+rewriting an already-hashed profile. Watkin's exact tile bytes identify EU-DEM;
+see `docs/WATKIN_TERRAIN_RIGHTS.md` for conditions and remaining edition/review
+limits. Do not generalise that finding to other routes or newer Copernicus DEM.
+
+Source-hashed evaluator policies must work in the bundled API, not just under
+tsx. The managed development command builds and runs dist from the package root.
+
+**Why:** Resolving evaluator `.ts` sources relative to `import.meta.url` passed
+service tests but failed in the actual bundled server because that URL was dist.
+
+**How to apply:** Resolve development policy inputs from the package source root
+and smoke-test the served API after building; keep missing policy evidence closed.
+
 A failed canonical read is not evidence that a mountain is absent from the verified catalogue. Browsing cached suggestions may remain available, but the UI must distinguish catalogue downtime from a genuine no-match and keep identity-dependent actions closed.
 
 **Why:** An absent engine connection was silently converted to an empty lookup, making familiar curated mountains appear “not in the verified catalogue.”

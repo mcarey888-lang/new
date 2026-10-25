@@ -7,6 +7,143 @@
  */
 import * as zod from "zod";
 
+export const ListRouteReviewsResponse = zod
+  .record(zod.string(), zod.unknown())
+  .describe("Admin-only version metadata and review histories");
+
+export const previewRouteReviewBodyCandidateKeyMax = 160;
+
+export const previewRouteReviewBodyRevisionVersionMax = 100;
+
+export const previewRouteReviewBodyGeometryFileMax = 2000000;
+
+export const previewRouteReviewBodySourceManifestMax = 2000;
+
+export const previewRouteReviewBodyProfileFileMax = 2000000;
+
+export const previewRouteReviewBodyTerrainManifestFileMax = 500000;
+
+export const PreviewRouteReviewBody = zod.object({
+  candidateKey: zod.string().min(1).max(previewRouteReviewBodyCandidateKeyMax),
+  revisionVersion: zod
+    .string()
+    .min(1)
+    .max(previewRouteReviewBodyRevisionVersionMax),
+  geometryFile: zod.string().max(previewRouteReviewBodyGeometryFileMax),
+  sourceManifest: zod
+    .array(zod.record(zod.string(), zod.unknown()))
+    .min(1)
+    .max(previewRouteReviewBodySourceManifestMax),
+  canonicalGeometryId: zod.string().uuid().optional(),
+  profileFile: zod
+    .string()
+    .max(previewRouteReviewBodyProfileFileMax)
+    .optional(),
+  terrainManifestFile: zod
+    .string()
+    .max(previewRouteReviewBodyTerrainManifestFileMax)
+    .optional(),
+});
+
+export const PreviewRouteReviewResponse = zod.object({
+  valid: zod.boolean(),
+  errors: zod.array(zod.string()),
+  warnings: zod.array(zod.string()),
+  blockers: zod.array(zod.string()),
+  pointCount: zod.number(),
+  bindingCurrent: zod.boolean(),
+  profileIncluded: zod.boolean(),
+  elevationCoverageComplete: zod.boolean(),
+  files: zod.array(
+    zod.object({
+      name: zod.string(),
+      sha256: zod.string(),
+      bytes: zod.number(),
+    }),
+  ),
+});
+
+export const importRouteReviewBodyCandidateKeyMax = 160;
+
+export const importRouteReviewBodyRevisionVersionMax = 100;
+
+export const importRouteReviewBodyGeometryFileMax = 2000000;
+
+export const importRouteReviewBodySourceManifestMax = 2000;
+
+export const importRouteReviewBodyProfileFileMax = 2000000;
+
+export const importRouteReviewBodyTerrainManifestFileMax = 500000;
+
+export const ImportRouteReviewBody = zod.object({
+  candidateKey: zod.string().min(1).max(importRouteReviewBodyCandidateKeyMax),
+  revisionVersion: zod
+    .string()
+    .min(1)
+    .max(importRouteReviewBodyRevisionVersionMax),
+  geometryFile: zod.string().max(importRouteReviewBodyGeometryFileMax),
+  sourceManifest: zod
+    .array(zod.record(zod.string(), zod.unknown()))
+    .min(1)
+    .max(importRouteReviewBodySourceManifestMax),
+  canonicalGeometryId: zod.string().uuid().optional(),
+  profileFile: zod.string().max(importRouteReviewBodyProfileFileMax).optional(),
+  terrainManifestFile: zod
+    .string()
+    .max(importRouteReviewBodyTerrainManifestFileMax)
+    .optional(),
+});
+
+export const GetRouteReviewParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetRouteReviewResponse = zod
+  .record(zod.string(), zod.unknown())
+  .describe("Admin-only version metadata and review histories");
+
+export const ValidateRouteReviewParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const validateRouteReviewBodyAuthorityMax = 160;
+
+export const validateRouteReviewBodyReasonMax = 2000;
+
+export const ValidateRouteReviewBody = zod.object({
+  outcome: zod.enum(["needs_review", "rejected", "accepted"]),
+  sourceRightsReviewed: zod.boolean(),
+  routeAccessReviewed: zod.boolean(),
+  terrainRightsReviewed: zod.boolean(),
+  profileReviewed: zod.boolean(),
+  authority: zod.string().min(1).max(validateRouteReviewBodyAuthorityMax),
+  reason: zod.string().min(1).max(validateRouteReviewBodyReasonMax),
+  validUntil: zod.coerce.date().optional(),
+});
+
+export const DecideRouteReviewParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const decideRouteReviewBodyAuthorityMax = 160;
+
+export const decideRouteReviewBodyReasonMax = 2000;
+
+export const DecideRouteReviewBody = zod.object({
+  decision: zod.enum(["approved", "revoked"]),
+  validationId: zod.string().uuid(),
+  expectedDecisionId: zod.string().uuid().nullable(),
+  authority: zod.string().min(1).max(decideRouteReviewBodyAuthorityMax),
+  reason: zod.string().min(1).max(decideRouteReviewBodyReasonMax),
+});
+
+export const DownloadRouteReviewFileParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  name: zod.enum(["geometry", "profile", "terrain-manifest"]),
+});
+
+export const DownloadRouteReviewFileResponse = zod.string();
+
 /**
  * Admin key required. Includes drafts and hidden expeditions.
  */

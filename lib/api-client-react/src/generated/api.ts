@@ -63,6 +63,12 @@ import type {
   MountainWeather,
   PrivateRecordedHikeBackupInput,
   ReportCommunityPost201,
+  RouteCandidateInput,
+  RouteReviewCreated,
+  RouteReviewDecisionInput,
+  RouteReviewEnvelope,
+  RouteReviewPreview,
+  RouteReviewValidationInput,
   SearchExpeditionCatalogue200,
   SearchExpeditionCatalogueParams,
   SearchVirtualExpedition200,
@@ -80,6 +86,572 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getListRouteReviewsUrl = () => {
+  return `/api/admin/route-reviews`;
+};
+
+export const listRouteReviews = async (
+  options?: RequestInit,
+): Promise<RouteReviewEnvelope> => {
+  return customFetch<RouteReviewEnvelope>(getListRouteReviewsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListRouteReviewsQueryKey = () => {
+  return [`/api/admin/route-reviews`] as const;
+};
+
+export const getListRouteReviewsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listRouteReviews>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listRouteReviews>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListRouteReviewsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listRouteReviews>>
+  > = ({ signal }) => listRouteReviews({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listRouteReviews>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListRouteReviewsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listRouteReviews>>
+>;
+export type ListRouteReviewsQueryError = ErrorType<unknown>;
+
+export function useListRouteReviews<
+  TData = Awaited<ReturnType<typeof listRouteReviews>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listRouteReviews>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListRouteReviewsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getPreviewRouteReviewUrl = () => {
+  return `/api/admin/route-reviews/preview`;
+};
+
+export const previewRouteReview = async (
+  routeCandidateInput: RouteCandidateInput,
+  options?: RequestInit,
+): Promise<RouteReviewPreview> => {
+  return customFetch<RouteReviewPreview>(getPreviewRouteReviewUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(routeCandidateInput),
+  });
+};
+
+export const getPreviewRouteReviewMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewRouteReview>>,
+    TError,
+    { data: BodyType<RouteCandidateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewRouteReview>>,
+  TError,
+  { data: BodyType<RouteCandidateInput> },
+  TContext
+> => {
+  const mutationKey = ["previewRouteReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewRouteReview>>,
+    { data: BodyType<RouteCandidateInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return previewRouteReview(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PreviewRouteReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewRouteReview>>
+>;
+export type PreviewRouteReviewMutationBody = BodyType<RouteCandidateInput>;
+export type PreviewRouteReviewMutationError = ErrorType<unknown>;
+
+export const usePreviewRouteReview = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewRouteReview>>,
+    TError,
+    { data: BodyType<RouteCandidateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof previewRouteReview>>,
+  TError,
+  { data: BodyType<RouteCandidateInput> },
+  TContext
+> => {
+  return useMutation(getPreviewRouteReviewMutationOptions(options));
+};
+
+export const getImportRouteReviewUrl = () => {
+  return `/api/admin/route-reviews/import`;
+};
+
+export const importRouteReview = async (
+  routeCandidateInput: RouteCandidateInput,
+  options?: RequestInit,
+): Promise<RouteReviewCreated> => {
+  return customFetch<RouteReviewCreated>(getImportRouteReviewUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(routeCandidateInput),
+  });
+};
+
+export const getImportRouteReviewMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importRouteReview>>,
+    TError,
+    { data: BodyType<RouteCandidateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importRouteReview>>,
+  TError,
+  { data: BodyType<RouteCandidateInput> },
+  TContext
+> => {
+  const mutationKey = ["importRouteReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importRouteReview>>,
+    { data: BodyType<RouteCandidateInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importRouteReview(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportRouteReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importRouteReview>>
+>;
+export type ImportRouteReviewMutationBody = BodyType<RouteCandidateInput>;
+export type ImportRouteReviewMutationError = ErrorType<unknown>;
+
+export const useImportRouteReview = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importRouteReview>>,
+    TError,
+    { data: BodyType<RouteCandidateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importRouteReview>>,
+  TError,
+  { data: BodyType<RouteCandidateInput> },
+  TContext
+> => {
+  return useMutation(getImportRouteReviewMutationOptions(options));
+};
+
+export const getGetRouteReviewUrl = (id: string) => {
+  return `/api/admin/route-reviews/${id}`;
+};
+
+export const getRouteReview = async (
+  id: string,
+  options?: RequestInit,
+): Promise<RouteReviewEnvelope> => {
+  return customFetch<RouteReviewEnvelope>(getGetRouteReviewUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRouteReviewQueryKey = (id: string) => {
+  return [`/api/admin/route-reviews/${id}`] as const;
+};
+
+export const getGetRouteReviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRouteReview>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRouteReview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRouteReviewQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRouteReview>>> = ({
+    signal,
+  }) => getRouteReview(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRouteReview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRouteReviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRouteReview>>
+>;
+export type GetRouteReviewQueryError = ErrorType<unknown>;
+
+export function useGetRouteReview<
+  TData = Awaited<ReturnType<typeof getRouteReview>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRouteReview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRouteReviewQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getValidateRouteReviewUrl = (id: string) => {
+  return `/api/admin/route-reviews/${id}/validate`;
+};
+
+export const validateRouteReview = async (
+  id: string,
+  routeReviewValidationInput: RouteReviewValidationInput,
+  options?: RequestInit,
+): Promise<RouteReviewCreated> => {
+  return customFetch<RouteReviewCreated>(getValidateRouteReviewUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(routeReviewValidationInput),
+  });
+};
+
+export const getValidateRouteReviewMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof validateRouteReview>>,
+    TError,
+    { id: string; data: BodyType<RouteReviewValidationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof validateRouteReview>>,
+  TError,
+  { id: string; data: BodyType<RouteReviewValidationInput> },
+  TContext
+> => {
+  const mutationKey = ["validateRouteReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof validateRouteReview>>,
+    { id: string; data: BodyType<RouteReviewValidationInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return validateRouteReview(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ValidateRouteReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof validateRouteReview>>
+>;
+export type ValidateRouteReviewMutationBody =
+  BodyType<RouteReviewValidationInput>;
+export type ValidateRouteReviewMutationError = ErrorType<unknown>;
+
+export const useValidateRouteReview = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof validateRouteReview>>,
+    TError,
+    { id: string; data: BodyType<RouteReviewValidationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof validateRouteReview>>,
+  TError,
+  { id: string; data: BodyType<RouteReviewValidationInput> },
+  TContext
+> => {
+  return useMutation(getValidateRouteReviewMutationOptions(options));
+};
+
+export const getDecideRouteReviewUrl = (id: string) => {
+  return `/api/admin/route-reviews/${id}/decision`;
+};
+
+export const decideRouteReview = async (
+  id: string,
+  routeReviewDecisionInput: RouteReviewDecisionInput,
+  options?: RequestInit,
+): Promise<RouteReviewCreated> => {
+  return customFetch<RouteReviewCreated>(getDecideRouteReviewUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(routeReviewDecisionInput),
+  });
+};
+
+export const getDecideRouteReviewMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof decideRouteReview>>,
+    TError,
+    { id: string; data: BodyType<RouteReviewDecisionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof decideRouteReview>>,
+  TError,
+  { id: string; data: BodyType<RouteReviewDecisionInput> },
+  TContext
+> => {
+  const mutationKey = ["decideRouteReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof decideRouteReview>>,
+    { id: string; data: BodyType<RouteReviewDecisionInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return decideRouteReview(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DecideRouteReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof decideRouteReview>>
+>;
+export type DecideRouteReviewMutationBody = BodyType<RouteReviewDecisionInput>;
+export type DecideRouteReviewMutationError = ErrorType<unknown>;
+
+export const useDecideRouteReview = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof decideRouteReview>>,
+    TError,
+    { id: string; data: BodyType<RouteReviewDecisionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof decideRouteReview>>,
+  TError,
+  { id: string; data: BodyType<RouteReviewDecisionInput> },
+  TContext
+> => {
+  return useMutation(getDecideRouteReviewMutationOptions(options));
+};
+
+export const getDownloadRouteReviewFileUrl = (
+  id: string,
+  name: "geometry" | "profile" | "terrain-manifest",
+) => {
+  return `/api/admin/route-reviews/${id}/files/${name}`;
+};
+
+export const downloadRouteReviewFile = async (
+  id: string,
+  name: "geometry" | "profile" | "terrain-manifest",
+  options?: RequestInit,
+): Promise<string> => {
+  return customFetch<string>(getDownloadRouteReviewFileUrl(id, name), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDownloadRouteReviewFileQueryKey = (
+  id: string,
+  name: "geometry" | "profile" | "terrain-manifest",
+) => {
+  return [`/api/admin/route-reviews/${id}/files/${name}`] as const;
+};
+
+export const getDownloadRouteReviewFileQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadRouteReviewFile>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  name: "geometry" | "profile" | "terrain-manifest",
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadRouteReviewFile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getDownloadRouteReviewFileQueryKey(id, name);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadRouteReviewFile>>
+  > = ({ signal }) =>
+    downloadRouteReviewFile(id, name, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(id && name),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadRouteReviewFile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadRouteReviewFileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadRouteReviewFile>>
+>;
+export type DownloadRouteReviewFileQueryError = ErrorType<unknown>;
+
+export function useDownloadRouteReviewFile<
+  TData = Awaited<ReturnType<typeof downloadRouteReviewFile>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  name: "geometry" | "profile" | "terrain-manifest",
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadRouteReviewFile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadRouteReviewFileQueryOptions(
+    id,
+    name,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * Admin key required. Includes drafts and hidden expeditions.
@@ -858,7 +1430,7 @@ export const uploadPersonalProfileCover = async (
     ...options,
     method: "PUT",
     headers: { "Content-Type": "image/jpeg", ...options?.headers },
-    body: uploadPersonalProfileCoverBody,
+    body: JSON.stringify(uploadPersonalProfileCoverBody),
   });
 };
 
@@ -3574,7 +4146,7 @@ export const uploadCommunityPostPhoto = async (
       ...options,
       method: "PUT",
       headers: { "Content-Type": "image/jpeg", ...options?.headers },
-      body: uploadCommunityPostPhotoBody,
+      body: JSON.stringify(uploadCommunityPostPhotoBody),
     },
   );
 };
