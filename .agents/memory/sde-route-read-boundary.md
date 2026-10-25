@@ -64,6 +64,20 @@ Canonical mountain and route intelligence must be read server-side from the inde
 
 **How to apply:** Keep canonical route endpoints production-off by default. Missing or unreachable engine configuration returns explicit unavailable/degraded results. Do not connect mobile clients directly to the engine.
 
+Audit schema compatibility against the current reader's actual SQL dependencies,
+not the complete engine ORM table list. An absent broader-model table does not
+establish that current route-fact reads are broken.
+
+**Why:** An acquisition audit incorrectly classified absent broader-model tables
+as blockers. A real read of an existing verified route successfully returned
+facts, with geometry correctly degraded. Speculative DDL would not have fixed
+the genuine missing geometry/version-validation evidence.
+
+**How to apply:** Trace the current reader and probe a known eligible record
+through the dedicated connection before proposing migrations. Report fact-read
+compatibility separately from ingestion/full-engine completeness and from exact
+geometry publication readiness.
+
 Canonical geometry must remain unavailable unless every geometry member has exact reusable-rights evidence and a persisted validation is explicitly tied to that exact geometry/version. The current SDE validation model does not provide that exact version link, so identity, facts, trust, and provenance may be read while geometry/profile-dependent matching degrades.
 
 **Why:** A reusable fact source or a historical route validation cannot safely authorize geometry assembled from separate source bundles.

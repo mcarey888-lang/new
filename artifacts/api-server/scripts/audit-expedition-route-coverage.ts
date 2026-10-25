@@ -7,6 +7,8 @@
 import { executeEngineReadOnlyQuery, getEngineReadOnlyPool, pool } from "@workspace/db";
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { CANONICAL_ROUTE_RECORD_TABLES, createCanonicalRouteRecordHandler } from "../src/services/mountain/canonicalRouteRecord";
+import { CANONICAL_TRUST_SQL } from "../src/services/mountain/canonicalMountainLookup";
 
 const normalize = (value: string) => value.normalize("NFKD").replace(/\p{M}/gu, "")
   .toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -43,11 +45,27 @@ async function main() {
     UNION ALL SELECT 'geometry_members',null,count(*)::int FROM public.route_geometry_members
     UNION ALL SELECT 'evidence',rights_classification::text,count(*)::int
       FROM public.evidence_sources GROUP BY rights_classification`);
-  const requiredTables = ["routes", "route_validation", "route_definition_evidence"];
+  // Audit actual reader dependencies, not every table in the broader engine
+  // models. The older three-table check incorrectly labelled optional model
+  // tables as current read dependencies.
+  const requiredTables = ["mountains", "route_identities", "route_definitions", "route_facts",
+    "evidence_sources", ...CANONICAL_ROUTE_RECORD_TABLES];
+  const modelOnlyTables = ["routes", "route_validation", "route_definition_evidence"];
   const available = await executeEngineReadOnlyQuery(
     "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name=ANY($1::text[])",
-    [requiredTables]);
+    [[...requiredTables, ...modelOnlyTables]]);
   const missingReadBoundaryTables = requiredTables.filter(name => !available.some(row => row.table_name === name));
+  const absentModelOnlyTables = modelOnlyTables.filter(name => !available.some(row => row.table_name === name));
+  const [sample] = await executeEngineReadOnlyQuery(`SELECT ri.identity_key,ri.version,ri.mountain_id::text
+    FROM public.route_identities ri WHERE ri.status='verified' ORDER BY ri.canonical_name LIMIT 1`);
+  const checked = sample ? await createCanonicalRouteRecordHandler()(
+    String(sample.identity_key), String(sample.version), String(sample.mountain_id)) : null;
+  const readProbe = checked ? { identityKey: sample.identity_key, status: checked.status,
+    reasons: checked.reasons, hasRecord: !!checked.record, hasGeometry: !!checked.record?.geometry } : null;
+  const watkinSummitCandidates = await executeEngineReadOnlyQuery(`SELECT m.id::text,m.name,m.country,m.region,
+    m.elevation_m::float8 AS "elevationM",ST_Y(m.geom) AS latitude,ST_X(m.geom) AS longitude
+    FROM public.mountains m WHERE ${CANONICAL_TRUST_SQL}
+    AND (m.name ILIKE '%wyddfa%' OR lower(m.name)='snowdon')`);
 
   const grouped = new Map<string, any>();
   for (const stage of stages) {
@@ -65,7 +83,7 @@ async function main() {
       .some(name => typeof name === "string" && normalize(name) === normalize(row.routeName)));
     const keys = [...row.routeKeys] as string[];
     const source = keys.includes("watkin")
-      ? { url: "https://eryri.gov.wales/walk/watkin-path/", status: "Official route page identified; detailed fetch unavailable; geometry and commercial reuse permission unconfirmed." }
+      ? { url: "https://www.openstreetmap.org/relation/4004198", status: "Named OSM relation acquired under ODbL. Separate review-only candidate prepared with explicit duplicate, bridge and summit-access proposals; not imported or navigation-ready. Ascent uncalculated." }
       : keys.includes("cmd")
         ? { url: "https://www.walkhighlands.co.uk/fortwilliam/carnmordeargarete.shtml", status: "Reference candidate only. Download terms surfaced as personal-use; do not import commercially without permission." }
         : { url: "https://download.geofabrik.de/europe/great-britain.html", status: "OSM source available under ODbL; specific named relation and exact route variant not yet assessed." };
@@ -91,20 +109,21 @@ async function main() {
       catalogueLinkedStages: stages.filter(s => s.catalogue_mountain).length,
       exactRouteNameCandidateGroups: priorities.filter(p => p.exactNameCandidates.length).length,
       stageUsesCoveredByTopTen: priorities.slice(0, 10).reduce((n, r) => n + r.stageUses, 0) },
-    engineInventory: inventory, missingReadBoundaryTables,
+    engineInventory: inventory, missingReadBoundaryTables, absentModelOnlyTables, readProbe,
+    watkinSummitCandidates,
     sourceResearch: { date: "2026-10-25",
-      watkinOsmPilot: "Small bounded Overpass tags-only query attempted with POST and GET; both returned HTTP 406. No relation inventory obtained; do not infer that Watkin is absent from OSM.",
+      watkinOsmPilot: "Overpass requests failed or timed out, but bounded main OSM map and full-relation API reads succeeded. Watkin relation 4004198 was acquired. A separate review-only out-and-back proposal measures about 13.11 horizontal km; the raw relation has a repeated way and an omitted bridge. Summit access is an explicit mapped-edge proposal, not an approved route. No ascent profile or canonical geometry validation is available.",
       geofabrik: "Great Britain OSM download page and ODbL availability checked; approximately 2 GB extract deliberately not downloaded.",
       walkhighlands: "Search surfaced a personal-use download restriction; commercial permission has not been obtained.",
       eryri: "Official Watkin Path URL identified in search; detailed page fetch unavailable." },
     caveats: [
       "Current stage km/ascent are existing owner-curated figures, not independently verified by this audit.",
       "Route-name matching is normalized exact-name/declared-alias screening, not fuzzy or geometry matching.",
-      "No source files, GPX tracks or map geometry have been imported or approved.",
+      "No source files, GPX tracks or map geometry have been imported into the database or approved; the Watkin candidate is quarantined in generated output.",
       "Engine route geometry is not disclosed. Missing version-bound validation or exact reusable rights must remain a hard gate.",
       "Availability of a GPX download does not establish commercial reuse rights.",
-      "The large OSM extract was not downloaded; route-specific OSM coverage remains unassessed.",
-      "The Watkin tags-only Overpass pilot was blocked by HTTP 406, not a no-match result.",
+      "The large OSM extract was not downloaded; route-specific OSM coverage beyond the Watkin pilot remains unassessed.",
+      "Overpass failures were not no-match results; alternative bounded main OSM API reads subsequently supplied the Watkin pilot.",
       "Coverage is the canonical engine route layer, not private saved routes, GPS recordings, AI caches or paths visible on a basemap.",
       "Mountain lifecycle counts are not canonical trust counts: imported DoBIH records can qualify via trusted-source evidence.",
     ], priorities, stages };
@@ -135,9 +154,12 @@ async function main() {
     <p>Exact normalized stage-route name/declared-alias candidate groups: ${report.summary.exactRouteNameCandidateGroups}.
     The ten most-used route groups cover ${report.summary.stageUsesCoveredByTopTen} of ${stages.length} stage placements.
     Covering both stages of a particular expedition must still be checked separately.</p>
-    <h2>Route-data connection readiness</h2><p>Expected canonical read-boundary tables absent from this connected catalogue:
-    ${html(missingReadBoundaryTables.join(", ") || "none")}. Their absence does not mean the summit catalogue is missing.
-    Confirm engine schema compatibility before enabling canonical route reads; do not add a fallback database.</p>
+    <h2>Route-data connection readiness</h2><p>Actual canonical reader dependencies absent:
+    ${html(missingReadBoundaryTables.join(", ") || "none")}. Broader model tables absent but not used by the current reader:
+    ${html(absentModelOnlyTables.join(", ") || "none")}. The earlier audit incorrectly treated these as blocking read dependencies;
+    no speculative schema repair is required for the current facts reader.</p>
+    <p>Read probe: ${html(JSON.stringify(readProbe))}. Geometry remains gated: the current reader intentionally
+    lacks exact geometry-version validation/publication proof, regardless of whether older model tables are present.</p>
     <h2>Acquisition priorities</h2><div class="scroll"><table><tr><th>#</th><th>Route / region</th><th>Uses</th>
     <th>Existing figures—not verified</th><th>Expeditions</th><th>Source / review status</th></tr>
     ${priorities.map((r, i) => `<tr><td>${i + 1}</td><td><b>${html(r.routeName)}</b><br>${html(r.region)}</td>
@@ -156,7 +178,7 @@ async function main() {
     <li><a href="https://download.geofabrik.de/europe/great-britain.html">Geofabrik Great Britain extracts (ODbL)</a></li>
     <li><a href="https://www.walkhighlands.co.uk/download-ge.php?w=772">Walkhighlands download terms—personal-use restriction surfaced in search; permission required</a></li>
     <li><a href="https://eryri.gov.wales/walk/watkin-path/">Eryri Watkin Path—official candidate page; detailed fetch unavailable</a></li></ul></html>`);
-  console.log(JSON.stringify({ output: out, summary: report.summary, missingReadBoundaryTables }, null, 2));
+  console.log(JSON.stringify({ output: out, summary: report.summary, missingReadBoundaryTables, absentModelOnlyTables, readProbe }, null, 2));
 }
 main().catch(() => { console.error("Audit failed. No database writes were attempted; no successful report claimed."); process.exitCode = 1; })
   .finally(async () => { await getEngineReadOnlyPool()?.end(); await pool.end(); });

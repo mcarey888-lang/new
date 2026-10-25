@@ -765,14 +765,14 @@ content_type = "image/gif"
 id = "k_HJpbPzSrSs6l-1VI-l2"
 uri = "file://generated-artifacts/route-coverage/2026-10-25/audit.html"
 type = "html"
-title = "Expedition route coverage audit"
-description = "Read-only development audit of all 60 expeditions, their 32 distinct stage routes, existing engine coverage, source restrictions and acquisition priorities."
+title = "Corrected expedition route audit"
+description = "Updated audit: current reader dependencies are present; broader missing model tables are not blockers for route-fact reads. Includes the Watkin source-pilot findings and remaining geometry/publication safeguards."
 logical_id = "81ad5099-8630-4078-bb1b-c5aff0c3f2f8"
-content_hash = "sha256:f17747e034e6973e7072f2a4943768c4ca1450efb803545671d7046f9b8eaf44"
-size = 20870
-mtime_ms = 1792956108411
-storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/81ad5099-8630-4078-bb1b-c5aff0c3f2f8/8a0f346e-3e26-4531-a9df-61c1169f24ac"
-storage_version_token = "1792956158854173"
+content_hash = "sha256:9dc2e21f9aa43128c902e708304c39a0f5f86e956296077bb5d97a8e46e09ef3"
+size = 21837
+mtime_ms = 1792956972988
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/81ad5099-8630-4078-bb1b-c5aff0c3f2f8/9e41b497-7a05-4595-8c94-dc483f4a47f4"
+storage_version_token = "1792957015095366"
 content_type = "text/html"
 
 [[outputs]]
@@ -788,3 +788,17 @@ mtime_ms = 1792956108407
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/e0882f6b-884e-4497-9c8c-c906aab2733f/1004909a-e85a-43b2-9f80-b9e2b633eef7"
 storage_version_token = "1792956160202529"
 content_type = "text/csv"
+
+[[outputs]]
+id = "MNv_RQrYSBFy8vhrJZchN"
+uri = "file://generated-artifacts/route-pilot/watkin-v13-536c6c70dd48-20261025T193644Z/review.html"
+type = "html"
+title = "Watkin Path — route pilot for review"
+description = "Self-contained route drawing, source issues, proposed bridge and summit access, eight expedition link previews, and embedded downloads of the review-only geometry and provenance. Not approved for navigation or imported."
+logical_id = "75be380e-50bc-4ae1-9960-44c8f0de3a23"
+content_hash = "sha256:677b2a7197a99d7b86f4f3f19b9b7debd218321ad0d11779f1d998c840fd0ce7"
+size = 657702
+mtime_ms = 1792957004426
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/75be380e-50bc-4ae1-9960-44c8f0de3a23/91164de5-9c90-40aa-a6ee-ecc23fe4f09f"
+storage_version_token = "1792957014304832"
+content_type = "text/html"
