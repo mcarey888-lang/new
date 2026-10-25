@@ -110,9 +110,9 @@ The acceptance-contract document records this boundary and the migration-owned
 SQL approach. Native generated manifest digests intentionally use immutable
 `jsonb_send`; PostgreSQL's STABLE `convert_to` cannot back a generated column.
 
-Development candidate review does not authorise canonical catalogue imports or
-production activation. Reviewer labels use the existing shared admin protection,
-not new Clerk identities.
+Routine development candidate uploads do not authorise canonical catalogue
+imports or production activation. Reviewer labels use the existing shared admin
+protection, not new Clerk identities.
 
 **Why:** The owner approved the review interface and terrain-rights investigation
 while protecting expeditions, saved progress, artwork and authentication. Review
@@ -123,6 +123,18 @@ Keep original evidence immutable and add companion rights findings rather than
 rewriting an already-hashed profile. Watkin's exact tile bytes identify EU-DEM;
 see `docs/WATKIN_TERRAIN_RIGHTS.md` for conditions and remaining edition/review
 limits. Do not generalise that finding to other routes or newer Copernicus DEM.
+
+The owner separately authorised preparing Watkin's development draft link and a
+readable review. This permits new needs-review route/geometry/source records,
+not changing an existing peak's imported status, certifying rights, granting
+human attestations, approving navigation or promoting to production.
+
+**Why:** A usable draft link and a cleared binding are different. Do not mark
+catalogue records verified merely to make the review buttons work.
+
+**How to apply:** Preserve previous review revisions and original evidence.
+Leave catalogue verification, source rights and explicit human approval gates
+closed until independently supported and authorised.
 
 Source-hashed evaluator policies must work in the bundled API, not just under
 tsx. The managed development command builds and runs dist from the package root.

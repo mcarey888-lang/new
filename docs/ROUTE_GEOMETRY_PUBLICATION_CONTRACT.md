@@ -51,7 +51,12 @@ A development-only admin ingestion/review service is now available; see
 `docs/ROUTE_REVIEW_ADMIN.md`. It checks uploaded file hashes, GeoJSON structure,
 profile/geometry/source linkage and exact sample positions. File bytes live in a
 private App Storage namespace, not PostgreSQL. It does not import canonical
-geometries or automatically approve any route. Unbound candidates can be saved,
+geometries or automatically approve any route. A separately authorised Watkin
+development preparation script can create new needs-review identity/definition
+and geometry/source records, without verifying the imported parent mountain,
+claiming reusable rights or changing existing catalogue facts. Its new linked
+review remains ineligible; see `docs/ROUTE_REVIEW_ADMIN.md`.
+Unbound candidates can be saved,
 reviewed or rejected, but cannot be accepted/approved.
 
 Human review of actual DEM evidence, source reuse and route/access remains

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArtworkAdminHeader } from "@/components/ArtworkAdminHeader";
+import { RouteReviewSummary } from "@/components/RouteReviewSummary";
 import {
   useRouteReviews, useRouteReview, usePreviewRouteReview, useImportRouteReview,
   useValidateRouteReview, useDecideRouteReview, downloadRouteReviewFile,
@@ -193,7 +194,7 @@ function ValidationForm({ r }: { r: RouteRevision }) {
       <h4 className="font-semibold">Record validation</h4>
       <Lbl t="Outcome"><select data-testid="select-outcome" className={field} value={outcome} onChange={(e) => setOutcome(e.target.value as typeof outcome)}>
         <option value="needs_review">Needs review</option><option value="rejected">Rejected</option><option value="accepted">Accepted</option></select></Lbl>
-      {acc && !r.bindingCurrent && <div role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="text-unbound">Acceptance is disabled: no canonical geometry has been imported yet, so this candidate has no current canonical binding. Needs review and rejected remain available.</div>}
+      {acc && !r.bindingCurrent && <div role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="text-unbound">Acceptance is disabled: {r.canonicalGeometryId ? "a draft geometry is linked, but catalogue verification and reusable-rights binding have not passed." : "no canonical geometry is linked to this revision."} Needs review and rejected remain available.</div>}
       {acc && <div className="space-y-2">
         {chk("sourceRightsReviewed", "I have personally reviewed the source rights for this route.")}
         {chk("routeAccessReviewed", "I have personally reviewed route access and legal restrictions.")}
@@ -239,7 +240,7 @@ function DecisionForm({ r, validations, decisions }: { r: RouteRevision; validat
       <h4 className="font-semibold">Record decision</h4>
       <div className="text-xs text-muted-foreground">Current decision: {r.latestDecision ?? "none"}. Decisions are append-only; revocation is retained, nothing is deleted. This never publishes a route.</div>
       {accepted.length === 0 && <div className="text-sm text-muted-foreground" data-testid="text-no-accepted">{decision === "revoked" ? "A current approval is required to revoke. Expired approvals may still be revoked." : "An unexpired accepted validation is required before approval."}</div>}
-      {unbound && <div role="alert" className="text-sm text-amber-500" data-testid="text-unbound-approve">Approval is disabled: no canonical geometry has been imported yet.</div>}
+      {unbound && <div role="alert" className="text-sm text-amber-500" data-testid="text-unbound-approve">Approval is disabled: {r.canonicalGeometryId ? "the draft link still needs verified catalogue and source-rights evidence." : "no canonical geometry is linked to this revision."}</div>}
       <div className="grid gap-3 sm:grid-cols-2">
         <Lbl t="Decision"><select data-testid="select-decision" className={field} value={decision} onChange={(e) => { setDecision(e.target.value as typeof decision); setConfirm(null); }}><option value="approved">Approved</option><option value="revoked">Revoked</option></select></Lbl>
         <Lbl t="Accepted validation"><select data-testid="select-validation" disabled={decision === "revoked"} className={field} value={validationId} onChange={(e) => setVid(e.target.value)}>{accepted.map((v) => <option key={v.id} value={v.id}>{v.id.slice(0, 8)} by {v.reviewAuthority}</option>)}</select></Lbl>
@@ -262,6 +263,7 @@ function DecisionForm({ r, validations, decisions }: { r: RouteRevision; validat
 function Detail({ id }: { id: string }) {
   const q = useRouteReview(id);
   const [dlErr, setDlErr] = useState<unknown>(null);
+  const [technicalOpen, setTechnicalOpen] = useState(false);
   if (q.isLoading) return <Skeleton className="h-96 w-full" />;
   if (q.error) return <ErrBox error={q.error} onRetry={() => q.refetch()} />;
   if (!q.data) return null;
@@ -271,12 +273,16 @@ function Detail({ id }: { id: string }) {
     <div className="space-y-4" data-testid="route-detail">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-lg font-semibold">{r.candidateKey} <span className="font-normal text-muted-foreground">v{r.revisionVersion}</span></h3>
-        <Badge variant="outline">{r.bindingCurrent ? "Bound" : "Unbound"}</Badge>
+        <Badge variant="outline">{r.bindingCurrent ? "Binding checks passed" : r.canonicalGeometryId ? "Draft linked — needs checks" : "Unbound"}</Badge>
         <Badge variant={r.eligible ? "secondary" : "outline"}>{r.eligible ? "Eligible" : "Not eligible"}</Badge>
         <Badge variant="secondary">{r.latestDecision ?? "no decision"}</Badge>
       </div>
+      {r.geometry && <RoutePreviewSvg coords={r.geometry.coordinates} />}
+      <RouteReviewSummary revision={r} validations={validations} />
+      <details className="rounded-md border border-border p-3" open={technicalOpen} onToggle={e => setTechnicalOpen(e.currentTarget.open)}>
+      <summary className="cursor-pointer text-sm font-medium">Technical evidence and source metadata</summary>
+      {technicalOpen && <div className="mt-3 space-y-3">
       <div className="flex flex-wrap gap-4">
-        {r.geometry && <RoutePreviewSvg coords={r.geometry.coordinates} />}
         <div className="min-w-0 flex-1 space-y-1">
           <HashRow k="Canonical geometry" v={r.canonicalGeometryId} />
           <HashRow k={`Geometry (${r.geometryDigestAlgorithm})`} v={r.geometrySha256} />
@@ -290,6 +296,8 @@ function Detail({ id }: { id: string }) {
         {r.sourceManifest.length === 0 && <div className="text-sm text-muted-foreground">No source entries.</div>}
         {r.sourceManifest.map((s, i) => <pre key={i} className="overflow-auto rounded border border-border bg-card p-2 text-xs">{JSON.stringify(s, null, 2)}</pre>)}
       </div>
+      </div>}
+      </details>
       <div className="space-y-1"><h4 className="font-semibold">Review files (protected download)</h4>
         <div className="flex flex-wrap gap-2">{files.map(([n, h]) => <Button key={n} type="button" size="sm" variant="secondary" data-testid={`button-download-${n}`} onClick={() => downloadRouteReviewFile(r.id, n).catch(setDlErr)}>{n} ({h.bytes} B)</Button>)}
           {files.length === 0 && <span className="text-sm text-muted-foreground">No files recorded.</span>}</div>
@@ -316,11 +324,20 @@ function Detail({ id }: { id: string }) {
 
 export default function RouteReviews() {
   const list = useRouteReviews();
-  const [sel, setSel] = useState<string | null>(null);
+  const [sel, setSel] = useState<string | null>(() => {
+    const requested = new URLSearchParams(window.location.search).get("candidate");
+    return requested && UUID.test(requested) ? requested : null;
+  });
+  const choose = (id: string | null) => {
+    setSel(id);
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("candidate", id); else url.searchParams.delete("candidate");
+    window.history.replaceState(null, "", url);
+  };
   const items = list.data?.items ?? [];
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <ArtworkAdminHeader activeSection="route-reviews" actions={<Button size="sm" variant="secondary" onClick={() => setSel(null)} data-testid="button-new-candidate">Import candidate</Button>} />
+      <ArtworkAdminHeader activeSection="route-reviews" actions={<Button size="sm" variant="secondary" onClick={() => choose(null)} data-testid="button-new-candidate">Import candidate</Button>} />
       <main className="mx-auto grid max-w-7xl gap-6 p-4 sm:p-6 lg:grid-cols-[320px_1fr]">
         <div className="space-y-2 lg:col-span-2">
           <AdminKeyBar />
@@ -334,9 +351,9 @@ export default function RouteReviews() {
           {list.error && <ErrBox error={list.error} onRetry={() => list.refetch()} />}
           {list.data && items.length === 0 && <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground" data-testid="text-empty">No saved candidates. Import one by pasting or loading JSON.</div>}
           <ul className="space-y-2">{items.map((r) => (
-            <li key={r.id}><button type="button" data-testid={`row-route-${r.id}`} onClick={() => setSel(r.id)} className={`w-full rounded-md border p-3 text-left transition-colors ${sel === r.id ? "border-primary bg-secondary" : "border-border bg-card hover:bg-secondary"}`}>
+            <li key={r.id}><button type="button" data-testid={`row-route-${r.id}`} onClick={() => choose(r.id)} className={`w-full rounded-md border p-3 text-left transition-colors ${sel === r.id ? "border-primary bg-secondary" : "border-border bg-card hover:bg-secondary"}`}>
               <div className="flex items-center justify-between gap-2"><span className="font-medium">{r.candidateKey}</span><Badge variant="secondary">{r.latestDecision ?? "pending"}</Badge></div>
-              <div className="text-xs text-muted-foreground">v{r.revisionVersion} · {r.bindingCurrent ? "bound" : "unbound"} · {new Date(r.createdAt).toLocaleDateString()}</div>
+              <div className="text-xs text-muted-foreground">v{r.revisionVersion} · {r.bindingCurrent ? "binding checks passed" : r.canonicalGeometryId ? "draft linked" : "unbound"} · {new Date(r.createdAt).toLocaleDateString()}</div>
             </button></li>))}</ul>
         </aside>
         <section className="min-w-0 space-y-4">

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { PoolClient } from "@workspace/db";
-import { checkEvidence, sha256, validationInput, decisionInput, type CheckedEvidence } from "./routeReviewEvidence.js";
+import { checkEvidence, sha256, validationInput, decisionInput, type CheckedEvidence, type EvidenceFile } from "./routeReviewEvidence.js";
 import { reviewFileStore, type ReviewFileStore, type StoredReviewFile } from "./routeReviewStorage.js";
 
 export class ReviewError extends Error {
@@ -97,14 +97,30 @@ export function previewResponse(checked: CheckedEvidence) {
   const { files, geometry: _geometry, input: _input, ...response } = checked;
   return { ...response, files: files.map(f => ({ name: f.name, sha256: f.sha256, bytes: f.bytes.length })) };
 }
-export async function importReview(client: PoolClient, raw: unknown, store: ReviewFileStore = reviewFileStore) {
+export async function importReview(client: PoolClient, raw: unknown, store: ReviewFileStore = reviewFileStore, companions: EvidenceFile[] = []) {
   const checked = await previewReview(client, raw);
   if (!checked.valid || !checked.input || !checked.geometry) throw new ReviewError(400, checked.errors.join(" "));
+  // Internal preparation tools may retain original companion evidence. These
+  // are not arbitrary caller-selected paths or a new public upload capability.
+  if (new Set(companions.map(f => f.name)).size !== companions.length) throw new ReviewError(400, "Duplicate companion evidence.");
+  for (const file of companions) {
+    if (!["source-snapshot", "terrain-rights"].includes(file.name) || file.bytes.length > 2_000_000
+      || sha256(file.bytes) !== file.sha256) throw new ReviewError(400, "Invalid companion evidence.");
+    let value;
+    try { value = JSON.parse(file.bytes.toString("utf8")); } catch { throw new ReviewError(400, "Companion evidence must be JSON."); }
+    if (file.name === "source-snapshot" && !checked.input.sourceManifest.some(s => s.sha256 === file.sha256))
+      throw new ReviewError(400, "Source snapshot does not match the bound provenance.");
+    if (file.name === "terrain-rights") {
+      const terrain = checked.files.find(f => f.name === "terrain-manifest");
+      if (!terrain || value?.originalManifestSha256 !== terrain.sha256)
+        throw new ReviewError(400, "Terrain findings require their exact retained terrain manifest.");
+    }
+  }
   const id = randomUUID(), input = checked.input;
   const files: Record<string, StoredReviewFile> = {};
   // A failed transaction can leave private orphan objects, but never a committed
   // revision pointing to missing evidence. Objects are immutable, UUID-namespaced.
-  for (const file of checked.files) files[file.name] = await store.put(id, file);
+  for (const file of [...checked.files, ...companions]) files[file.name] = await store.put(id, file);
   const profile = files.profile;
   const { rows: [binding] } = input.canonicalGeometryId ? await client.query(`SELECT g.version,
     g.route_definition_id,rd.version AS definition_version
@@ -148,6 +164,9 @@ export async function validateReview(client: PoolClient, id: string, raw: unknow
   };
   const checked = checkEvidence(rawInput);
   if (!checked.valid || !checked.geometry) throw new ReviewError(409, "Stored evidence failed integrity/structure checks. Import a new revision.");
+  for (const name of ["source-snapshot", "terrain-rights"]) {
+    if (files[name]) await store.read(files[name]);
+  }
   const { rows: [matches] } = await client.query(`SELECT
     encode(sha256(public.ST_AsEWKB(public.ST_SetSRID(public.ST_GeomFromGeoJSON($2),4326),'XDR')),'hex')=geometry_sha256 AS exact,
     public.sde_review_binding_current(id) AS bound

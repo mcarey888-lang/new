@@ -43,6 +43,13 @@ test("development route review: real PostgreSQL workflow, all records rolled bac
       process.env.NODE_ENV = before;
     });
     const candidate = await importReview(client, input, store);
+    await t.test("companion evidence cannot invent a missing terrain binding", async () => {
+      const bytes = Buffer.from("{}");
+      await rejected(() => importReview(client, { ...input, candidateKey: `${input.candidateKey} invalid companion` }, store,
+        [{ name: "terrain-rights", bytes, sha256: sha256(bytes) }]), /exact retained terrain manifest/);
+      await rejected(() => importReview(client, { ...input, candidateKey: `${input.candidateKey} invalid snapshot` }, store,
+        [{ name: "source-snapshot", bytes, sha256: sha256(bytes) }]), /does not match the bound provenance/);
+    });
     await t.test("immutable import, download, detail, duplicate and no eligibility", async () => {
       const detail = await getReview(client, candidate.id);
       assert.equal(detail.revision.candidateKey, input.candidateKey);

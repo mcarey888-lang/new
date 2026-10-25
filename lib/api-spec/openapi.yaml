@@ -104,7 +104,7 @@ paths:
   /admin/route-reviews/{id}/files/{name}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
-      - { name: name, in: path, required: true, schema: { type: string, enum: [geometry, profile, terrain-manifest] } }
+      - { name: name, in: path, required: true, schema: { type: string, enum: [geometry, profile, terrain-manifest, source-snapshot, terrain-rights] } }
     get:
       operationId: downloadRouteReviewFile
       tags: [RouteReviews]

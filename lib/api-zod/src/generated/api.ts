@@ -139,7 +139,13 @@ export const DecideRouteReviewBody = zod.object({
 
 export const DownloadRouteReviewFileParams = zod.object({
   id: zod.coerce.string().uuid(),
-  name: zod.enum(["geometry", "profile", "terrain-manifest"]),
+  name: zod.enum([
+    "geometry",
+    "profile",
+    "terrain-manifest",
+    "source-snapshot",
+    "terrain-rights",
+  ]),
 });
 
 export const DownloadRouteReviewFileResponse = zod.string();

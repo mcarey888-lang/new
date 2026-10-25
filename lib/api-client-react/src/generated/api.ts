@@ -560,14 +560,24 @@ export const useDecideRouteReview = <
 
 export const getDownloadRouteReviewFileUrl = (
   id: string,
-  name: "geometry" | "profile" | "terrain-manifest",
+  name:
+    | "geometry"
+    | "profile"
+    | "terrain-manifest"
+    | "source-snapshot"
+    | "terrain-rights",
 ) => {
   return `/api/admin/route-reviews/${id}/files/${name}`;
 };
 
 export const downloadRouteReviewFile = async (
   id: string,
-  name: "geometry" | "profile" | "terrain-manifest",
+  name:
+    | "geometry"
+    | "profile"
+    | "terrain-manifest"
+    | "source-snapshot"
+    | "terrain-rights",
   options?: RequestInit,
 ): Promise<string> => {
   return customFetch<string>(getDownloadRouteReviewFileUrl(id, name), {
@@ -578,7 +588,12 @@ export const downloadRouteReviewFile = async (
 
 export const getDownloadRouteReviewFileQueryKey = (
   id: string,
-  name: "geometry" | "profile" | "terrain-manifest",
+  name:
+    | "geometry"
+    | "profile"
+    | "terrain-manifest"
+    | "source-snapshot"
+    | "terrain-rights",
 ) => {
   return [`/api/admin/route-reviews/${id}/files/${name}`] as const;
 };
@@ -588,7 +603,12 @@ export const getDownloadRouteReviewFileQueryOptions = <
   TError = ErrorType<unknown>,
 >(
   id: string,
-  name: "geometry" | "profile" | "terrain-manifest",
+  name:
+    | "geometry"
+    | "profile"
+    | "terrain-manifest"
+    | "source-snapshot"
+    | "terrain-rights",
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof downloadRouteReviewFile>>,
@@ -630,7 +650,12 @@ export function useDownloadRouteReviewFile<
   TError = ErrorType<unknown>,
 >(
   id: string,
-  name: "geometry" | "profile" | "terrain-manifest",
+  name:
+    | "geometry"
+    | "profile"
+    | "terrain-manifest"
+    | "source-snapshot"
+    | "terrain-rights",
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof downloadRouteReviewFile>>,

@@ -55,7 +55,7 @@ routeReviewAdminRouter.get(`${base}/:id`, (req, res) => request(req, res, c => g
 routeReviewAdminRouter.post(`${base}/:id/validate`, (req, res) => request(req, res, c => validateReview(c, String(req.params.id), req.body), 201));
 routeReviewAdminRouter.post(`${base}/:id/decision`, (req, res) => request(req, res, c => decideReview(c, String(req.params.id), req.body), 201));
 routeReviewAdminRouter.get(`${base}/:id/files/:name`, (req, res) => request(req, res, c => {
-  const name = z.enum(["geometry", "profile", "terrain-manifest"]).parse(req.params.name);
+  const name = z.enum(["geometry", "profile", "terrain-manifest", "source-snapshot", "terrain-rights"]).parse(req.params.name);
   return loadReviewFile(c, String(req.params.id), name);
 }));
 const reviewBodyError: ErrorRequestHandler = (error, _req, res, next) => {

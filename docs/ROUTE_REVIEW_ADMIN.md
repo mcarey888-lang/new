@@ -13,6 +13,33 @@ Editing any input invalidates its preview. Duplicate candidate key/revision
 pairs are rejected rather than overwritten. A new revision is a separate record.
 No current expedition, mountain, geometry or user-progress record is changed.
 
+### Watkin draft preparation
+
+The separately authorised development tool
+`artifacts/api-server/scripts/prepare-watkin-binding.ts` creates **new** route
+identity/definition records in `needs_review`, a draft geometry and ordered OSM
+source-segment membership, then a new immutable review revision. It does not
+update existing mountain records, facts, reviews, expeditions or activities.
+It asserts the exact pilot mountain coordinates/elevation and original file
+hashes, verifies every source edge, and keeps reuse evidence unapproved.
+
+Run from the API package with `NODE_ENV=development`. Without `--commit`, the
+whole database rehearsal rolls back and no storage objects are uploaded.
+`--commit` retains only development draft records and private evidence. Both
+paths explicitly prove that acceptance fails; neither verifies a peak/route,
+creates a reusable-rights approval, approves a route or touches production.
+An advisory lock and existing-revision check make repeat preparation nonduplicating.
+
+The original source snapshot and terrain-rights investigation are retained as
+protected companion downloads. They complement, never rewrite, the original
+geometry/profile/terrain-manifest files. Companion bytes and their bindings are
+checked at import and all retained files are integrity-read for validation.
+
+The review page presents planning figures and a DEM profile before technical
+JSON. Snapshot figures are labelled as such, and live eligibility remains the
+server's decision. A linked draft is not labelled "unbound" or "verified".
+Technical metadata is rendered only when expanded.
+
 Example **illustrative data, not a hiking route**:
 
 ```json
