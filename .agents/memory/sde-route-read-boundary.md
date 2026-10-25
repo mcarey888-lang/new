@@ -97,6 +97,19 @@ still absent.
 future validation storage; do not turn successful pilot-file checks into geometry
 disclosure permission.
 
+Route-review storage work is authorised in development only. Production promotion,
+catalogue-reader activation and real route approval require separate permission.
+
+**Why:** The owner approved adding development validation tables, while protecting
+existing catalogue records, expedition snapshots and production behaviour.
+
+**How to apply:** Confirm the actual target independently of matching catalogue
+row counts; a managed development copy and the dedicated reader can be different
+databases. Do not redirect or grant write access to the reader to install schema.
+The acceptance-contract document records this boundary and the migration-owned
+SQL approach. Native generated manifest digests intentionally use immutable
+`jsonb_send`; PostgreSQL's STABLE `convert_to` cannot back a generated column.
+
 A failed canonical read is not evidence that a mountain is absent from the verified catalogue. Browsing cached suggestions may remain available, but the UI must distinguish catalogue downtime from a genuine no-match and keep identity-dependent actions closed.
 
 **Why:** An absent engine connection was silently converted to an empty lookup, making familiar curated mountains appear “not in the verified catalogue.”

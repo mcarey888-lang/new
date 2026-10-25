@@ -20,6 +20,14 @@ VERSION_SCHEMA = "summit_data_engine"
 
 def include_name(name: str | None, type_: str, parent_names: dict[str, str | None]) -> bool:
     """Autogenerate only public engine data objects."""
+    # These tables/functions/triggers are explicitly migration-owned SQL, not
+    # declarative ORM models. Never propose dropping them as "unmapped tables".
+    if type_ == "table" and name in {
+        "route_geometry_review_revisions",
+        "route_geometry_review_validations",
+        "route_geometry_review_decisions",
+    }:
+        return False
     if type_ == "schema":
         return name == SCHEMA
     schema_name = parent_names.get("schema_name")

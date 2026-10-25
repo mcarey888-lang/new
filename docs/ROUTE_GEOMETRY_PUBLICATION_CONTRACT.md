@@ -1,7 +1,71 @@
 # Proposed route-geometry publication contract
 
-Status: design only. No migration, database writes, reader activation or route
-approval is authorised or implemented by this document.
+Status: development-only storage implemented following owner approval. No
+production migration, canonical reader activation or real route approval has
+been performed or authorised.
+
+## Development storage now available
+
+The focused, additive SQL source is
+`summit-data-engine/sql/route_review_validation_v1.sql`, tracked by the next
+Alembic revision. It was applied directly as one development SQL transaction;
+the historical relocation chain was not replayed or stamped over an existing
+catalogue. These migration-owned SQL tables are excluded from ORM autogeneration
+so their absence from declarative models does not propose their removal.
+
+- `route_geometry_review_revisions`: immutable review snapshots, optionally
+  bound to an existing canonical geometry/definition revision.
+- `route_geometry_review_validations`: exact snapshot/profile/terrain hash
+  bindings, evaluator version/hash, explicit review flags, authority and expiry.
+- `route_geometry_review_decisions`: append-only development approval/revocation
+  chain. A revocation requires a fresh validation before approval can resume.
+
+All three remain empty after rollback-only integration tests. No Watkin candidate
+or synthetic fixture has been committed. No catalogue data was modified: row
+counts and content fingerprints match across thirteen protected engine tables.
+The separate dedicated catalogue connection was checked read-only; none of the
+new tables exists there, and its geometry count remains zero. Adding development
+storage does not make it visible through that independent connection.
+
+The database computes geometry digests from PostGIS XDR EWKB with SRID 4326/2D.
+It computes source-manifest digests with PostgreSQL's immutable `jsonb_send`
+representation. These are distinct, explicitly labelled algorithms; neither is
+the SHA-256 of a pretty-printed GeoJSON/JSON file. `convert_to` is STABLE, not
+IMMUTABLE, and cannot be used in a PostgreSQL stored generated expression.
+Clients must use the generated digests, not guess an equivalent serialisation.
+
+Binding checks capture definition/identity/mountain context and current member
+provenance/rights. Ordinary update, delete and truncate operations on review
+history are rejected. PUBLIC has no table/function access. The owner/superuser
+can still alter database protections; these guards are not a sandbox against the
+database administrator. No application writer grants or authentication changes
+were made.
+
+`sde_review_eligible(revision_id, active_evaluator_version, active_evaluator_sha256)`
+checks exact policy identity, current binding, expiry and latest decision.
+Future callers must supply their own pinned active policy, never user-selected
+values. Its result is development-scoped eligibility, not permission to disclose
+geometry in the current API.
+
+An ingestion/review service is still required to verify actual profile files,
+their geometry conversion and DEM lineage before asserting human review flags.
+Hashes and explicit flags are storage/attestation boundaries, not an automatic
+validator of unseen files or legal clearance for an uploaded rights assertion.
+
+### Verification and future promotion
+
+`summit-data-engine/sql/test_route_review_validation_v1.sql` runs 21 database
+integration checks in one transaction and rolls back every fixture. It covers
+exact binding, source/right changes, original engine immutability, history
+protection, profile mixing, policy mismatch, revocation and fresh review.
+
+No runtime startup/build/publish migration hook was added. No broad Drizzle sync
+or old Alembic relocation chain was run. Before any future promotion, separately
+authorise and confirm its target database, inspect the schema diff and confirm
+functions, triggers and privileges as well as tables. Do not assume that
+publishing the managed app database also migrates the independent catalogue.
+Keep the existing canonical API geometry gate off until its separate acceptance
+work, rights/access review and production verification are complete.
 
 ## Existing boundary
 
@@ -16,7 +80,8 @@ ingestion or fall back to the application database.
 
 ## Required binding before any release
 
-A future, separately approved schema change should establish immutable records:
+The storage contract requires these immutable bindings; integration and
+production promotion remain separate, unapproved work:
 
 1. **Geometry revision:** exact route-definition identity/version, geometry
    identity/version, SRID, coordinate order and canonical byte/hash specification.
