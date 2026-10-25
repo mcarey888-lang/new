@@ -35,8 +35,15 @@ Optional: canonicalGeometryId; profileFile and terrainManifestFile **together**.
 Unknown top-level fields are rejected. File values are original UTF-8 JSON text,
 not URLs, paths or base64. The overall request limit is 6 MB; geometry/profile
 files are each at most 2 MB, terrain manifest 500 KB, and geometry at most 20,000
-2D finite WGS84 points / 60 km. One LineString or single LineString Feature is
-supported, not a FeatureCollection, GPX or disconnected multi-line geometry.
+2D finite WGS84 points / 60 km. One LineString, a single LineString Feature, or
+a FeatureCollection containing exactly that one Feature is supported, preserving
+the original file bytes. Multi-feature collections, GPX and disconnected
+multi-line geometry are rejected.
+
+The global default JSON parser defers this exact route namespace to its own
+6 MB parser. Development and admin-key guards run before that parser; unrelated
+endpoints retain their existing limits. Oversized review requests return a
+route-specific error, rather than the recording-upload message.
 
 Source metadata remains metadata, never implicit verification. An optional
 canonicalGeometryId must already exist **in development**; bytes/order and full

@@ -1,5 +1,5 @@
 import { Router, json } from "express";
-import type { Request, Response } from "express";
+import type { Request, Response, ErrorRequestHandler } from "express";
 import { pool } from "@workspace/db";
 import { z } from "zod";
 import { requireAdminKey } from "../middlewares/requireAdminKey.js";
@@ -58,3 +58,15 @@ routeReviewAdminRouter.get(`${base}/:id/files/:name`, (req, res) => request(req,
   const name = z.enum(["geometry", "profile", "terrain-manifest"]).parse(req.params.name);
   return loadReviewFile(c, String(req.params.id), name);
 }));
+const reviewBodyError: ErrorRequestHandler = (error, _req, res, next) => {
+  if (error?.type === "entity.too.large") {
+    res.status(413).json({ error: "Route review files exceed the 6 MB request limit. Nothing was saved." });
+    return;
+  }
+  if (error?.type === "entity.parse.failed") {
+    res.status(400).json({ error: "Route review request is not valid JSON. Nothing was saved." });
+    return;
+  }
+  next(error);
+};
+routeReviewAdminRouter.use(base, reviewBodyError);

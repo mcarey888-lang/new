@@ -49,13 +49,19 @@ export function checkEvidence(raw: unknown): CheckedEvidence {
   };
   addFile("geometry", input.geometryFile);
   const geojson = json(input.geometryFile, "Geometry file", checked.errors);
-  const geometry = object(geojson) && geojson.type === "Feature" ? geojson.geometry : geojson;
+  // Preserve the original file/checksum, including the pilot's standard
+  // single-feature collection wrapper. Never merge disconnected features.
+  const feature = object(geojson) && geojson.type === "FeatureCollection"
+    && Array.isArray(geojson.features) && geojson.features.length === 1
+    && object(geojson.features[0]) && geojson.features[0].type === "Feature"
+    ? geojson.features[0] : geojson;
+  const geometry = object(feature) && feature.type === "Feature" ? feature.geometry : feature;
   if (!object(geometry) || geometry.type !== "LineString" || !Array.isArray(geometry.coordinates)
     || geometry.coordinates.length < 2 || geometry.coordinates.length > 20000
     || !geometry.coordinates.every((p: unknown) => Array.isArray(p) && p.length === 2
       && typeof p[0] === "number" && Number.isFinite(p[0]) && Math.abs(p[0]) <= 180
       && typeof p[1] === "number" && Number.isFinite(p[1]) && Math.abs(p[1]) <= 90)) {
-    checked.errors.push("Geometry must be a 2D WGS84 LineString (or single Feature), with 2–20,000 finite lon/lat points.");
+    checked.errors.push("Geometry must be one 2D WGS84 LineString, optionally wrapped in a Feature or single-feature FeatureCollection, with 2–20,000 finite lon/lat points.");
   } else if (new Set(geometry.coordinates.map((p: number[]) => p.join(","))).size < 2) {
     checked.errors.push("Geometry must contain at least two different coordinates.");
   } else {

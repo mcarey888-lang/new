@@ -133,6 +133,26 @@ service tests but failed in the actual bundled server because that URL was dist.
 **How to apply:** Resolve development policy inputs from the package source root
 and smoke-test the served API after building; keep missing policy evidence closed.
 
+Verify review uploads with real pilot-sized files through the complete HTTP
+middleware stack, not only small examples or service calls.
+
+**Why:** The global 100 KB JSON parser rejected the real Watkin geometry/profile
+before the protected router's 6 MB parser could run; small previews passed.
+
+**How to apply:** Defer the exact review namespace to its guarded parser. Keep
+other endpoint limits unchanged, and preserve development/auth checks before
+reading the larger body. Test a real preview plus rejection limits over HTTP.
+
+Pilot evidence may wrap a single route Feature in a FeatureCollection. Accept
+that single-feature envelope without changing its bytes or profile hash binding;
+do not concatenate multiple features or rewrite the signed-off source artifact.
+
+**Why:** The real Watkin pilot used this standard envelope while synthetic tests
+used bare LineStrings, leaving the real artifact incompatible with its reviewer.
+
+**How to apply:** Include a preserved single-feature collection in compatibility
+checks and keep multi-feature/disconnected inputs explicitly unsupported.
+
 A failed canonical read is not evidence that a mountain is absent from the verified catalogue. Browsing cached suggestions may remain available, but the UI must distinguish catalogue downtime from a genuine no-match and keep identity-dependent actions closed.
 
 **Why:** An absent engine connection was silently converted to an empty lookup, making familiar curated mountains appear “not in the verified catalogue.”

@@ -11,6 +11,17 @@ test("valid unbound geometry stays quarantined and exposes original file checksu
   assert.match(result.blockers.join(" "), /cannot be accepted/);
   assert.equal(result.files[0]?.sha256, sha256(geometryFile));
 });
+test("accepts the pilot's single-feature collection without rewriting its bytes", () => {
+  const feature = { type: "Feature", properties: {}, geometry: JSON.parse(geometryFile) };
+  const original = JSON.stringify({ type: "FeatureCollection", features: [feature] }, null, 2);
+  const result = checkEvidence({ ...candidate, geometryFile: original });
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.geometry, JSON.parse(geometryFile));
+  assert.equal(result.files[0]?.sha256, sha256(original));
+  for (const features of [[], [feature, feature], [{ ...feature, geometry: { type: "MultiLineString", coordinates: [] } }]]) {
+    assert.equal(checkEvidence({ ...candidate, geometryFile: JSON.stringify({ type: "FeatureCollection", features }) }).valid, false);
+  }
+});
 test("rejects malformed, out-of-range, 3D, identical and oversized-route geometry", () => {
   for (const geometry of [null, { type: "LineString", coordinates: [[181, 53], [-4, 53]] },
     { type: "LineString", coordinates: [[-4, 53, 10], [-4, 54, 20]] },
