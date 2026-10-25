@@ -1,4 +1,16 @@
 import { ActionSheetIOS, Alert, Linking, Platform } from "react-native";
+import { parkingNavigationUrls } from "./parkingNavigation";
+
+/** Explicit user choice from a parking popup; mapped candidates retain their caveat there. */
+export async function openParkingNavigation(message: Record<string, unknown>): Promise<void> {
+  const urls = parkingNavigationUrls(message, Platform.OS);
+  if (!urls) return;
+  try { await Linking.openURL(urls.native); }
+  catch {
+    try { await Linking.openURL(urls.fallback); }
+    catch { Alert.alert("Could not open directions", "A navigation app or browser could not be opened. Please try again."); }
+  }
+}
 
 /** Safe wrapper — falls back to a web URL if the native scheme can't be opened. */
 function openUrl(nativeUrl: string, webFallback: string) {

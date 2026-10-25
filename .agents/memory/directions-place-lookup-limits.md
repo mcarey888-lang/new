@@ -26,3 +26,9 @@ Browser directions must remain user-initiated after asynchronous parking researc
 **Why:** A browser can block a map tab opened after a network lookup, and React Native alerts can be invisible on web, making working buttons appear unresponsive.
 
 **How to apply:** Keep the researched destination available for a fresh tap, bound lookup time, and never substitute driving directions to the summit when parking research fails.
+
+The owner wants mapped parking pins to offer external navigation, including Google Maps and Waze. Unconfirmed mapped parking can be offered as a destination only with its uncertainty and access/signage caveat retained; opening directions does not promote it to confirmed parking or a verified route start.
+
+**Why:** Parking pins are useful destinations even before a walker confirms them, but mapped coordinates do not establish vehicle access or parking rights.
+
+**How to apply:** Use the selected parking feature's actual point, retain amber/green confidence distinctions, and do not change route geometry when a user taps a parking pin.

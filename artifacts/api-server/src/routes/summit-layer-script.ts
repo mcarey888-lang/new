@@ -693,6 +693,7 @@ function setSearchControlHidden(hidden) {
 var parkingToken = 0;
 
 function clearParking() {
+  if (typeof closeParkingPopup === "function") closeParkingPopup();
   if (map.getSource("parking")) {
     map.getSource("parking").setData({ type: "FeatureCollection", features: [] });
   }
@@ -733,6 +734,8 @@ function ensureParkingLayers() {
     },
     paint: { "text-color": "#F4F7F6", "text-halo-color": "#0B1418", "text-halo-width": 1.4 },
   });
+  map.on("mouseenter", "parking-dot", function () { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", "parking-dot", function () { map.getCanvas().style.cursor = ""; });
 }
 
 function parkingLabel(place) {

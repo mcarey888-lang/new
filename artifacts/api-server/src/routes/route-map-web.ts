@@ -1,3 +1,4 @@
+import { parkingDirectionsScript } from "./parking-directions-script";
 import { Router, type IRouter } from "express";
 import { summitLayerScript } from "./summit-layer-script";
 import { recordingScript } from "./recording-script";
@@ -175,6 +176,15 @@ export function buildRouteMapHtml(
   #map{position:absolute;inset:0}
   .maplibregl-ctrl-attrib{font-size:9px!important;background:rgba(0,0,0,0.55)!important}
   .maplibregl-ctrl-attrib a{color:rgba(255,255,255,0.45)!important}
+  .parking-popup .maplibregl-popup-content{background:#0B1418;color:#F4F7F6;border:1px solid #34413F;border-radius:12px;padding:18px 14px 10px;font:13px/1.4 system-ui;box-shadow:0 4px 20px #0008}
+  .parking-popup .maplibregl-popup-tip{border-top-color:#0B1418;border-bottom-color:#0B1418}
+  .parking-popup strong{display:block;padding-right:24px;font-size:14px}
+  .parking-popup p{font-size:12px;color:#C3CDCA;margin:8px 0}
+  .parking-popup .maplibregl-popup-close-button{color:#F4F7F6;width:44px;height:44px;font-size:20px}
+  .parking-popup a{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:44px;text-decoration:none;border-radius:8px}
+  .parking-popup .parking-directions-main{width:100%;background:#F2C14E;color:#0B1418;font-weight:700}
+  .parking-popup .parking-directions-option{width:50%;color:#F2C14E}
+  .parking-popup a:focus-visible{outline:2px solid #F2C14E;outline-offset:2px}
   .panel{
     position:absolute;top:10px;right:10px;z-index:3;display:flex;flex-direction:column;gap:7px;
     font:600 11px/1 -apple-system,system-ui,sans-serif;
@@ -454,11 +464,13 @@ map.on("load", function () {
   }
 
   map.on("click", function (e) {
-    post({ type: "tap", lat: e.lngLat.lat, lng: e.lngLat.lng });
     /* A tap that grabbed an existing point was a grab, not a new point.
        Without this, touching a dot to drag it leaves a duplicate behind at the
        place it started. */
     if (suppressClick) { suppressClick = false; return; }
+    var parking = typeof parkingAt === "function" ? parkingAt(e) : null;
+    if (parking) { showParkingPopup(parking); return; }
+    post({ type: "tap", lat: e.lngLat.lat, lng: e.lngLat.lng });
     if (drawing) addPoint(e.lngLat);
   });
 
@@ -1224,6 +1236,7 @@ document.getElementById("gpx").onclick = function () {
   });
 };
 
+${parkingDirectionsScript()}
 ${summitsUrl ? summitLayerScript(summitsUrl, parkingUrl) : ""}
 ${summitsUrl ? `map.on("moveend", scheduleSummits);` : ""}
 

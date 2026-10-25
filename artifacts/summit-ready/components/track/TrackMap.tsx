@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { WebView } from "react-native-webview";
 import { activityApiBase as API_BASE } from "@/utils/activityAudience";
+import { openParkingNavigation } from "@/utils/openMaps";
 
 /**
  * The map, on the Track screen.
@@ -53,6 +54,10 @@ export function TrackMap({ recording, onMessage, onReady, mapRef }: Props) {
   }, []);
 
   const receive = useCallback((data: Record<string, unknown>) => {
+    if (data.type === "parkingDirections") {
+      void openParkingNavigation(data);
+      return;
+    }
     if (data.type === "ready") {
       // Replay the latest mode after style/page loading, not a lost early message.
       // An initially normal map may now be drawing a route. Reasserting false

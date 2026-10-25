@@ -29,6 +29,7 @@ import {
 } from "../utils/plannedRouteApi";
 import { readMountainRoutePackage } from "../utils/mountainHubStorage";
 import { readPlannerDraft } from "../utils/plannerDraftHandoff";
+import { openParkingNavigation } from "../utils/openMaps";
 
 /**
  * Route planner — the map, inside the app.
@@ -128,6 +129,10 @@ export default function RoutePlannerScreen() {
     };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === "ready") setMapReady(true);
+    if (msg.type === "parkingDirections") {
+      void openParkingNavigation(msg as Record<string, unknown>);
+      return;
+    }
     if (msg.type === "routeChanged") setSelectedSavedRoute(null);
     if (msg.type === "routeLoaded") {
       const pending = loadingSavedRoute.current;
@@ -167,6 +172,7 @@ export default function RoutePlannerScreen() {
   useEffect(() => {
     if (Platform.OS !== "web") return;
     const handler = (e: MessageEvent) => {
+      if (e.source !== frameRef.current?.contentWindow) return;
       if (typeof e.data === "string") onMessage(e.data);
     };
     window.addEventListener("message", handler);
