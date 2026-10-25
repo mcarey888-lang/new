@@ -70,6 +70,7 @@ import {
   confirmExtraDayFlow,
 } from "@/utils/manualExpedition";
 import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
+import { approvedExpeditionArtwork } from "@/utils/expeditionArtwork";
 import { resolveApprovedMatterhornArtwork } from "@/utils/artworkResolver";
 import { mountainSuggestions } from "@/constants/mountains";
 import {
@@ -327,12 +328,6 @@ interface SigChallenge {
  * API_BASE ends with "/api"; stored paths already start with "/api/", so strip
  * the trailing segment to avoid doubling the prefix.
  */
-function artworkUrl(storedPath: string | null | undefined): string | null {
-  if (!storedPath) return null;
-  const base = API_BASE.replace(/\/api$/, "");
-  return base + storedPath;
-}
-
 /** Normalise a mountain name to its slug (matches the API's toMountainSlug). */
 function toMountainSlug(name: string): string {
   return name.toLowerCase()
@@ -494,7 +489,7 @@ export default function ExpeditionMountainsScreen() {
     setActiveCardArtwork(null);
     if (!cardMountain) return () => controller.abort();
     void (async () => {
-      let uri = (await resolveApprovedMatterhornArtwork(cardMountain))?.uri ?? null;
+      let uri: string | null = null;
       if (!uri && cardChallengeId) {
         try {
           const response = await fetch(`${API_BASE}/sx/challenges/${encodeURIComponent(cardChallengeId)}`, {
@@ -503,12 +498,13 @@ export default function ExpeditionMountainsScreen() {
           if (response.ok) {
             const data = await response.json();
             const challenge = data.challenge ?? data;
-            if (challenge?.approved) uri = artworkUrl(challenge.cardImage ?? challenge.heroImage);
+            uri = approvedExpeditionArtwork(challenge, "card", API_BASE);
           }
         } catch {
           // Retain the designed gradient if the approved challenge lookup fails.
         }
       }
+      if (!uri) uri = (await resolveApprovedMatterhornArtwork(cardMountain))?.uri ?? null;
       if (!uri && hasApprovedMountainImage(cardMountain)) {
         uri = mountainImageUri(cardMountain, { width: 800, height: 300 });
       }
@@ -2491,10 +2487,8 @@ export default function ExpeditionMountainsScreen() {
             >
               {BROWSE_REGIONS.map(r => {
                 const featCh = featuredList.find(f => f.challengeId === r.challengeId && f.approved);
-                const artPath = featCh?.thumbnailImage ?? featCh?.cardImage ?? null;
-                const regionImgUri = artPath
-                  ? artworkUrl(artPath)
-                  : `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160`;
+                const regionImgUri = approvedExpeditionArtwork(featCh, "thumbnail", API_BASE)
+                  ?? `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160`;
                 return (
                 <TouchableOpacity
                   key={r.name}
@@ -2550,10 +2544,7 @@ export default function ExpeditionMountainsScreen() {
                   <View style={s.popularThumb}>
                     <ExpoImage
                       source={{
-                        uri: (hasApprovedMountainImage(ch.targetMountainName)
-                          ? mountainImageUri(ch.targetMountainName, { width: 160, height: 160 })
-                          : null)
-                          || (ch.approved && artworkUrl(ch.thumbnailImage ?? ch.cardImage))
+                        uri: approvedExpeditionArtwork(ch, "thumbnail", API_BASE)
                           || mountainImageUri(ch.targetMountainName, { width: 160, height: 160 })!,
                       }}
                       style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 6 }}

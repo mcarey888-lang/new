@@ -39,8 +39,8 @@ Prompt-only mountain generation cannot browse the web merely because the prompt 
 
 **How to apply:** Check actual reference availability before claiming geographic fidelity. For stronger likeness, supply verified exact-match image bytes to the generation call, and compare draft geometry with a real photograph before approving.
 
-When a user approves a named mountain's hero for use across the app, that mountain image takes precedence over older challenge artwork on cards and heroes representing that same named mountain. Do not apply this to generic banners, exercise illustrations, or routes involving several different mountains.
+When a user approves a named mountain's hero for use across the app, use that mountain image on surfaces representing the mountain itself. An identifiable expedition with its own approved artwork is a separate subject: its exact expedition composition takes precedence over the inspirational mountain on expedition cards, detail, Basecamp and completion.
 
-**Why:** The user explicitly approved the named collection and asked for those images wherever those mountains appear; an approval restricted to the admin library would leave existing challenge art visible in the app.
+**Why:** The user approved the named mountain collection, but subsequently showed that the Welsh Mont Blanc expedition was incorrectly using a generic Mont Blanc image instead of the expedition composition approved in their artwork generator. The later clarification distinguishes mountain identity from expedition identity.
 
-**How to apply:** Use an identity-checked canonical mountain match, including deliberate aliases and single-mountain route labels, before overriding challenge art. Do not use loose substring matches or silently treat an AI illustration as proof of geographic accuracy.
+**How to apply:** For a known expedition ID, select only that expedition's currently approved artwork first. Do not select another regional expedition merely because it shares the target mountain. Use mountain art as fallback when no approved expedition composition exists. Keep ordinary mountain pages on identity-checked canonical mountain artwork; do not treat an AI illustration as proof of geographic accuracy.

@@ -6,6 +6,18 @@ import {
 } from "./signatureExpedition";
 
 describe("signature expedition stage mapping", () => {
+  it("uses selected catalogue identity and coordinates without treating summit altitude as route ascent", () => {
+    const hill = signatureStageToNearbyHill({
+      routeKey: "example-route", routeName: "Helvellyn via Striding Edge",
+      distanceKm: 13, ascentM: 950,
+      catalogueMountain: { id: "summit-id", name: "Helvellyn", latitude: 54.527,
+        longitude: -3.0175, elevationM: 949.8 },
+    });
+    expect(hill).toMatchObject({ summitIdentityKey: "sde:mountain:summit-id", summitName: "Helvellyn",
+      lat: 54.527, lng: -3.0175, elevation: 950, routeDistance: 13,
+      summitElevationASL: 949.8, confidence: "curated", dataSource: "signature_challenge_db" });
+    expect(hill.routeIdentityKey).toBe("signature-route:example-route");
+  });
   it("preserves database route metrics in the fields Base Camp reads", () => {
     const hill = signatureStageToNearbyHill({
       routeKey: "fairfield",

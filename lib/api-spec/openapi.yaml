@@ -15,6 +15,137 @@ tags:
   - name: community
     description: Authenticated SummitReady member sharing
 paths:
+  /admin/expeditions:
+    get:
+      operationId: listAdminExpeditions
+      description: Admin key required. Includes drafts and hidden expeditions.
+      responses:
+        "200":
+          description: Expedition library
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [expeditions]
+                properties:
+                  expeditions: { type: array, items: { $ref: "#/components/schemas/AdminExpeditionRecord" } }
+        "401": { description: Admin key required }
+  /admin/expeditions/catalogue:
+    get:
+      operationId: searchExpeditionCatalogue
+      description: Admin key required. Trusted summit identity only, not route verification.
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 120 } }
+      responses:
+        "200":
+          description: Matching catalogue summits
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, hasMore]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/ExpeditionCatalogueMountain" } }
+                  hasMore: { type: boolean }
+        "401": { description: Admin key required }
+        "503": { description: Catalogue unavailable }
+  /admin/expeditions/preview:
+    post:
+      operationId: previewExpeditionImport
+      description: Admin key required. Read-only validation, never writes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpeditionImportBatch" }
+      responses:
+        "200":
+          description: Validation results
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExpeditionImportPreview" }
+        "401": { description: Admin key required }
+  /admin/expeditions/import:
+    post:
+      operationId: importExpeditionDrafts
+      description: Admin key required. Atomic create-only import; drafts only, never overwrites.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpeditionImportBatch" }
+      responses:
+        "201":
+          description: Draft IDs created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [created]
+                properties:
+                  created: { type: array, items: { type: string } }
+        "400": { description: "Validation failed, nothing saved" }
+        "401": { description: Admin key required }
+        "409": { description: "Duplicate ID, nothing saved" }
+  /admin/expeditions/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getAdminExpedition
+      description: Admin key required.
+      responses:
+        "200":
+          description: Expedition with stages and limitations
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [expedition]
+                properties:
+                  expedition: { $ref: "#/components/schemas/AdminExpeditionRecord" }
+        "401": { description: Admin key required }
+        "404": { description: Not found }
+    put:
+      operationId: updateAdminExpedition
+      description: Admin key required. Optimistic concurrency; active status requires human review confirmation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpeditionUpdateRequest" }
+      responses:
+        "200":
+          description: Saved expedition
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [expedition]
+                properties:
+                  expedition: { $ref: "#/components/schemas/AdminExpeditionRecord" }
+        "400": { description: Validation failed }
+        "401": { description: Admin key required }
+        "409": { description: "Stale editor, reload required" }
+    delete:
+      operationId: deleteAdminExpeditionDraft
+      description: Admin key required. Only unchanged drafts may be deleted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpeditionDeleteRequest" }
+      responses:
+        "200":
+          description: Draft deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted]
+                properties:
+                  deleted: { type: boolean }
+        "401": { description: Admin key required }
+        "409": { description: Not a draft or stale version }
   /weather/forecast:
     get:
       operationId: getMountainWeather
@@ -748,6 +879,109 @@ paths:
 
 components:
   schemas:
+    ExpeditionUpdateRequest:
+      type: object
+      required: [expedition, expectedUpdatedAt]
+      properties:
+        expedition: { $ref: "#/components/schemas/AdminExpeditionInput" }
+        expectedUpdatedAt: { type: string }
+    ExpeditionDeleteRequest:
+      type: object
+      required: [expectedUpdatedAt]
+      properties:
+        expectedUpdatedAt: { type: string }
+    ExpeditionCatalogueMountain:
+      type: object
+      required: [id, name, latitude, longitude, status]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        country: { type: ["string", "null"] }
+        region: { type: ["string", "null"] }
+        latitude: { type: number }
+        longitude: { type: number }
+        elevationM: { type: ["number", "null"] }
+        status: { type: string }
+    AdminExpeditionStageInput:
+      type: object
+      additionalProperties: false
+      required: [routeName, distanceKm, ascentM]
+      properties:
+        routeName: { type: string, maxLength: 200 }
+        routeKey: { type: string, maxLength: 200 }
+        mountainId: { type: string, format: uuid }
+        region: { type: string, maxLength: 200 }
+        distanceKm: { type: number, exclusiveMinimum: 0, maximum: 1000 }
+        ascentM: { type: number, minimum: 0, maximum: 20000 }
+        estimatedHours: { type: number, exclusiveMinimum: 0, maximum: 240 }
+        difficulty: { type: string, maxLength: 80 }
+        dnaContribution: { type: string, maxLength: 1000 }
+        whySelected: { type: string, maxLength: 2000 }
+    AdminExpeditionInput:
+      type: object
+      additionalProperties: false
+      required: [challengeId, challengeName, targetMountainName, stages]
+      properties:
+        challengeId: { type: string, pattern: "^[A-Z0-9][A-Z0-9_-]{2,39}$" }
+        challengeName: { type: string, maxLength: 200 }
+        targetMountainName: { type: string, maxLength: 200 }
+        targetRoute: { type: string, maxLength: 200 }
+        summary: { type: string, maxLength: 4000 }
+        regions: { type: string, maxLength: 500 }
+        difficulty: { type: string, maxLength: 80 }
+        recommendedDays: { type: integer, minimum: 1, maximum: 365 }
+        status: { type: string, enum: [draft, active, hidden], default: draft }
+        reviewed: { type: boolean }
+        stages: { type: array, minItems: 1, maxItems: 30, items: { $ref: "#/components/schemas/AdminExpeditionStageInput" } }
+        limitations: { type: array, maxItems: 30, items: { type: string, maxLength: 2000 } }
+    AdminExpeditionRecord:
+      type: object
+      required: [challengeId, challengeName, targetMountainName, status, updatedAt, stages, limitations]
+      properties:
+        challengeId: { type: string }
+        challengeName: { type: string }
+        targetMountainName: { type: string }
+        status: { type: string, enum: [draft, active, hidden] }
+        updatedAt: { type: string }
+        stages:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            properties:
+              catalogueMountain:
+                oneOf:
+                  - { $ref: "#/components/schemas/ExpeditionCatalogueMountain" }
+                  - { type: "null" }
+        limitations: { type: array, items: { type: string } }
+      additionalProperties: true
+    ExpeditionImportBatch:
+      type: object
+      additionalProperties: false
+      required: [expeditions]
+      properties:
+        expeditions: { type: array, minItems: 1, maxItems: 100, items: { $ref: "#/components/schemas/AdminExpeditionInput" } }
+    ExpeditionImportPreview:
+      type: object
+      required: [valid, entries, errors]
+      properties:
+        valid: { type: boolean }
+        errors: { type: array, items: { type: string } }
+        entries:
+          type: array
+          items:
+            type: object
+            required: [index, challengeId, challengeName, errors, warnings, expedition]
+            properties:
+              index: { type: integer }
+              challengeId: { type: string }
+              challengeName: { type: string }
+              errors: { type: array, items: { type: string } }
+              warnings: { type: array, items: { type: string } }
+              expedition:
+                oneOf:
+                  - { $ref: "#/components/schemas/AdminExpeditionInput" }
+                  - { type: "null" }
     WeatherHour:
       type: object
       required: [time, temperatureC, feelsLikeC, rainChance, windMph, condition, conditionCode, isDay]

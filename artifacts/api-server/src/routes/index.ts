@@ -35,6 +35,7 @@ import userRouter from "./user";
 import virtualExpeditionRouter from "./virtual-expedition";
 import virtualExpeditionEngineRouter from "./virtual-expedition-engine";
 import { signatureChallengesRouter } from "./signature-challenges";
+import { expeditionAdminRouter } from "./expedition-admin";
 import { artworkRouter } from "./artwork";
 import { atlasRouter } from "./atlas";
 import redditConversionsRouter from "./reddit-conversions";
@@ -78,6 +79,7 @@ router.use(demoLoadRouter);
 router.use(virtualExpeditionRouter);
 router.use(virtualExpeditionEngineRouter);
 router.use(signatureChallengesRouter);
+router.use(expeditionAdminRouter);
 router.use("/artwork", artworkRouter);
 router.use("/atlas", atlasRouter);
 

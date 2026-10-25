@@ -7,6 +7,837 @@
  */
 import * as zod from "zod";
 
+/**
+ * Admin key required. Includes drafts and hidden expeditions.
+ */
+export const ListAdminExpeditionsResponse = zod.object({
+  expeditions: zod.array(
+    zod.object({
+      challengeId: zod.string(),
+      challengeName: zod.string(),
+      targetMountainName: zod.string(),
+      status: zod.enum(["draft", "active", "hidden"]),
+      updatedAt: zod.string(),
+      stages: zod.array(
+        zod.object({
+          catalogueMountain: zod
+            .union([
+              zod.object({
+                id: zod.string().uuid(),
+                name: zod.string(),
+                country: zod.string().nullish(),
+                region: zod.string().nullish(),
+                latitude: zod.number(),
+                longitude: zod.number(),
+                elevationM: zod.number().nullish(),
+                status: zod.string(),
+              }),
+              zod.null(),
+            ])
+            .optional(),
+        }),
+      ),
+      limitations: zod.array(zod.string()),
+    }),
+  ),
+});
+
+/**
+ * Admin key required. Trusted summit identity only, not route verification.
+ */
+export const searchExpeditionCatalogueQueryQMin = 2;
+export const searchExpeditionCatalogueQueryQMax = 120;
+
+export const SearchExpeditionCatalogueQueryParams = zod.object({
+  q: zod.coerce
+    .string()
+    .min(searchExpeditionCatalogueQueryQMin)
+    .max(searchExpeditionCatalogueQueryQMax),
+});
+
+export const SearchExpeditionCatalogueResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      name: zod.string(),
+      country: zod.string().nullish(),
+      region: zod.string().nullish(),
+      latitude: zod.number(),
+      longitude: zod.number(),
+      elevationM: zod.number().nullish(),
+      status: zod.string(),
+    }),
+  ),
+  hasMore: zod.boolean(),
+});
+
+/**
+ * Admin key required. Read-only validation, never writes.
+ */
+export const previewExpeditionImportBodyExpeditionsItemChallengeIdRegExp =
+  new RegExp("^[A-Z0-9][A-Z0-9_-]{2,39}$");
+export const previewExpeditionImportBodyExpeditionsItemChallengeNameMax = 200;
+
+export const previewExpeditionImportBodyExpeditionsItemTargetMountainNameMax = 200;
+
+export const previewExpeditionImportBodyExpeditionsItemTargetRouteMax = 200;
+
+export const previewExpeditionImportBodyExpeditionsItemSummaryMax = 4000;
+
+export const previewExpeditionImportBodyExpeditionsItemRegionsMax = 500;
+
+export const previewExpeditionImportBodyExpeditionsItemDifficultyMax = 80;
+
+export const previewExpeditionImportBodyExpeditionsItemRecommendedDaysMax = 365;
+
+export const previewExpeditionImportBodyExpeditionsItemStatusDefault = `draft`;
+export const previewExpeditionImportBodyExpeditionsItemStagesItemRouteNameMax = 200;
+
+export const previewExpeditionImportBodyExpeditionsItemStagesItemRouteKeyMax = 200;
+
+export const previewExpeditionImportBodyExpeditionsItemStagesItemRegionMax = 200;
+
+export const previewExpeditionImportBodyExpeditionsItemStagesItemDistanceKmExclusiveMin = 0;
+export const previewExpeditionImportBodyExpeditionsItemStagesItemDistanceKmMax = 1000;
+
+export const previewExpeditionImportBodyExpeditionsItemStagesItemAscentMMin = 0;
+export const previewExpeditionImportBodyExpeditionsItemStagesItemAscentMMax = 20000;
+
+export const previewExpeditionImportBodyExpeditionsItemStagesItemEstimatedHoursExclusiveMin = 0;
+export const previewExpeditionImportBodyExpeditionsItemStagesItemEstimatedHoursMax = 240;
+
+export const previewExpeditionImportBodyExpeditionsItemStagesItemDifficultyMax = 80;
+
+export const previewExpeditionImportBodyExpeditionsItemStagesItemDnaContributionMax = 1000;
+
+export const previewExpeditionImportBodyExpeditionsItemStagesItemWhySelectedMax = 2000;
+
+export const previewExpeditionImportBodyExpeditionsItemStagesMax = 30;
+
+export const previewExpeditionImportBodyExpeditionsItemLimitationsItemMax = 2000;
+
+export const previewExpeditionImportBodyExpeditionsItemLimitationsMax = 30;
+
+export const previewExpeditionImportBodyExpeditionsMax = 100;
+
+export const PreviewExpeditionImportBody = zod.object({
+  expeditions: zod
+    .array(
+      zod.object({
+        challengeId: zod
+          .string()
+          .regex(previewExpeditionImportBodyExpeditionsItemChallengeIdRegExp),
+        challengeName: zod
+          .string()
+          .max(previewExpeditionImportBodyExpeditionsItemChallengeNameMax),
+        targetMountainName: zod
+          .string()
+          .max(previewExpeditionImportBodyExpeditionsItemTargetMountainNameMax),
+        targetRoute: zod
+          .string()
+          .max(previewExpeditionImportBodyExpeditionsItemTargetRouteMax)
+          .optional(),
+        summary: zod
+          .string()
+          .max(previewExpeditionImportBodyExpeditionsItemSummaryMax)
+          .optional(),
+        regions: zod
+          .string()
+          .max(previewExpeditionImportBodyExpeditionsItemRegionsMax)
+          .optional(),
+        difficulty: zod
+          .string()
+          .max(previewExpeditionImportBodyExpeditionsItemDifficultyMax)
+          .optional(),
+        recommendedDays: zod
+          .number()
+          .min(1)
+          .max(previewExpeditionImportBodyExpeditionsItemRecommendedDaysMax)
+          .optional(),
+        status: zod
+          .enum(["draft", "active", "hidden"])
+          .default(previewExpeditionImportBodyExpeditionsItemStatusDefault),
+        reviewed: zod.boolean().optional(),
+        stages: zod
+          .array(
+            zod.object({
+              routeName: zod
+                .string()
+                .max(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemRouteNameMax,
+                ),
+              routeKey: zod
+                .string()
+                .max(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemRouteKeyMax,
+                )
+                .optional(),
+              mountainId: zod.string().uuid().optional(),
+              region: zod
+                .string()
+                .max(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemRegionMax,
+                )
+                .optional(),
+              distanceKm: zod
+                .number()
+                .gt(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemDistanceKmExclusiveMin,
+                )
+                .max(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemDistanceKmMax,
+                ),
+              ascentM: zod
+                .number()
+                .min(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemAscentMMin,
+                )
+                .max(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemAscentMMax,
+                ),
+              estimatedHours: zod
+                .number()
+                .gt(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemEstimatedHoursExclusiveMin,
+                )
+                .max(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemEstimatedHoursMax,
+                )
+                .optional(),
+              difficulty: zod
+                .string()
+                .max(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemDifficultyMax,
+                )
+                .optional(),
+              dnaContribution: zod
+                .string()
+                .max(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemDnaContributionMax,
+                )
+                .optional(),
+              whySelected: zod
+                .string()
+                .max(
+                  previewExpeditionImportBodyExpeditionsItemStagesItemWhySelectedMax,
+                )
+                .optional(),
+            }),
+          )
+          .min(1)
+          .max(previewExpeditionImportBodyExpeditionsItemStagesMax),
+        limitations: zod
+          .array(
+            zod
+              .string()
+              .max(
+                previewExpeditionImportBodyExpeditionsItemLimitationsItemMax,
+              ),
+          )
+          .max(previewExpeditionImportBodyExpeditionsItemLimitationsMax)
+          .optional(),
+      }),
+    )
+    .min(1)
+    .max(previewExpeditionImportBodyExpeditionsMax),
+});
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneChallengeIdRegExp =
+  new RegExp("^[A-Z0-9][A-Z0-9_-]{2,39}$");
+export const previewExpeditionImportResponseEntriesItemExpeditionOneChallengeNameMax = 200;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneTargetMountainNameMax = 200;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneTargetRouteMax = 200;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneSummaryMax = 4000;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneRegionsMax = 500;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneDifficultyMax = 80;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneRecommendedDaysMax = 365;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStatusDefault = `draft`;
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemRouteNameMax = 200;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemRouteKeyMax = 200;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemRegionMax = 200;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemDistanceKmExclusiveMin = 0;
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemDistanceKmMax = 1000;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemAscentMMin = 0;
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemAscentMMax = 20000;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemEstimatedHoursExclusiveMin = 0;
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemEstimatedHoursMax = 240;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemDifficultyMax = 80;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemDnaContributionMax = 1000;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemWhySelectedMax = 2000;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneStagesMax = 30;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneLimitationsItemMax = 2000;
+
+export const previewExpeditionImportResponseEntriesItemExpeditionOneLimitationsMax = 30;
+
+export const PreviewExpeditionImportResponse = zod.object({
+  valid: zod.boolean(),
+  errors: zod.array(zod.string()),
+  entries: zod.array(
+    zod.object({
+      index: zod.number(),
+      challengeId: zod.string(),
+      challengeName: zod.string(),
+      errors: zod.array(zod.string()),
+      warnings: zod.array(zod.string()),
+      expedition: zod.union([
+        zod.object({
+          challengeId: zod
+            .string()
+            .regex(
+              previewExpeditionImportResponseEntriesItemExpeditionOneChallengeIdRegExp,
+            ),
+          challengeName: zod
+            .string()
+            .max(
+              previewExpeditionImportResponseEntriesItemExpeditionOneChallengeNameMax,
+            ),
+          targetMountainName: zod
+            .string()
+            .max(
+              previewExpeditionImportResponseEntriesItemExpeditionOneTargetMountainNameMax,
+            ),
+          targetRoute: zod
+            .string()
+            .max(
+              previewExpeditionImportResponseEntriesItemExpeditionOneTargetRouteMax,
+            )
+            .optional(),
+          summary: zod
+            .string()
+            .max(
+              previewExpeditionImportResponseEntriesItemExpeditionOneSummaryMax,
+            )
+            .optional(),
+          regions: zod
+            .string()
+            .max(
+              previewExpeditionImportResponseEntriesItemExpeditionOneRegionsMax,
+            )
+            .optional(),
+          difficulty: zod
+            .string()
+            .max(
+              previewExpeditionImportResponseEntriesItemExpeditionOneDifficultyMax,
+            )
+            .optional(),
+          recommendedDays: zod
+            .number()
+            .min(1)
+            .max(
+              previewExpeditionImportResponseEntriesItemExpeditionOneRecommendedDaysMax,
+            )
+            .optional(),
+          status: zod
+            .enum(["draft", "active", "hidden"])
+            .default(
+              previewExpeditionImportResponseEntriesItemExpeditionOneStatusDefault,
+            ),
+          reviewed: zod.boolean().optional(),
+          stages: zod
+            .array(
+              zod.object({
+                routeName: zod
+                  .string()
+                  .max(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemRouteNameMax,
+                  ),
+                routeKey: zod
+                  .string()
+                  .max(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemRouteKeyMax,
+                  )
+                  .optional(),
+                mountainId: zod.string().uuid().optional(),
+                region: zod
+                  .string()
+                  .max(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemRegionMax,
+                  )
+                  .optional(),
+                distanceKm: zod
+                  .number()
+                  .gt(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemDistanceKmExclusiveMin,
+                  )
+                  .max(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemDistanceKmMax,
+                  ),
+                ascentM: zod
+                  .number()
+                  .min(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemAscentMMin,
+                  )
+                  .max(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemAscentMMax,
+                  ),
+                estimatedHours: zod
+                  .number()
+                  .gt(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemEstimatedHoursExclusiveMin,
+                  )
+                  .max(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemEstimatedHoursMax,
+                  )
+                  .optional(),
+                difficulty: zod
+                  .string()
+                  .max(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemDifficultyMax,
+                  )
+                  .optional(),
+                dnaContribution: zod
+                  .string()
+                  .max(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemDnaContributionMax,
+                  )
+                  .optional(),
+                whySelected: zod
+                  .string()
+                  .max(
+                    previewExpeditionImportResponseEntriesItemExpeditionOneStagesItemWhySelectedMax,
+                  )
+                  .optional(),
+              }),
+            )
+            .min(1)
+            .max(
+              previewExpeditionImportResponseEntriesItemExpeditionOneStagesMax,
+            ),
+          limitations: zod
+            .array(
+              zod
+                .string()
+                .max(
+                  previewExpeditionImportResponseEntriesItemExpeditionOneLimitationsItemMax,
+                ),
+            )
+            .max(
+              previewExpeditionImportResponseEntriesItemExpeditionOneLimitationsMax,
+            )
+            .optional(),
+        }),
+        zod.null(),
+      ]),
+    }),
+  ),
+});
+
+/**
+ * Admin key required. Atomic create-only import; drafts only, never overwrites.
+ */
+export const importExpeditionDraftsBodyExpeditionsItemChallengeIdRegExp =
+  new RegExp("^[A-Z0-9][A-Z0-9_-]{2,39}$");
+export const importExpeditionDraftsBodyExpeditionsItemChallengeNameMax = 200;
+
+export const importExpeditionDraftsBodyExpeditionsItemTargetMountainNameMax = 200;
+
+export const importExpeditionDraftsBodyExpeditionsItemTargetRouteMax = 200;
+
+export const importExpeditionDraftsBodyExpeditionsItemSummaryMax = 4000;
+
+export const importExpeditionDraftsBodyExpeditionsItemRegionsMax = 500;
+
+export const importExpeditionDraftsBodyExpeditionsItemDifficultyMax = 80;
+
+export const importExpeditionDraftsBodyExpeditionsItemRecommendedDaysMax = 365;
+
+export const importExpeditionDraftsBodyExpeditionsItemStatusDefault = `draft`;
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemRouteNameMax = 200;
+
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemRouteKeyMax = 200;
+
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemRegionMax = 200;
+
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemDistanceKmExclusiveMin = 0;
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemDistanceKmMax = 1000;
+
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemAscentMMin = 0;
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemAscentMMax = 20000;
+
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemEstimatedHoursExclusiveMin = 0;
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemEstimatedHoursMax = 240;
+
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemDifficultyMax = 80;
+
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemDnaContributionMax = 1000;
+
+export const importExpeditionDraftsBodyExpeditionsItemStagesItemWhySelectedMax = 2000;
+
+export const importExpeditionDraftsBodyExpeditionsItemStagesMax = 30;
+
+export const importExpeditionDraftsBodyExpeditionsItemLimitationsItemMax = 2000;
+
+export const importExpeditionDraftsBodyExpeditionsItemLimitationsMax = 30;
+
+export const importExpeditionDraftsBodyExpeditionsMax = 100;
+
+export const ImportExpeditionDraftsBody = zod.object({
+  expeditions: zod
+    .array(
+      zod.object({
+        challengeId: zod
+          .string()
+          .regex(importExpeditionDraftsBodyExpeditionsItemChallengeIdRegExp),
+        challengeName: zod
+          .string()
+          .max(importExpeditionDraftsBodyExpeditionsItemChallengeNameMax),
+        targetMountainName: zod
+          .string()
+          .max(importExpeditionDraftsBodyExpeditionsItemTargetMountainNameMax),
+        targetRoute: zod
+          .string()
+          .max(importExpeditionDraftsBodyExpeditionsItemTargetRouteMax)
+          .optional(),
+        summary: zod
+          .string()
+          .max(importExpeditionDraftsBodyExpeditionsItemSummaryMax)
+          .optional(),
+        regions: zod
+          .string()
+          .max(importExpeditionDraftsBodyExpeditionsItemRegionsMax)
+          .optional(),
+        difficulty: zod
+          .string()
+          .max(importExpeditionDraftsBodyExpeditionsItemDifficultyMax)
+          .optional(),
+        recommendedDays: zod
+          .number()
+          .min(1)
+          .max(importExpeditionDraftsBodyExpeditionsItemRecommendedDaysMax)
+          .optional(),
+        status: zod
+          .enum(["draft", "active", "hidden"])
+          .default(importExpeditionDraftsBodyExpeditionsItemStatusDefault),
+        reviewed: zod.boolean().optional(),
+        stages: zod
+          .array(
+            zod.object({
+              routeName: zod
+                .string()
+                .max(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemRouteNameMax,
+                ),
+              routeKey: zod
+                .string()
+                .max(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemRouteKeyMax,
+                )
+                .optional(),
+              mountainId: zod.string().uuid().optional(),
+              region: zod
+                .string()
+                .max(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemRegionMax,
+                )
+                .optional(),
+              distanceKm: zod
+                .number()
+                .gt(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemDistanceKmExclusiveMin,
+                )
+                .max(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemDistanceKmMax,
+                ),
+              ascentM: zod
+                .number()
+                .min(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemAscentMMin,
+                )
+                .max(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemAscentMMax,
+                ),
+              estimatedHours: zod
+                .number()
+                .gt(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemEstimatedHoursExclusiveMin,
+                )
+                .max(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemEstimatedHoursMax,
+                )
+                .optional(),
+              difficulty: zod
+                .string()
+                .max(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemDifficultyMax,
+                )
+                .optional(),
+              dnaContribution: zod
+                .string()
+                .max(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemDnaContributionMax,
+                )
+                .optional(),
+              whySelected: zod
+                .string()
+                .max(
+                  importExpeditionDraftsBodyExpeditionsItemStagesItemWhySelectedMax,
+                )
+                .optional(),
+            }),
+          )
+          .min(1)
+          .max(importExpeditionDraftsBodyExpeditionsItemStagesMax),
+        limitations: zod
+          .array(
+            zod
+              .string()
+              .max(importExpeditionDraftsBodyExpeditionsItemLimitationsItemMax),
+          )
+          .max(importExpeditionDraftsBodyExpeditionsItemLimitationsMax)
+          .optional(),
+      }),
+    )
+    .min(1)
+    .max(importExpeditionDraftsBodyExpeditionsMax),
+});
+
+/**
+ * Admin key required.
+ */
+export const GetAdminExpeditionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetAdminExpeditionResponse = zod.object({
+  expedition: zod.object({
+    challengeId: zod.string(),
+    challengeName: zod.string(),
+    targetMountainName: zod.string(),
+    status: zod.enum(["draft", "active", "hidden"]),
+    updatedAt: zod.string(),
+    stages: zod.array(
+      zod.object({
+        catalogueMountain: zod
+          .union([
+            zod.object({
+              id: zod.string().uuid(),
+              name: zod.string(),
+              country: zod.string().nullish(),
+              region: zod.string().nullish(),
+              latitude: zod.number(),
+              longitude: zod.number(),
+              elevationM: zod.number().nullish(),
+              status: zod.string(),
+            }),
+            zod.null(),
+          ])
+          .optional(),
+      }),
+    ),
+    limitations: zod.array(zod.string()),
+  }),
+});
+
+/**
+ * Admin key required. Optimistic concurrency; active status requires human review confirmation.
+ */
+export const UpdateAdminExpeditionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const updateAdminExpeditionBodyExpeditionChallengeIdRegExp = new RegExp(
+  "^[A-Z0-9][A-Z0-9_-]{2,39}$",
+);
+export const updateAdminExpeditionBodyExpeditionChallengeNameMax = 200;
+
+export const updateAdminExpeditionBodyExpeditionTargetMountainNameMax = 200;
+
+export const updateAdminExpeditionBodyExpeditionTargetRouteMax = 200;
+
+export const updateAdminExpeditionBodyExpeditionSummaryMax = 4000;
+
+export const updateAdminExpeditionBodyExpeditionRegionsMax = 500;
+
+export const updateAdminExpeditionBodyExpeditionDifficultyMax = 80;
+
+export const updateAdminExpeditionBodyExpeditionRecommendedDaysMax = 365;
+
+export const updateAdminExpeditionBodyExpeditionStatusDefault = `draft`;
+export const updateAdminExpeditionBodyExpeditionStagesItemRouteNameMax = 200;
+
+export const updateAdminExpeditionBodyExpeditionStagesItemRouteKeyMax = 200;
+
+export const updateAdminExpeditionBodyExpeditionStagesItemRegionMax = 200;
+
+export const updateAdminExpeditionBodyExpeditionStagesItemDistanceKmExclusiveMin = 0;
+export const updateAdminExpeditionBodyExpeditionStagesItemDistanceKmMax = 1000;
+
+export const updateAdminExpeditionBodyExpeditionStagesItemAscentMMin = 0;
+export const updateAdminExpeditionBodyExpeditionStagesItemAscentMMax = 20000;
+
+export const updateAdminExpeditionBodyExpeditionStagesItemEstimatedHoursExclusiveMin = 0;
+export const updateAdminExpeditionBodyExpeditionStagesItemEstimatedHoursMax = 240;
+
+export const updateAdminExpeditionBodyExpeditionStagesItemDifficultyMax = 80;
+
+export const updateAdminExpeditionBodyExpeditionStagesItemDnaContributionMax = 1000;
+
+export const updateAdminExpeditionBodyExpeditionStagesItemWhySelectedMax = 2000;
+
+export const updateAdminExpeditionBodyExpeditionStagesMax = 30;
+
+export const updateAdminExpeditionBodyExpeditionLimitationsItemMax = 2000;
+
+export const updateAdminExpeditionBodyExpeditionLimitationsMax = 30;
+
+export const UpdateAdminExpeditionBody = zod.object({
+  expedition: zod.object({
+    challengeId: zod
+      .string()
+      .regex(updateAdminExpeditionBodyExpeditionChallengeIdRegExp),
+    challengeName: zod
+      .string()
+      .max(updateAdminExpeditionBodyExpeditionChallengeNameMax),
+    targetMountainName: zod
+      .string()
+      .max(updateAdminExpeditionBodyExpeditionTargetMountainNameMax),
+    targetRoute: zod
+      .string()
+      .max(updateAdminExpeditionBodyExpeditionTargetRouteMax)
+      .optional(),
+    summary: zod
+      .string()
+      .max(updateAdminExpeditionBodyExpeditionSummaryMax)
+      .optional(),
+    regions: zod
+      .string()
+      .max(updateAdminExpeditionBodyExpeditionRegionsMax)
+      .optional(),
+    difficulty: zod
+      .string()
+      .max(updateAdminExpeditionBodyExpeditionDifficultyMax)
+      .optional(),
+    recommendedDays: zod
+      .number()
+      .min(1)
+      .max(updateAdminExpeditionBodyExpeditionRecommendedDaysMax)
+      .optional(),
+    status: zod
+      .enum(["draft", "active", "hidden"])
+      .default(updateAdminExpeditionBodyExpeditionStatusDefault),
+    reviewed: zod.boolean().optional(),
+    stages: zod
+      .array(
+        zod.object({
+          routeName: zod
+            .string()
+            .max(updateAdminExpeditionBodyExpeditionStagesItemRouteNameMax),
+          routeKey: zod
+            .string()
+            .max(updateAdminExpeditionBodyExpeditionStagesItemRouteKeyMax)
+            .optional(),
+          mountainId: zod.string().uuid().optional(),
+          region: zod
+            .string()
+            .max(updateAdminExpeditionBodyExpeditionStagesItemRegionMax)
+            .optional(),
+          distanceKm: zod
+            .number()
+            .gt(
+              updateAdminExpeditionBodyExpeditionStagesItemDistanceKmExclusiveMin,
+            )
+            .max(updateAdminExpeditionBodyExpeditionStagesItemDistanceKmMax),
+          ascentM: zod
+            .number()
+            .min(updateAdminExpeditionBodyExpeditionStagesItemAscentMMin)
+            .max(updateAdminExpeditionBodyExpeditionStagesItemAscentMMax),
+          estimatedHours: zod
+            .number()
+            .gt(
+              updateAdminExpeditionBodyExpeditionStagesItemEstimatedHoursExclusiveMin,
+            )
+            .max(updateAdminExpeditionBodyExpeditionStagesItemEstimatedHoursMax)
+            .optional(),
+          difficulty: zod
+            .string()
+            .max(updateAdminExpeditionBodyExpeditionStagesItemDifficultyMax)
+            .optional(),
+          dnaContribution: zod
+            .string()
+            .max(
+              updateAdminExpeditionBodyExpeditionStagesItemDnaContributionMax,
+            )
+            .optional(),
+          whySelected: zod
+            .string()
+            .max(updateAdminExpeditionBodyExpeditionStagesItemWhySelectedMax)
+            .optional(),
+        }),
+      )
+      .min(1)
+      .max(updateAdminExpeditionBodyExpeditionStagesMax),
+    limitations: zod
+      .array(
+        zod.string().max(updateAdminExpeditionBodyExpeditionLimitationsItemMax),
+      )
+      .max(updateAdminExpeditionBodyExpeditionLimitationsMax)
+      .optional(),
+  }),
+  expectedUpdatedAt: zod.string(),
+});
+
+export const UpdateAdminExpeditionResponse = zod.object({
+  expedition: zod.object({
+    challengeId: zod.string(),
+    challengeName: zod.string(),
+    targetMountainName: zod.string(),
+    status: zod.enum(["draft", "active", "hidden"]),
+    updatedAt: zod.string(),
+    stages: zod.array(
+      zod.object({
+        catalogueMountain: zod
+          .union([
+            zod.object({
+              id: zod.string().uuid(),
+              name: zod.string(),
+              country: zod.string().nullish(),
+              region: zod.string().nullish(),
+              latitude: zod.number(),
+              longitude: zod.number(),
+              elevationM: zod.number().nullish(),
+              status: zod.string(),
+            }),
+            zod.null(),
+          ])
+          .optional(),
+      }),
+    ),
+    limitations: zod.array(zod.string()),
+  }),
+});
+
+/**
+ * Admin key required. Only unchanged drafts may be deleted.
+ */
+export const DeleteAdminExpeditionDraftParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteAdminExpeditionDraftBody = zod.object({
+  expectedUpdatedAt: zod.string(),
+});
+
+export const DeleteAdminExpeditionDraftResponse = zod.object({
+  deleted: zod.boolean(),
+});
+
 export const getMountainWeatherQueryLatMin = -90;
 export const getMountainWeatherQueryLatMax = 90;
 

@@ -23,23 +23,13 @@ import {
   projectExpeditionReadiness,
   type ExpeditionReadinessRoute,
 } from "@/utils/expeditionReadinessProjection";
-import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
+import { mountainImageUri } from "@/utils/mountainImage";
+import { approvedExpeditionArtwork } from "@/utils/expeditionArtwork";
 import { signatureChallengeTarget } from "@/utils/signatureExpedition";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
-
-/**
- * Convert a stored artwork path (/api/artwork/image/…) to a fully-qualified URL.
- * API_BASE ends with "/api"; stored paths already start with "/api/", so strip
- * the trailing segment to avoid doubling the prefix.
- */
-function artworkUrl(storedPath: string | null | undefined): string | null {
-  if (!storedPath) return null;
-  const base = API_BASE.replace(/\/api$/, "");
-  return base + storedPath;
-}
 
 /** Strip common suffixes added to DB names that clutter the UI */
 export function stripSuffix(name: string) {
@@ -138,12 +128,9 @@ export function ChallengeDetailSheet({
     return days[(order - 1) % days.length] ?? `Day ${order}`;
   };
 
-  // Use approved mountain photos for the curated set; preserve challenge art elsewhere.
+  // Exact approved expedition artwork outranks the inspirational mountain.
   const heroUri = !imgError && challenge
-    ? (hasApprovedMountainImage(challenge.targetMountainName)
-      ? mountainImageUri(challenge.targetMountainName, { width: 800, height: 500 })
-      : null)
-      || (challenge.approved && artworkUrl(challenge.heroImage))
+    ? approvedExpeditionArtwork(challenge, "hero", API_BASE)
       || mountainImageUri(challenge.targetMountainName, { width: 800, height: 500 })
     : null;
   const readinessProjection = projectExpeditionReadiness(

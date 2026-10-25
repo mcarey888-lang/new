@@ -15,3 +15,13 @@ mobile type errors.
 consumers. Do not run consumer checks concurrently with regeneration. Separate
 successful code generation from failures in the command's subsequent shared-library
 typecheck, and inspect the generated diff for unrelated transport regressions.
+
+Use named component schemas for new request bodies when exporting both Orval
+Zod validators and generated types from one barrel.
+
+**Why:** Inline update/delete request bodies produced identically named exported
+validators and types, causing duplicate-export errors even after generation
+succeeded.
+
+**How to apply:** Reference a distinctly named request schema rather than editing
+generated export lists by hand. Regenerate, then check raw binary upload bodies.

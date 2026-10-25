@@ -218,7 +218,7 @@ signatureChallengesRouter.get("/sx/challenges/:challengeId", async (req, res) =>
     const rows = await db
       .select()
       .from(signatureChallenges)
-      .where(eq(signatureChallenges.challengeId, challengeId))
+      .where(and(eq(signatureChallenges.challengeId, challengeId), eq(signatureChallenges.status, "active")))
       .limit(1);
 
     if (rows.length === 0) {

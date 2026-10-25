@@ -8,6 +8,9 @@ export interface SignatureStageMetrics {
   ascentM: number | null;
   estimatedHours?: number | null;
   difficulty?: string | null;
+  catalogueMountain?: {
+    id: string; name: string; latitude: number; longitude: number; elevationM?: number | null;
+  } | null;
 }
 
 function fallbackRouteKey(routeName: string): string {
@@ -29,6 +32,12 @@ export function signatureStageToNearbyHill(stage: SignatureStageMetrics): Nearby
     routeName: stage.routeName,
     routeIdentityKey: stableKey,
     routeId: stableKey,
+    summitId: stage.catalogueMountain?.id,
+    summitIdentityKey: stage.catalogueMountain ? `sde:mountain:${stage.catalogueMountain.id}` : undefined,
+    summitName: stage.catalogueMountain?.name,
+    lat: stage.catalogueMountain?.latitude,
+    lng: stage.catalogueMountain?.longitude,
+    summitElevationASL: stage.catalogueMountain?.elevationM ?? undefined,
     dataSource: "signature_challenge_db",
     routeDataStatus: distanceKm > 0 && ascentM > 0 ? "curated_complete" : "unavailable",
     confidence: "curated",

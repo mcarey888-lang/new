@@ -55,6 +55,7 @@ import { findExpeditionStage } from "@/utils/expeditionStageOrder";
 import { hillDetailNavigation } from "@/utils/hillDetailNavigation";
 import { JourneyHistory } from "@/components/JourneyHistory";
 import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
+import { approvedExpeditionArtwork } from "@/utils/expeditionArtwork";
 import { resolveApprovedMatterhornArtwork } from "@/utils/artworkResolver";
 
 const CinematicPrototype = React.lazy(async () => {
@@ -124,18 +125,6 @@ function calcTrailTime(sessions: Session[]): { hours: number; minutes: number } 
     return sum + (distKm / 5 * 60) + (elevM / 100 * 10);
   }, 0);
   return { hours: Math.floor(totalMin / 60), minutes: Math.round(totalMin % 60) };
-}
-
-/**
- * Convert a stored artwork path (/api/artwork/image/…) to a fully-qualified URL.
- * Falls back to null so callers can chain a mountain-image fallback.
- */
-function artworkUrl(storedPath: string | null | undefined): string | null {
-  if (!storedPath) return null;
-  // API_BASE ends with "/api"; stored paths start with "/api/artwork/..."
-  // Strip the trailing /api to avoid doubling the prefix.
-  const base = API_BASE.replace(/\/api$/, "");
-  return base + storedPath;
 }
 
 function mountainArtworkSlug(name: string): string {
@@ -821,7 +810,7 @@ export default function BaseCampScreen() {
     const controller = new AbortController();
     void (async () => {
       try {
-        const matterhornArtwork = await resolveApprovedMatterhornArtwork(mountainName);
+        const matterhornArtwork = !cid ? await resolveApprovedMatterhornArtwork(mountainName) : null;
         if (matterhornArtwork) {
           if (!controller.signal.aborted) setChallengeHero({ key: lookupKey, uri: matterhornArtwork.uri, ready: true });
           return;
@@ -839,7 +828,7 @@ export default function BaseCampScreen() {
           }
         }
 
-        if (!candidates.some(ch => ch?.approved && (ch.heroImage || ch.cardImage)) && mountainName) {
+        if (!cid && !candidates.some(ch => ch?.approved && (ch.heroImage || ch.cardImage)) && mountainName) {
           const slug = mountainArtworkSlug(mountainName);
           const response = await fetch(
             `${API_BASE}/sx/challenges/for-mountain/${encodeURIComponent(slug)}`,
@@ -852,7 +841,7 @@ export default function BaseCampScreen() {
         }
 
         const approved = candidates.find(ch => ch?.approved && (ch.heroImage || ch.cardImage));
-        const url = artworkUrl(approved?.heroImage ?? approved?.cardImage);
+        const url = approvedExpeditionArtwork(approved, "hero", API_BASE);
         if (!controller.signal.aborted) setChallengeHero({ key: lookupKey, uri: url, ready: true });
       } catch {
         if (!controller.signal.aborted) setChallengeHero({ key: lookupKey, uri: null, ready: true });
@@ -962,10 +951,7 @@ export default function BaseCampScreen() {
                   <View style={s.expCardImg}>
                     <ExpoImage
                       source={{
-                        uri: (hasApprovedMountainImage(ch.targetMountainName)
-                          ? mountainImageUri(ch.targetMountainName, { width: 400, height: 280 })
-                          : null)
-                          || (ch.approved && artworkUrl(ch.cardImage ?? ch.heroImage))
+                        uri: approvedExpeditionArtwork(ch, "card", API_BASE)
                           || mountainImageUri(ch.targetMountainName, { width: 400, height: 280 })!,
                       }}
                       style={StyleSheet.absoluteFill}
@@ -1099,14 +1085,14 @@ export default function BaseCampScreen() {
   const approvedMountainPhoto = hasApprovedMountainImage(heroMountain)
     ? mountainImageUri(heroMountain, { width: 800, height: 600 })
     : null;
-  // Curated mountain photos take priority for the named approved peaks. Other
-  // expeditions retain their existing artwork-first hero treatment.
-  const heroUri = heroLookupPending && !approvedMountainPhoto
+  // Wait for the exact challenge lookup rather than flashing generic mountain
+  // imagery over an already-approved expedition composition.
+  const heroUri = heroLookupPending
     ? null
-    : approvedMountainPhoto
-    ? (fallbackError ? null : approvedMountainPhoto)
     : (challengeHeroUri && !artworkError)
       ? challengeHeroUri
+      : approvedMountainPhoto
+        ? (fallbackError ? null : approvedMountainPhoto)
       : fallbackError
         ? null
         : heroMountain.trim().toLowerCase() === "matterhorn"
@@ -1176,10 +1162,10 @@ export default function BaseCampScreen() {
             the objective's approved artwork with the mountain photo fallback. */}
         <SRHeroFrame
           uri={heroUri}
-          artwork={!approvedMountainPhoto && challengeHeroUri && !artworkError ? "generated" : "photo"}
+          artwork={challengeHeroUri && !artworkError ? "generated" : "photo"}
           onImageError={() => {
             /* Nothing is substituted from another mountain. */
-            if (!approvedMountainPhoto && challengeHeroUri && !artworkError) setArtworkError(true);
+            if (challengeHeroUri && !artworkError) setArtworkError(true);
             else setFallbackError(true);
           }}
           minHeight={230}

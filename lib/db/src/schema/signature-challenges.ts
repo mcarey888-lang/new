@@ -9,6 +9,7 @@ import {
   timestamp,
   uniqueIndex,
   check,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -65,6 +66,11 @@ export const challengeStages = pgTable("challenge_stages", {
   challengeId:   text("challenge_id").notNull().references(() => signatureChallenges.challengeId, { onDelete: "cascade" }),
   stageOrder:    smallint("stage_order").notNull(),                  // 1-based day number
   routeKey:      text("route_key"),                                  // normalised route identifier
+  /** Identity/location only. Does not certify the owner's route facts or geometry. */
+  catalogueMountain: jsonb("catalogue_mountain").$type<{
+    id: string; name: string; country: string | null; region: string | null;
+    latitude: number; longitude: number; elevationM: number | null; status: string;
+  }>(),
   routeName:     text("route_name").notNull(),
   region:        text("region"),
   distanceKm:    real("distance_km"),

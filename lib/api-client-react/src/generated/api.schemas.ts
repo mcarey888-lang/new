@@ -5,6 +5,148 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AdminExpeditionInputStatus =
+  (typeof AdminExpeditionInputStatus)[keyof typeof AdminExpeditionInputStatus];
+
+export const AdminExpeditionInputStatus = {
+  draft: "draft",
+  active: "active",
+  hidden: "hidden",
+} as const;
+
+export interface AdminExpeditionStageInput {
+  /** @maxLength 200 */
+  routeName: string;
+  /** @maxLength 200 */
+  routeKey?: string;
+  mountainId?: string;
+  /** @maxLength 200 */
+  region?: string;
+  /**
+   * @maximum 1000
+   * @exclusiveMinimum 0
+   */
+  distanceKm: number;
+  /**
+   * @minimum 0
+   * @maximum 20000
+   */
+  ascentM: number;
+  /**
+   * @maximum 240
+   * @exclusiveMinimum 0
+   */
+  estimatedHours?: number;
+  /** @maxLength 80 */
+  difficulty?: string;
+  /** @maxLength 1000 */
+  dnaContribution?: string;
+  /** @maxLength 2000 */
+  whySelected?: string;
+}
+
+export interface AdminExpeditionInput {
+  /** @pattern ^[A-Z0-9][A-Z0-9_-]{2,39}$ */
+  challengeId: string;
+  /** @maxLength 200 */
+  challengeName: string;
+  /** @maxLength 200 */
+  targetMountainName: string;
+  /** @maxLength 200 */
+  targetRoute?: string;
+  /** @maxLength 4000 */
+  summary?: string;
+  /** @maxLength 500 */
+  regions?: string;
+  /** @maxLength 80 */
+  difficulty?: string;
+  /**
+   * @minimum 1
+   * @maximum 365
+   */
+  recommendedDays?: number;
+  status?: AdminExpeditionInputStatus;
+  reviewed?: boolean;
+  /**
+   * @minItems 1
+   * @maxItems 30
+   */
+  stages: AdminExpeditionStageInput[];
+  /** @maxItems 30 */
+  limitations?: string[];
+}
+
+export interface ExpeditionUpdateRequest {
+  expedition: AdminExpeditionInput;
+  expectedUpdatedAt: string;
+}
+
+export interface ExpeditionDeleteRequest {
+  expectedUpdatedAt: string;
+}
+
+export interface ExpeditionCatalogueMountain {
+  id: string;
+  name: string;
+  /** @nullable */
+  country?: string | null;
+  /** @nullable */
+  region?: string | null;
+  latitude: number;
+  longitude: number;
+  /** @nullable */
+  elevationM?: number | null;
+  status: string;
+}
+
+export type AdminExpeditionRecordStatus =
+  (typeof AdminExpeditionRecordStatus)[keyof typeof AdminExpeditionRecordStatus];
+
+export const AdminExpeditionRecordStatus = {
+  draft: "draft",
+  active: "active",
+  hidden: "hidden",
+} as const;
+
+export type AdminExpeditionRecordStagesItem = {
+  catalogueMountain?: ExpeditionCatalogueMountain | null;
+  [key: string]: unknown;
+};
+
+export interface AdminExpeditionRecord {
+  challengeId: string;
+  challengeName: string;
+  targetMountainName: string;
+  status: AdminExpeditionRecordStatus;
+  updatedAt: string;
+  stages: AdminExpeditionRecordStagesItem[];
+  limitations: string[];
+  [key: string]: unknown;
+}
+
+export interface ExpeditionImportBatch {
+  /**
+   * @minItems 1
+   * @maxItems 100
+   */
+  expeditions: AdminExpeditionInput[];
+}
+
+export type ExpeditionImportPreviewEntriesItem = {
+  index: number;
+  challengeId: string;
+  challengeName: string;
+  errors: string[];
+  warnings: string[];
+  expedition: AdminExpeditionInput | null;
+};
+
+export interface ExpeditionImportPreview {
+  valid: boolean;
+  errors: string[];
+  entries: ExpeditionImportPreviewEntriesItem[];
+}
+
 export interface WeatherHour {
   /** Unix seconds */
   time: number;
@@ -618,6 +760,39 @@ export interface CanonicalHistoryResponse {
   reason: string | null;
   items: CanonicalHistoryItem[];
 }
+
+export type ListAdminExpeditions200 = {
+  expeditions: AdminExpeditionRecord[];
+};
+
+export type SearchExpeditionCatalogueParams = {
+  /**
+   * @minLength 2
+   * @maxLength 120
+   */
+  q: string;
+};
+
+export type SearchExpeditionCatalogue200 = {
+  items: ExpeditionCatalogueMountain[];
+  hasMore: boolean;
+};
+
+export type ImportExpeditionDrafts201 = {
+  created: string[];
+};
+
+export type GetAdminExpedition200 = {
+  expedition: AdminExpeditionRecord;
+};
+
+export type UpdateAdminExpedition200 = {
+  expedition: AdminExpeditionRecord;
+};
+
+export type DeleteAdminExpeditionDraft200 = {
+  deleted: boolean;
+};
 
 export type GetMountainWeatherParams = {
   /**

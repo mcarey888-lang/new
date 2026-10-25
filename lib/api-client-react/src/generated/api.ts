@@ -30,20 +30,28 @@ import type {
   CommunityPostCreate,
   CommunityPostVisibilityInput,
   CreateCommunityPost201,
+  DeleteAdminExpeditionDraft200,
   DeleteCommunityPost200,
   ElevationBankResponse,
   ElevationBankUnavailable,
+  ExpeditionDeleteRequest,
+  ExpeditionImportBatch,
+  ExpeditionImportPreview,
+  ExpeditionUpdateRequest,
   GenerateArtworkInput,
   GetActivityAudiencePreference200,
   GetActivityRoute200,
   GetActivityRoutes200,
   GetActivityRoutesParams,
+  GetAdminExpedition200,
   GetCanonicalHistoryParams,
   GetCommunityPosts200,
   GetCommunityPostsParams,
   GetMountainDiscoveryParams,
   GetMountainWeatherParams,
   HealthStatus,
+  ImportExpeditionDrafts201,
+  ListAdminExpeditions200,
   ListRecordedHikeBackups200,
   ListRecordedHikeBackupsParams,
   MountainDiscoveryPage,
@@ -55,7 +63,10 @@ import type {
   MountainWeather,
   PrivateRecordedHikeBackupInput,
   ReportCommunityPost201,
+  SearchExpeditionCatalogue200,
+  SearchExpeditionCatalogueParams,
   SearchVirtualExpedition200,
+  UpdateAdminExpedition200,
   UpdateCommunityPostVisibility200,
   UploadCommunityPostPhoto200,
   VirtualExpeditionSearchInput,
@@ -69,6 +80,612 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * Admin key required. Includes drafts and hidden expeditions.
+ */
+export const getListAdminExpeditionsUrl = () => {
+  return `/api/admin/expeditions`;
+};
+
+export const listAdminExpeditions = async (
+  options?: RequestInit,
+): Promise<ListAdminExpeditions200> => {
+  return customFetch<ListAdminExpeditions200>(getListAdminExpeditionsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAdminExpeditionsQueryKey = () => {
+  return [`/api/admin/expeditions`] as const;
+};
+
+export const getListAdminExpeditionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminExpeditions>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminExpeditions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminExpeditionsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminExpeditions>>
+  > = ({ signal }) => listAdminExpeditions({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminExpeditions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdminExpeditionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminExpeditions>>
+>;
+export type ListAdminExpeditionsQueryError = ErrorType<void>;
+
+export function useListAdminExpeditions<
+  TData = Awaited<ReturnType<typeof listAdminExpeditions>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminExpeditions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdminExpeditionsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Admin key required. Trusted summit identity only, not route verification.
+ */
+export const getSearchExpeditionCatalogueUrl = (
+  params: SearchExpeditionCatalogueParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/expeditions/catalogue?${stringifiedParams}`
+    : `/api/admin/expeditions/catalogue`;
+};
+
+export const searchExpeditionCatalogue = async (
+  params: SearchExpeditionCatalogueParams,
+  options?: RequestInit,
+): Promise<SearchExpeditionCatalogue200> => {
+  return customFetch<SearchExpeditionCatalogue200>(
+    getSearchExpeditionCatalogueUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getSearchExpeditionCatalogueQueryKey = (
+  params?: SearchExpeditionCatalogueParams,
+) => {
+  return [
+    `/api/admin/expeditions/catalogue`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getSearchExpeditionCatalogueQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchExpeditionCatalogue>>,
+  TError = ErrorType<void>,
+>(
+  params: SearchExpeditionCatalogueParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchExpeditionCatalogue>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getSearchExpeditionCatalogueQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof searchExpeditionCatalogue>>
+  > = ({ signal }) =>
+    searchExpeditionCatalogue(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchExpeditionCatalogue>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SearchExpeditionCatalogueQueryResult = NonNullable<
+  Awaited<ReturnType<typeof searchExpeditionCatalogue>>
+>;
+export type SearchExpeditionCatalogueQueryError = ErrorType<void>;
+
+export function useSearchExpeditionCatalogue<
+  TData = Awaited<ReturnType<typeof searchExpeditionCatalogue>>,
+  TError = ErrorType<void>,
+>(
+  params: SearchExpeditionCatalogueParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchExpeditionCatalogue>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSearchExpeditionCatalogueQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Admin key required. Read-only validation, never writes.
+ */
+export const getPreviewExpeditionImportUrl = () => {
+  return `/api/admin/expeditions/preview`;
+};
+
+export const previewExpeditionImport = async (
+  expeditionImportBatch: ExpeditionImportBatch,
+  options?: RequestInit,
+): Promise<ExpeditionImportPreview> => {
+  return customFetch<ExpeditionImportPreview>(getPreviewExpeditionImportUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(expeditionImportBatch),
+  });
+};
+
+export const getPreviewExpeditionImportMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewExpeditionImport>>,
+    TError,
+    { data: BodyType<ExpeditionImportBatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewExpeditionImport>>,
+  TError,
+  { data: BodyType<ExpeditionImportBatch> },
+  TContext
+> => {
+  const mutationKey = ["previewExpeditionImport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewExpeditionImport>>,
+    { data: BodyType<ExpeditionImportBatch> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return previewExpeditionImport(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PreviewExpeditionImportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewExpeditionImport>>
+>;
+export type PreviewExpeditionImportMutationBody =
+  BodyType<ExpeditionImportBatch>;
+export type PreviewExpeditionImportMutationError = ErrorType<void>;
+
+export const usePreviewExpeditionImport = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewExpeditionImport>>,
+    TError,
+    { data: BodyType<ExpeditionImportBatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof previewExpeditionImport>>,
+  TError,
+  { data: BodyType<ExpeditionImportBatch> },
+  TContext
+> => {
+  return useMutation(getPreviewExpeditionImportMutationOptions(options));
+};
+
+/**
+ * Admin key required. Atomic create-only import; drafts only, never overwrites.
+ */
+export const getImportExpeditionDraftsUrl = () => {
+  return `/api/admin/expeditions/import`;
+};
+
+export const importExpeditionDrafts = async (
+  expeditionImportBatch: ExpeditionImportBatch,
+  options?: RequestInit,
+): Promise<ImportExpeditionDrafts201> => {
+  return customFetch<ImportExpeditionDrafts201>(
+    getImportExpeditionDraftsUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(expeditionImportBatch),
+    },
+  );
+};
+
+export const getImportExpeditionDraftsMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importExpeditionDrafts>>,
+    TError,
+    { data: BodyType<ExpeditionImportBatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importExpeditionDrafts>>,
+  TError,
+  { data: BodyType<ExpeditionImportBatch> },
+  TContext
+> => {
+  const mutationKey = ["importExpeditionDrafts"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importExpeditionDrafts>>,
+    { data: BodyType<ExpeditionImportBatch> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importExpeditionDrafts(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportExpeditionDraftsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importExpeditionDrafts>>
+>;
+export type ImportExpeditionDraftsMutationBody =
+  BodyType<ExpeditionImportBatch>;
+export type ImportExpeditionDraftsMutationError = ErrorType<void>;
+
+export const useImportExpeditionDrafts = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importExpeditionDrafts>>,
+    TError,
+    { data: BodyType<ExpeditionImportBatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importExpeditionDrafts>>,
+  TError,
+  { data: BodyType<ExpeditionImportBatch> },
+  TContext
+> => {
+  return useMutation(getImportExpeditionDraftsMutationOptions(options));
+};
+
+/**
+ * Admin key required.
+ */
+export const getGetAdminExpeditionUrl = (id: string) => {
+  return `/api/admin/expeditions/${id}`;
+};
+
+export const getAdminExpedition = async (
+  id: string,
+  options?: RequestInit,
+): Promise<GetAdminExpedition200> => {
+  return customFetch<GetAdminExpedition200>(getGetAdminExpeditionUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminExpeditionQueryKey = (id: string) => {
+  return [`/api/admin/expeditions/${id}`] as const;
+};
+
+export const getGetAdminExpeditionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminExpedition>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminExpedition>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminExpeditionQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminExpedition>>
+  > = ({ signal }) => getAdminExpedition(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminExpedition>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminExpeditionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminExpedition>>
+>;
+export type GetAdminExpeditionQueryError = ErrorType<void>;
+
+export function useGetAdminExpedition<
+  TData = Awaited<ReturnType<typeof getAdminExpedition>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminExpedition>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminExpeditionQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Admin key required. Optimistic concurrency; active status requires human review confirmation.
+ */
+export const getUpdateAdminExpeditionUrl = (id: string) => {
+  return `/api/admin/expeditions/${id}`;
+};
+
+export const updateAdminExpedition = async (
+  id: string,
+  expeditionUpdateRequest: ExpeditionUpdateRequest,
+  options?: RequestInit,
+): Promise<UpdateAdminExpedition200> => {
+  return customFetch<UpdateAdminExpedition200>(
+    getUpdateAdminExpeditionUrl(id),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(expeditionUpdateRequest),
+    },
+  );
+};
+
+export const getUpdateAdminExpeditionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminExpedition>>,
+    TError,
+    { id: string; data: BodyType<ExpeditionUpdateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminExpedition>>,
+  TError,
+  { id: string; data: BodyType<ExpeditionUpdateRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminExpedition"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminExpedition>>,
+    { id: string; data: BodyType<ExpeditionUpdateRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateAdminExpedition(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminExpeditionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminExpedition>>
+>;
+export type UpdateAdminExpeditionMutationBody =
+  BodyType<ExpeditionUpdateRequest>;
+export type UpdateAdminExpeditionMutationError = ErrorType<void>;
+
+export const useUpdateAdminExpedition = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminExpedition>>,
+    TError,
+    { id: string; data: BodyType<ExpeditionUpdateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminExpedition>>,
+  TError,
+  { id: string; data: BodyType<ExpeditionUpdateRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminExpeditionMutationOptions(options));
+};
+
+/**
+ * Admin key required. Only unchanged drafts may be deleted.
+ */
+export const getDeleteAdminExpeditionDraftUrl = (id: string) => {
+  return `/api/admin/expeditions/${id}`;
+};
+
+export const deleteAdminExpeditionDraft = async (
+  id: string,
+  expeditionDeleteRequest: ExpeditionDeleteRequest,
+  options?: RequestInit,
+): Promise<DeleteAdminExpeditionDraft200> => {
+  return customFetch<DeleteAdminExpeditionDraft200>(
+    getDeleteAdminExpeditionDraftUrl(id),
+    {
+      ...options,
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(expeditionDeleteRequest),
+    },
+  );
+};
+
+export const getDeleteAdminExpeditionDraftMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminExpeditionDraft>>,
+    TError,
+    { id: string; data: BodyType<ExpeditionDeleteRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminExpeditionDraft>>,
+  TError,
+  { id: string; data: BodyType<ExpeditionDeleteRequest> },
+  TContext
+> => {
+  const mutationKey = ["deleteAdminExpeditionDraft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminExpeditionDraft>>,
+    { id: string; data: BodyType<ExpeditionDeleteRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return deleteAdminExpeditionDraft(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAdminExpeditionDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminExpeditionDraft>>
+>;
+export type DeleteAdminExpeditionDraftMutationBody =
+  BodyType<ExpeditionDeleteRequest>;
+export type DeleteAdminExpeditionDraftMutationError = ErrorType<void>;
+
+export const useDeleteAdminExpeditionDraft = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminExpeditionDraft>>,
+    TError,
+    { id: string; data: BodyType<ExpeditionDeleteRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminExpeditionDraft>>,
+  TError,
+  { id: string; data: BodyType<ExpeditionDeleteRequest> },
+  TContext
+> => {
+  return useMutation(getDeleteAdminExpeditionDraftMutationOptions(options));
+};
 
 export const getGetMountainWeatherUrl = (params: GetMountainWeatherParams) => {
   const normalizedParams = new URLSearchParams();

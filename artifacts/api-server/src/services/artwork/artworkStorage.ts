@@ -15,6 +15,7 @@
 import { Storage } from "@google-cloud/storage";
 import type { Response as ExpressResponse } from "express";
 import crypto from "node:crypto";
+import { selectChallengeArtworkFile } from "./challengeArtworkFiles.js";
 
 const REPLIT_SIDECAR = "http://127.0.0.1:1106";
 
@@ -434,28 +435,22 @@ export async function streamArtworkImage(
   challengeId: string,
   crop: CropType,
   res: ExpressResponse,
+  approvedVersion?: number,
 ): Promise<void> {
   const bucket = getBucket();
 
   // Find the latest version by listing objects for this challenge
-  const prefix = `expedition-artwork/${challengeId}/`;
+  const prefix = `expedition-artwork/${challengeId}/${approvedVersion ? `v${approvedVersion}/` : ""}`;
   const [files] = await bucket.getFiles({ prefix });
 
-  // Pick the highest version number that has the requested crop
-  const cropSuffix = `/${crop}.jpg`;
-  const matching = files
-    .filter((f) => f.name.endsWith(cropSuffix))
-    .sort((a, b) => b.name.localeCompare(a.name));  // lexicographic desc → latest version last
-
-  if (matching.length === 0) {
+  const file = selectChallengeArtworkFile(files, crop, approvedVersion);
+  if (!file) {
     res.status(404).json({ error: "Image not found" });
     return;
   }
 
-  const file = matching[matching.length - 1];  // highest version
-
   res.setHeader("Content-Type", "image/jpeg");
-  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.setHeader("Cache-Control", "no-store, max-age=0");
 
   file.createReadStream()
     .on("error", () => res.status(500).end())

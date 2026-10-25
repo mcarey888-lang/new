@@ -98,3 +98,4 @@
 - [Routing cost scope](routing-cost-scope.md) — keep routing costs low until paying usage grows; a hosted paid hiking subscription is not yet approved.
 - [Weather provider scope](weather-provider-scope.md) — WeatherAPI free three-day forecasts first; seven days needs later approval; location weather is not summit weather.
 - [Expedition distance meaning](expedition-distance-meaning.md) — manual stage totals use full listed route distance; GPS completions use recorded distance, never the plan.
+- [Expedition authoring policy](expedition-authoring-policy.md) — support owner-created Claude/ChatGPT batches; catalogue identity does not verify imported route facts.

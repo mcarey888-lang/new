@@ -26,16 +26,11 @@ import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 import { completedStageSessionDistance } from "@/utils/manualStageDistance";
+import { approvedExpeditionArtwork } from "@/utils/expeditionArtwork";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
-
-function artworkUrl(storedPath: string | null | undefined): string | null {
-  if (!storedPath) return null;
-  const base = API_BASE.replace(/\/api$/, "");
-  return base + storedPath;
-}
 
 export default function ExpeditionCompleteScreen() {
   useScreenView("ExpeditionComplete");
@@ -54,6 +49,7 @@ export default function ExpeditionCompleteScreen() {
 
   // ── Approved artwork for the hero image ──────────────────────────────────────
   const [heroArtwork, setHeroArtwork] = useState<string | null>(null);
+  const [heroArtworkResolved, setHeroArtworkResolved] = useState(!expeditionSnapshot?.challengeId);
   useEffect(() => {
     const cid = expeditionSnapshot?.challengeId;
     if (!cid) return;
@@ -62,11 +58,11 @@ export default function ExpeditionCompleteScreen() {
       .then((d: any) => {
         if (!d) return;
         const ch   = d.challenge ?? d;           // endpoint wraps under { challenge: ... }
-        const path = ch.heroImage ?? ch.cardImage ?? null;
-        const url  = artworkUrl(path);
+        const url = approvedExpeditionArtwork(ch, "hero", API_BASE);
         if (url && ch.approved) setHeroArtwork(url);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setHeroArtworkResolved(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -111,7 +107,7 @@ export default function ExpeditionCompleteScreen() {
   const reviewedMatterhornUri = __DEV__ && mountainName.trim().toLowerCase() === "matterhorn"
     ? mountainImageUri(mountainName, { width: 640, height: 360 })
     : null;
-  const completionImageUri = reviewedMatterhornUri ?? (hasApprovedMountainImage(mountainName)
+  const completionImageUri = !heroArtworkResolved ? null : heroArtwork ?? reviewedMatterhornUri ?? (hasApprovedMountainImage(mountainName)
     ? mountainImageUri(mountainName, { width: 640, height: 360 })
     : heroArtwork ?? mountainImageUri(mountainName, { width: 640, height: 360 }));
   const routeCount       = new Set(expeditionSnapshot?.completedRoutes ?? []).size;
@@ -163,17 +159,16 @@ export default function ExpeditionCompleteScreen() {
           { paddingTop: topInset + 20, paddingBottom: insets.bottom + 48 },
         ]}
       >
-        {/* Mountain hero image — approved mountain photo for curated peaks,
-            otherwise retain approved challenge artwork and the photo fallback. */}
+        {/* Exact approved expedition artwork first; mountain image is fallback. */}
         <Animated.View entering={FadeIn.duration(700)} style={s.heroWrap}>
-          <ExpoImage
+          {heroArtworkResolved && <ExpoImage
             source={{ uri: completionImageUri ?? appendApprovedImageRevision(
               `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=640&height=360`,
               mountainName,
             ) }}
             style={s.heroImage}
             contentFit="cover"
-          />
+          />}
           <LinearGradient
             colors={["transparent", T.bg]}
             locations={[0.45, 1]}

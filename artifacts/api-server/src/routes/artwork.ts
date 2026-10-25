@@ -440,7 +440,8 @@ artworkRouter.get("/status", async (_req, res) => {
 });
 
 // ── GET /api/artwork/image/:challengeId/:crop ─────────────────────────────────
-// Streams a generated image from GCS. Cached by CDN / browser for 1 year.
+// Current artwork URLs are mutable and must revalidate; app requests additionally
+// require current approval and bind bytes to the approved database version.
 artworkRouter.get("/image/:challengeId/:crop", async (req, res) => {
   const { challengeId, crop } = req.params;
   if (!VALID_CROPS.includes(crop as CropType)) {
@@ -448,7 +449,19 @@ artworkRouter.get("/image/:challengeId/:crop", async (req, res) => {
     return;
   }
   try {
-    await streamArtworkImage(challengeId, crop as CropType, res);
+    let approvedVersion: number | undefined;
+    if (req.query.approved === "1") {
+      const [challenge] = await db.select({
+        approved: signatureChallenges.approved, version: signatureChallenges.imageVersion,
+      }).from(signatureChallenges).where(eq(signatureChallenges.challengeId, challengeId)).limit(1);
+      if (!challenge?.approved || !challenge.version || challenge.version < 1) {
+        res.setHeader("Cache-Control", "no-store");
+        res.status(404).json({ error: "Approved expedition artwork unavailable" });
+        return;
+      }
+      approvedVersion = challenge.version;
+    }
+    await streamArtworkImage(challengeId, crop as CropType, res, approvedVersion);
   } catch (err) {
     console.error(`[artwork/image] ${challengeId}/${crop}`, err);
     if (!res.headersSent) {
