@@ -84,6 +84,7 @@ export default function LogHillScreen() {
   } = useApp();
   const params = useLocalSearchParams<{
     manualHillName?: string;
+    returnTo?: string;
     location?: string;
     elevation?: string;
     distance?: string;
@@ -175,6 +176,13 @@ export default function LogHillScreen() {
       }
       const hillName = logTarget.name;
       void logHillSessionCompleted({ hill_name: hillName, elevation_gain: elevGain, reps, source: "manual" });
+      if (params.returnTo === "expedition-basecamp" || (params.manualHillName && expeditionId)) {
+        // Both the session and active expedition progress have been saved.
+        // Basecamp owns progress animation and the protected final-stage ending.
+        // Dismiss this flow, rather than exposing the old hill picker underneath.
+        router.dismissTo("/(tabs)/dashboard");
+        return;
+      }
       setLoggedHill(hillName);
       closeLogModal();
       setTimeout(() => setLoggedHill(null), 3000);

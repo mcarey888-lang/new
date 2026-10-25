@@ -816,6 +816,7 @@ export default function HillDetailScreen() {
                 pathname: "/log-hill" as any,
                 params: {
                   manualHillName: name,
+                  returnTo: "expedition-basecamp",
                   location: location ?? "",
                   elevation: elevation ?? "",
                   distance: distance ?? "",
