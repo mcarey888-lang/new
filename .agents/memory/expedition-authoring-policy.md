@@ -16,3 +16,17 @@ imports, and require deliberate owner review before making content available.
 Catalogue summit selection establishes identity/location only; route ascent,
 walking distance, access and hazards need their own evidence. Do not silently
 rewrite started expeditions, user activity or approved artwork.
+
+Prioritize a small, reviewed UK route collection covering the existing
+expedition stages before acquiring a large generic route catalogue.
+
+**Why:** The owner agreed to keep the current expeditions and improve their data,
+while keeping provider costs low. A summit record alone does not establish a
+named walking route or its geometry.
+
+**How to apply:** Audit existing route coverage first, then stage source-specific
+candidates with explicit commercial reuse rights. Public availability of GPX/KMZ
+downloads is not permission to redistribute them in SummitReady. In particular,
+personal-use downloads need separate permission; keep ODbL attribution and
+applicable share-alike obligations explicit for OSM-derived route data. A failed
+source request is unavailable evidence, never proof that a route does not exist.

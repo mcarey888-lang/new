@@ -760,3 +760,31 @@ mtime_ms = 1778430666277
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/90321f76-138f-42ff-9bf8-97727586ed59/4ccdb96c-fe7f-4d6a-af25-b6998719907e"
 storage_version_token = "1792930449411588"
 content_type = "image/gif"
+
+[[outputs]]
+id = "k_HJpbPzSrSs6l-1VI-l2"
+uri = "file://generated-artifacts/route-coverage/2026-10-25/audit.html"
+type = "html"
+title = "Expedition route coverage audit"
+description = "Read-only development audit of all 60 expeditions, their 32 distinct stage routes, existing engine coverage, source restrictions and acquisition priorities."
+logical_id = "81ad5099-8630-4078-bb1b-c5aff0c3f2f8"
+content_hash = "sha256:f17747e034e6973e7072f2a4943768c4ca1450efb803545671d7046f9b8eaf44"
+size = 20870
+mtime_ms = 1792956108411
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/81ad5099-8630-4078-bb1b-c5aff0c3f2f8/8a0f346e-3e26-4531-a9df-61c1169f24ac"
+storage_version_token = "1792956158854173"
+content_type = "text/html"
+
+[[outputs]]
+id = "A4pgkX2bO15ahKqLuMnbz"
+uri = "file://generated-artifacts/route-coverage/2026-10-25/route-priorities.csv"
+type = "table"
+title = "Route acquisition priority list"
+description = "All 32 route groups, usage counts, affected expedition IDs, existing unverified walking figures and source-review status."
+logical_id = "e0882f6b-884e-4497-9c8c-c906aab2733f"
+content_hash = "sha256:c280ec301f2271535a6248636d5ba54e0d1f9c0865226528f3476277307f6c20"
+size = 9777
+mtime_ms = 1792956108407
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/e0882f6b-884e-4497-9c8c-c906aab2733f/1004909a-e85a-43b2-9f80-b9e2b633eef7"
+storage_version_token = "1792956160202529"
+content_type = "text/csv"
