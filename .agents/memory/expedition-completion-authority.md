@@ -16,12 +16,13 @@ award completion while canonical simulated progress was below 100%.
 change must preserve the Basecamp handoff, use the shared Expedition presentation
 state, and keep completion idempotent and scoped to the active expedition.
 
-Every successful manual expedition-stage log must return directly to Basecamp
+Every successful manual expedition-stage log must return directly to Expedition Basecamp
 to show updated progress, not reveal the Training hill picker or interrupt with
 optional challenge assignment. Ordinary Training hill logging remains available.
 
 **Why:** The owner explicitly identified the post-save Log Hill screen as
 redundant for expedition stages and requested the Basecamp progress handoff.
+The owner subsequently clarified that Training Basecamp is not an acceptable destination.
 
 **How to apply:** Finish saving session evidence and expedition progress before
 leaving the logging flow; failed saves must not trigger the return. Final-stage

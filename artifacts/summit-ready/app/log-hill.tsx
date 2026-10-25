@@ -180,7 +180,7 @@ export default function LogHillScreen() {
         // Both the session and active expedition progress have been saved.
         // Basecamp owns progress animation and the protected final-stage ending.
         // Dismiss this flow, rather than exposing the old hill picker underneath.
-        router.dismissTo("/(tabs)/dashboard");
+        router.dismissTo("/(expedition)/base-camp");
         return;
       }
       setLoggedHill(hillName);

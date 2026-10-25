@@ -45,7 +45,8 @@ describe("manual expedition stage Basecamp handoff", () => {
     const h = harness();
     await h.run();
     expect(h.calls).toEqual(["session-saved", "progress-saved", "basecamp"]);
-    expect(h.ctx.router.dismissTo).toHaveBeenCalledWith("/(tabs)/dashboard");
+    expect(h.ctx.router.dismissTo).toHaveBeenCalledWith("/(expedition)/base-camp");
+    expect(h.ctx.router.dismissTo).not.toHaveBeenCalledWith("/(tabs)/dashboard");
     expect(h.ctx.closeLogModal).not.toHaveBeenCalled();
     expect(h.ctx.setLoggedHill).not.toHaveBeenCalled();
     expect(h.ctx.setPendingChallenge).not.toHaveBeenCalled();
@@ -61,6 +62,7 @@ describe("manual expedition stage Basecamp handoff", () => {
     const h = harness({ manualHillName: "Test stage", expeditionId: "expedition" });
     await h.run();
     expect(h.calls).toEqual(["session-saved", "progress-saved", "basecamp"]);
+    expect(h.ctx.router.dismissTo).toHaveBeenCalledWith("/(expedition)/base-camp");
   });
 
   it("does not navigate before expedition progress finishes saving", async () => {
