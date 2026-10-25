@@ -746,3 +746,17 @@ mtime_ms = 1792180589519
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/6819bb79-df17-4a02-8dcb-1cb46531febd/da4c4e51-1b81-437a-affc-e0d0e5f7b825"
 storage_version_token = "1792180597634367"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "0HXVW482sRtNH9zoynWC8"
+uri = "file://artifacts/summit-ready/assets/images/logo.gif"
+type = "image"
+title = "SummitReady logo"
+description = "Your white mountain logo with SUMMIT READY text, used in the app and landing page."
+logical_id = "90321f76-138f-42ff-9bf8-97727586ed59"
+content_hash = "sha256:12eea16ad49a61de7d3f9a7392adb4109907db457bc335f4fdab7f7d0d40c717"
+size = 31146
+mtime_ms = 1778430666277
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/90321f76-138f-42ff-9bf8-97727586ed59/4ccdb96c-fe7f-4d6a-af25-b6998719907e"
+storage_version_token = "1792930449411588"
+content_type = "image/gif"
