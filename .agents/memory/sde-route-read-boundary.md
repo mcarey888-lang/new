@@ -84,6 +84,19 @@ Canonical geometry must remain unavailable unless every geometry member has exac
 
 **How to apply:** Never infer topology completion, member rights, or validation-version equivalence. Adding the missing publication/validation relationship is separate schema and production work requiring explicit approval.
 
+The proposed acceptance contract is documented in
+`docs/ROUTE_GEOMETRY_PUBLICATION_CONTRACT.md`. Review-file checksums are integrity
+evidence, not canonical database approval or an agreed cross-language database
+geometry hash.
+
+**Why:** A complete, reproducible offline profile can appear release-ready while
+human/access review, contributing terrain rights and database-bound approval are
+still absent.
+
+**How to apply:** Preserve the distinction when reporting progress or implementing
+future validation storage; do not turn successful pilot-file checks into geometry
+disclosure permission.
+
 A failed canonical read is not evidence that a mountain is absent from the verified catalogue. Browsing cached suggestions may remain available, but the UI must distinguish catalogue downtime from a genuine no-match and keep identity-dependent actions closed.
 
 **Why:** An absent engine connection was silently converted to an empty lookup, making familiar curated mountains appear “not in the verified catalogue.”

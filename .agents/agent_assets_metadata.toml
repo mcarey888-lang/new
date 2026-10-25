@@ -802,3 +802,17 @@ mtime_ms = 1792957004426
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/75be380e-50bc-4ae1-9960-44c8f0de3a23/91164de5-9c90-40aa-a6ee-ecc23fe4f09f"
 storage_version_token = "1792957014304832"
 content_type = "text/html"
+
+[[outputs]]
+id = "PmxgV4KN0kGPcxc-BFHaJ"
+uri = "file://generated-artifacts/route-profile/watkin-4363b367997a-2026-10-25T19-51-45-606Z/review.html"
+type = "html"
+title = "Watkin Path — elevation and validation review"
+description = "13.11 km proposed route; DEM planning estimate of 1,013 m ascent/descent; 438 complete samples. Includes profile CSV, terrain provenance and exact-file validation downloads. Offline replay matched; corrupt evidence was rejected. Not a canonical approval or navigation-ready route."
+logical_id = "4ecc5530-3e4e-49b9-b46c-2b3e3c5c2956"
+content_hash = "sha256:e59442a56da943f12df26ce595720b384733e770078355977f03e7a2ad5a55b8"
+size = 161915
+mtime_ms = 1792957905766
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/4ecc5530-3e4e-49b9-b46c-2b3e3c5c2956/ebc1e30c-3a68-4b88-91cf-6f3470334b13"
+storage_version_token = "1792957963179994"
+content_type = "text/html"
