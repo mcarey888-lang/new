@@ -1,6 +1,6 @@
 ---
-name: Expedition review drafting
-description: Proposed route graphs, owner corrections, and the boundary between visual review and verified itineraries.
+name: Route database
+description: Paused commercial route database initiative, planner-first launch, and published-route evidence requirements.
 ---
 
 The owner explicitly requires expedition routes from reliable published
@@ -22,8 +22,23 @@ when a matching authorized track cannot be obtained. Constructed historical
 drafts are withdrawn, not silently replaced, relabelled or counted as sources.
 Retain source fragments as incomplete unless the full itinerary is proven.
 
-The owner is now open to paid commercial access to published route content.
-Evaluate catalogue coverage and reuse terms before choosing a supplier.
+The owner calls this initiative **"route database"** and has put it on hold.
+For now, users will plan their own routes using the existing planner and track
+their walks to produce actual walked GPS data. Revisit a commercial published
+route catalogue once downloads grow; do not continue sourcing, purchasing or
+integrating paid catalogue access unless the owner resumes this initiative.
+
+**Why:** The owner wants to keep initial costs down and launch with the planner
+already built, with the option to upgrade after gaining downloads.
+
+**How to apply:** Treat "route database" as the name for resuming this work.
+Preserve the published-source research and review evidence. Actual GPS tracks
+are evidence of a recorded walk, not automatically verified, safe or legally
+accessible routes, nor permission to publish private recordings. Preserve the
+existing explicit sharing and privacy requirements.
+
+When resumed, the owner is open to paid commercial access to published route
+content. Evaluate catalogue coverage and reuse terms before choosing a supplier.
 This is not permission to purchase a subscription or accept a contract.
 Keep initial costs as low as possible with an option to scale; no numeric
 budget or supplier price has been approved. Seek a small pilot and expansion
