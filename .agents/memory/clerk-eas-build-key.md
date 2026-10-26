@@ -37,3 +37,20 @@ Bearer-authenticated route saves. Merely checking live/test prefixes missed it.
 existing-account instance before any replacement. Never change account
 namespaces, relax JWT verification, or assume a workspace secret update has
 changed the running deployment.
+
+The owner supplied support correspondence confirming that the managed Users &
+Auth integration was re-injecting production credentials for the wrong instance,
+even before publishing. Support escalated the binding issue and stated there was
+no self-service binding refresh available. Removing a manually entered workspace
+live secret did not resolve the mismatch in the owner's subsequent report.
+
+**Why:** Repeatedly replacing standard production secrets cannot be assumed to
+persist when the integration remains their authoritative source. Workspace
+management detection has also reported external despite this managed-binding
+history; that result alone does not prove the production binding is repaired.
+
+**How to apply:** Preserve the intended instance and existing account identities.
+Do not delete the Clerk app or keep retrying managed-secret overrides. An
+explicitly configured, separately named credential path would be a proposed
+workaround requiring owner consent and verification, not a repair to Replit's
+binding or an already proven solution.
