@@ -22,6 +22,17 @@ when a matching authorized track cannot be obtained. Constructed historical
 drafts are withdrawn, not silently replaced, relabelled or counted as sources.
 Retain source fragments as incomplete unless the full itinerary is proven.
 
+Use free, reuse-permitted published tracks and leave gaps where no suitable
+track is confirmed; the owner explicitly chose this sourcing approach.
+
+**Why:** Freely downloadable publisher GPX files often restrict commercial app
+reuse. The owner chose honest missing routes rather than paid licensing or
+made-up replacements.
+
+**How to apply:** Preserve exact published geometry, attribution and licence
+evidence. Format/projection conversion is acceptable; never silently close
+endpoints, reverse an ascent to invent a return, or choose among source branches.
+
 The owner still has the app planner for deliberate corrections to sourced
 tracks, especially missing parking approaches. Preserve original files and
 review history; do not automatically apply such corrections for them.

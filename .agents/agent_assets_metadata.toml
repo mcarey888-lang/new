@@ -816,3 +816,17 @@ mtime_ms = 1792957905766
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/4ecc5530-3e4e-49b9-b46c-2b3e3c5c2956/ebc1e30c-3a68-4b88-91cf-6f3470334b13"
 storage_version_token = "1792957963179994"
 content_type = "text/html"
+
+[[outputs]]
+id = "TPifjx4V7ymzRvhNa39TL"
+uri = "file://generated-artifacts/expedition-published-sources/expedition-source-findings.csv"
+type = "table"
+title = "Expedition route source findings"
+description = "Findings for all 32 required route groups: published-source candidate, retained source-only tracks, licensing restrictions and missing replacements."
+logical_id = "9ad8734c-ee77-42d5-a0bb-953d6dced413"
+content_hash = "sha256:d9eab9a3feb737d17fb0339dc473819da26b99b74b237f3f836ecb3e5ae9f9f2"
+size = 8656
+mtime_ms = 1793030264334
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/9ad8734c-ee77-42d5-a0bb-953d6dced413/3f4b2077-4045-4806-b590-09ce60658891"
+storage_version_token = "1793030381074072"
+content_type = "text/csv"

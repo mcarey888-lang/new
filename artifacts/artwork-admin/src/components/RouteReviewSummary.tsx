@@ -12,6 +12,7 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
   const sources = r.sourceManifest ?? [];
   const prepared = sources.map(s => obj(obj(s.metadata).reviewSummary)).find(s => s.format === "summitready-route-review-summary-v1") ?? {};
   const legacy = sources.find(s => s.planningEstimates) ?? {};
+  const publishedSource = sources.find(s => s.sourceAcquisition === "published_named_route" && s.sourceGeometryUnmodified === true);
   const mountain = obj(prepared.mountain ?? legacy.catalogueMountain);
   const estimates = obj(legacy.planningEstimates);
   const profile = useQuery({
@@ -55,12 +56,16 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
       <div>
         <h4 className="font-semibold">Route at a glance</h4>
         <p className="mt-1 text-sm text-muted-foreground">
-          {text(mountain.name) || "Mountain not specified"} · {text(prepared.routeKind) || "Proposed route — see source evidence"}
+          {text(mountain.name) || text(publishedSource?.name) || "Mountain not specified"} · {text(prepared.routeKind) || (publishedSource ? "Published community track — review pending" : "Source track — see evidence")}
         </p>
         <p className="mt-1 text-sm text-amber-400">Development review only — not cleared for navigation.</p>
         {sources.some(s => s.fullExpeditionVariantConfirmed === false) && (
           <p role="note" className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-            Unverified route draft—not a confirmed expedition itinerary. Check the start/parking, approach, summit connection, return and exact ridge or scramble variant. Network/engine drafts are proposed walks, not sourced named itineraries; source-only tracks may still be incomplete. No elevation has been invented.
+            {publishedSource ? <>
+              Published OpenStreetMap itinerary acquired through Waymarked Trails. Its published order is preserved; no routing engine, extra approach, return leg or gap-closing was used. {text(publishedSource.endpointNotice)} Reuse requires OpenStreetMap attribution and ODbL compliance. Confirm the exact mountain/ridge variant, access and intended endpoints before approval. No terrain profile or safety clearance is implied.
+            </> : <>
+              Not yet confirmed as the full expedition itinerary. Check the start/parking, approach, summit connection, return and exact ridge or scramble variant. Source-only tracks may be incomplete. No elevation has been invented.
+            </>}
           </p>
         )}
       </div>
