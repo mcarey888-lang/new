@@ -1,0 +1,91 @@
+{
+  "format": "summitready-terrain-edition-investigation-v1",
+  "observedAt": "2026-10-26T07:09:59.353Z",
+  "scope": "Additional metadata-only findings; original profile, tile evidence and review companions are unchanged.",
+  "conclusion": {
+    "candidateEdition": "EU-DEM v1.0",
+    "strength": "corroborated-not-proven",
+    "exactEditionCertified": false,
+    "automatedRightsApproval": false,
+    "reason": "The provider's exact filename, published source inventory and source TIFF's native grid agree with the original geographic EU-DEM product. None supplies an edition identifier or an authenticated chain to the upstream source release bytes."
+  },
+  "providerInventory": {
+    "url": "https://s3.amazonaws.com/elevation-tiles-prod/docs/footprints.geojson.gz",
+    "etag": "\"df2c9e0f02339be0051423f7938941b5\"",
+    "lastModified": "Mon, 06 Nov 2017 22:56:08 GMT",
+    "compressedSha256": "1882c61652283929aad1564734d1eb01575116f5936e9836ccd140c6d852d8b1",
+    "compressedBytes": 8706136,
+    "decodedBytes": 40941371,
+    "featuresExamined": 38197,
+    "matchingFeatures": 1,
+    "matchingProperties": {
+      "filename": "eudem_dem_5deg_n50w005.tif",
+      "source": "eudem",
+      "resolution": 30.8874796234885,
+      "url": "http://d1fl4qlsp9xnuu.cloudfront.net/eudem/eudem_dem_5deg_n50w005.tif",
+      "min_zoom": 9,
+      "max_zoom": 20,
+      "approximate_zoom": 13,
+      "priority": 0
+    },
+    "limitation": "An inventory last modified in 2017 is corroboration of the named source, not a cryptographic build manifest for the six saved output tiles."
+  },
+  "sourceTiffMetadata": {
+    "url": "https://d1fl4qlsp9xnuu.cloudfront.net/eudem/eudem_dem_5deg_n50w005.tif",
+    "fullFileBytes": 625046824,
+    "fullFileDownloaded": false,
+    "fullFileSha256": null,
+    "etag": "\"71b843fccb7d5d1540bfcb3f59bc5767-75\"",
+    "lastModified": "Wed, 01 Nov 2017 04:48:33 GMT",
+    "uniqueMetadataBytesSampled": 382,
+    "rangeResponsesRequired": "206 with the exact requested Content-Range and bounded body size",
+    "width": 18000,
+    "height": 18000,
+    "pixelScaleDegrees": [0.0002777777777777778, 0.0002777777777777778],
+    "upperLeftLongitude": -5,
+    "upperLeftLatitude": 55,
+    "geographicCrs": "EPSG:4258",
+    "geoAscii": "ETRS89|",
+    "gdalNoData": "0",
+    "editionLabelPresentInInspectedTags": false,
+    "metadataTagIds": [256, 257, 258, 259, 262, 277, 284, 317, 322, 323, 324, 325, 339, 33550, 33922, 34735, 34736, 34737, 42113],
+    "ranges": [
+      {"start": 0, "bytes": 8, "sha256": "e14e7408990dc136663693d7e57816e5e10b2c0668ede991ca62072d380c3d7a"},
+      {"start": 8, "bytes": 2, "sha256": "38ac7bda3d1c2bebaee514c7bf472ec10c12ee6bd464d5e75ea8b09ff9425fcb"},
+      {"start": 10, "bytes": 228, "sha256": "947904c657addbeb57dfbca9eea4bac9a0a85f08666d7c351038ba98e4305864"},
+      {"start": 10610, "bytes": 24, "sha256": "9c0217ba782ad48bb04c6c0551b93bcbd32a74e7d0364a97a92f0f88c818ee28"},
+      {"start": 10634, "bytes": 48, "sha256": "af49f851dba8e5d87f244cad34e05186dbf5cdcb1b37dbe19bc4620dea9e0d55"},
+      {"start": 10682, "bytes": 64, "sha256": "4ab308d9ff343179ea6570293e648f4b454394eb7b4ebfde0148041263d17ecd"},
+      {"start": 10762, "bytes": 8, "sha256": "3d416fe664a11280e74cbe7640b93e7bc721e308759cda9e9119f1789c2ed7fd"}
+    ]
+  },
+  "primaryReferences": [
+    {
+      "url": "https://github.com/tilezen/joerd/blob/master/docs/data-sources.md",
+      "finding": "Documents contributor headers, filename-based inventory lookup, EUDEM at approximately 30 m, and Terrain Tiles release dates. Terrain Tiles release numbers are not EU-DEM edition numbers."
+    },
+    {
+      "url": "https://ec.europa.eu/eurostat/web/gisco/geodata/digital-elevation-model/eu-dem",
+      "finding": "Describes the Version 1 geographic product at one arc second in ETRS89, aggregated into 5-degree tiles."
+    },
+    {
+      "url": "https://sdi.eea.europa.eu/catalogue/srv/api/records/19cff95e-61ac-45ed-8ee3-c43220d709cf",
+      "finding": "EEA metadata for EU-DEM v1.0, with Copernicus reuse conditions."
+    },
+    {
+      "url": "https://sdi.eea.europa.eu/catalogue/srv/api/records/3473589f-0854-4601-919e-2e7dd172ff50",
+      "finding": "EEA metadata for EU-DEM v1.1: 25 m projected grid, EPSG:3035. A matching grid alone would still not prove source edition."
+    }
+  ],
+  "stillRequired": [
+    "A provider or upstream archive provenance statement tying this named source TIFF to an exact EU-DEM release, or equivalent authenticated source evidence.",
+    "Explicit review of applicable reuse and attribution conditions.",
+    "Independent catalogue, route access/hazards and elevation-profile review before any acceptance."
+  ],
+  "protectedBoundaries": [
+    "Owner confirmation applies only to out-and-back route intent.",
+    "No original evidence or saved companion file overwritten.",
+    "No database, catalogue, expedition, activity, authentication or production changes.",
+    "No acceptance, rights attestation or publication."
+  ]
+}

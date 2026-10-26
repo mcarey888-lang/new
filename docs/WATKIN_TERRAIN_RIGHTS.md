@@ -1,5 +1,13 @@
 # Watkin pilot: terrain contributor and reuse investigation
 
+## Owner-confirmed route intent
+
+The intended walk is **out-and-back along Watkin Path**, returning along the
+same path, rather than a circular route. The owner confirmed this format for
+the existing 13.11 km development draft. This is not a rights/access/safety
+attestation, catalogue verification, accepted validation or publication approval.
+Original route geometry, expedition figures and recorded activity remain intact.
+
 ## What was verified
 
 All six zoom-14 Terrarium tiles used in the saved Watkin profile were downloaded
@@ -64,3 +72,36 @@ replaced.
 
 No new paid provider was selected. No profile, route or rights record has been
 automatically promoted to accepted or public.
+
+## Additional source-edition investigation
+
+The follow-on findings are retained separately in
+`docs/WATKIN_TERRAIN_EDITION_EVIDENCE.json`; the original hashed report and
+protected review companions have not been rewritten.
+
+The provider's published footprint inventory contains one exact matching
+`eudem_dem_5deg_n50w005.tif` record, with approximately 30.887 m nominal
+resolution and a source-file URL. The complete compressed inventory was
+streamed and hashed; its SHA-256 and matching properties are in the new report.
+
+Metadata-only HTTP range reads of that source TIFF establish an 18,000 × 18,000
+grid, one-arc-second pixels and geographic ETRS89 (EPSG:4258), covering the
+five-degree tile beginning at -5° longitude / 55° latitude. Only **382 unique
+metadata bytes** were sampled; the 625 MB raster was not downloaded, and its
+whole-file hash is not known. The inspected primary TIFF metadata contains no
+source-edition label.
+
+This is strong corroboration of the older **EU-DEM v1.0** geographic product
+described by Eurostat, rather than the native 25 m projected v1.1 product
+described by the EEA. It is **not proof** of the upstream edition: rehosting or
+resampling could preserve a filename/grid, and the inventory is not an
+authenticated build manifest linking the original release bytes to our saved
+output tiles. Do not turn this finding into automatic rights/profile approval.
+
+**Do not confuse Terrain Tiles v1.1 with EU-DEM v1.1.** These are independent
+release numbers. A 2017 Terrain Tiles release does not establish the edition of
+its contributing European elevation dataset.
+
+The remaining exact-edition gap needs provider/upstream provenance evidence,
+not an owner assertion or a changed verification flag. All existing rights,
+access, profile, catalogue and publication safeguards remain in effect.

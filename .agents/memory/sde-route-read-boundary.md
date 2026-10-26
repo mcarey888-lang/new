@@ -124,6 +124,16 @@ rewriting an already-hashed profile. Watkin's exact tile bytes identify EU-DEM;
 see `docs/WATKIN_TERRAIN_RIGHTS.md` for conditions and remaining edition/review
 limits. Do not generalise that finding to other routes or newer Copernicus DEM.
 
+Terrain Tiles release numbers and the contributing EU-DEM edition numbers are
+independent; never infer EU-DEM v1.1 from a Terrain Tiles v1.1 release.
+
+**Why:** The Watkin source inventory and native TIFF grid corroborate the older
+geographic EU-DEM product even though the provider released Terrain Tiles v1.1.
+
+**How to apply:** Keep grid/filename corroboration distinct from exact-edition
+proof. The additional findings and limitations are in
+`docs/WATKIN_TERRAIN_EDITION_EVIDENCE.json`; they do not grant rights approval.
+
 The owner separately authorised preparing Watkin's development draft link and a
 readable review. This permits new needs-review route/geometry/source records,
 not changing an existing peak's imported status, certifying rights, granting
@@ -135,6 +145,16 @@ catalogue records verified merely to make the review buttons work.
 **How to apply:** Preserve previous review revisions and original evidence.
 Leave catalogue verification, source rights and explicit human approval gates
 closed until independently supported and authorised.
+
+The owner confirmed Watkin's intended walk is out-and-back along Watkin Path,
+not a circular route.
+
+**Why:** This is the owner's route-format choice, not a safety, source-rights,
+catalogue verification or publication approval.
+
+**How to apply:** Retain that route intent when preparing further evidence.
+Do not substitute circular geometry or treat this confirmation as an accepted
+validation or approval decision.
 
 Source-hashed evaluator policies must work in the bundled API, not just under
 tsx. The managed development command builds and runs dist from the package root.
