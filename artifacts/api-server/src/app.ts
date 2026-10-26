@@ -159,6 +159,12 @@ const aiLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many AI requests. Please wait a moment and try again." },
 });
+// These development review endpoints are DB/evidence operations, never AI.
+// Keep their control/read budget separate from expensive admin verification.
+const routeReviewLimiter = rateLimit({
+  windowMs: 60_000, max: 120, standardHeaders: true, legacyHeaders: false,
+  message: { error: "Too many route review requests. Please wait a moment and try again." },
+});
 
 app.use("/api", (req, res, next) => {
   if (req.method === "GET" && artworkImagePath.test(req.path)) {
@@ -203,7 +209,11 @@ app.use("/api/directions/parking-options",   aiLimiter);
 app.use("/api/directions/verify",            aiLimiter);
 app.use("/api/trail-start",                  aiLimiter);
 app.use("/api/mountain-verification-test",   aiLimiter);
-app.use("/api/admin",                        aiLimiter);
+app.use("/api/admin", (req, res, next) => {
+  if (req.path === "/route-reviews" || req.path.startsWith("/route-reviews/"))
+    return routeReviewLimiter(req, res, next);
+  return aiLimiter(req, res, next);
+});
 app.use("/api/virtual-expedition",           aiLimiter);
 app.use("/api/artwork/generate",             aiLimiter);
 app.use("/api/artwork/bulk",                 aiLimiter);

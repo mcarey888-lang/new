@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { routeReviewCall, type RouteRevision, type RouteValidation } from "@/hooks/use-route-reviews";
+import { analyseRoute, parseCoordinates } from "@/lib/route-review-map";
 
 type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj => v && typeof v === "object" && !Array.isArray(v) ? v as Obj : {};
@@ -23,7 +24,9 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
     && profile.data?.geometrySha256 === r.reviewFileHashes?.files?.geometry?.sha256;
   const result = validProfile ? obj(profile.data?.result) : {};
   const length = num(result.lengthM);
-  const distance = length !== null ? length / 1000 : num(estimates.outAndBackHorizontalKm);
+  const parsedGeometry = parseCoordinates(r.geometry?.coordinates);
+  const savedLength = parsedGeometry.ok ? analyseRoute(parsedGeometry.coords, null).lengthM : null;
+  const distance = length !== null ? length / 1000 : savedLength !== null ? savedLength / 1000 : num(estimates.outAndBackHorizontalKm);
   const rawPoints = Array.isArray(result.points) ? result.points.map(obj) : [];
   const points = rawPoints.filter(p => num(p.distanceM) !== null && num(p.elevationM) !== null);
   const canPlot = points.length > 1 && points.length === rawPoints.length;
@@ -44,6 +47,9 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
   const osmUrl = text(source.url ?? source.relationUrl);
   const safeUrl = /^https:\/\/(?:www\.)?openstreetmap\.org\//.test(osmUrl) ? osmUrl : "https://www.openstreetmap.org/copyright";
   const sourceDate = text(prepared.sourceCapturedAt ?? legacy.sourceCapturedAt);
+  const usesHostedRouting = sources.some(s => text(s.provider).includes("openrouteservice") || !!s.routingProviderNotice);
+  const itinerary = sources.find(s => Array.isArray(s.proposedAnchors));
+  const proposedAnchors = Array.isArray(itinerary?.proposedAnchors) ? itinerary.proposedAnchors.map(obj) : [];
   return (
     <section className="space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5" data-testid="route-readable-summary">
       <div>
@@ -54,7 +60,7 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
         <p className="mt-1 text-sm text-amber-400">Development review only — not cleared for navigation.</p>
         {sources.some(s => s.fullExpeditionVariantConfirmed === false) && (
           <p role="note" className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-            Source geometry only—not the confirmed full expedition walk. The approach, return leg, summit connection and exact variant still need preparation. No missing sections or elevation have been invented.
+            Unverified route draft—not a confirmed expedition itinerary. Check the start/parking, approach, summit connection, return and exact ridge or scramble variant. Network/engine drafts are proposed walks, not sourced named itineraries; source-only tracks may still be incomplete. No elevation has been invented.
           </p>
         )}
       </div>
@@ -63,6 +69,14 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
         <div><dt className="text-xs text-muted-foreground">Estimated ascent (DEM)</dt><dd className="text-lg font-semibold">{profile.isPending && r.profileSha256 ? "Loading…" : metres(result.ascentM)}</dd></div>
         <div><dt className="text-xs text-muted-foreground">Summit (catalogue)</dt><dd className="text-lg font-semibold">{metres(mountain.elevationM)}</dd></div>
       </dl>
+      {proposedAnchors.length > 0 && (
+        <details className="text-sm">
+          <summary className="cursor-pointer font-medium">Proposed itinerary waypoints (not verified)</summary>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted-foreground">
+            {proposedAnchors.map((a,i) => <li key={i}>{text(a.label) || "Unlabelled anchor"}{num(a.offsetM) !== null && num(a.offsetM)! > 150 ? ` — nearest mapped path node ${Math.round(num(a.offsetM)!)} m away; check this location` : ""}</li>)}
+          </ol>
+        </details>
+      )}
       {profile.isError && <p role="alert" className="text-sm text-destructive">The elevation profile could not be read. Use the protected download below or reload; no estimate has been substituted.</p>}
       {profile.data && !validProfile && <p role="alert" className="text-sm text-destructive">This profile does not match the original geometry file. Its figures are not shown.</p>}
       {canPlot && <figure className="space-y-1">
@@ -74,6 +88,11 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
       {(oldDistance !== null || oldAscent !== null) && <p className="text-xs text-muted-foreground">
         Existing expedition snapshot: {oldDistance !== null ? `${oldDistance} km` : "distance unavailable"} · {oldAscent !== null ? metres(oldAscent) : "ascent unavailable"}. These figures and all recorded activities are unchanged.
       </p>}
+      {distance !== null && oldDistance !== null && Math.abs(distance - oldDistance) > oldDistance * .25 && (
+        <p role="note" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          This draft's length differs substantially from the existing expedition figure. Check for detours, repeated sections, a different start or a different variant. Neither figure is treated as verified, and the expedition is unchanged.
+        </p>
+      )}
       <details className="space-y-3 text-sm">
       <summary className="cursor-pointer font-medium">Evidence checks and outstanding publication requirements</summary>
       <div className="space-y-2 text-sm">
@@ -101,6 +120,7 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
       </div>
       </details>
       <p className="text-xs text-muted-foreground">
+        {usesHostedRouting && <><a href="https://openrouteservice.org/" target="_blank" rel="noreferrer" className="underline">© openrouteservice by HeiGIT</a> | Data from OpenStreetMap · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer" className="underline">CC BY-SA 4.0</a>. Routing credits apply to provider-derived sections. </>}
         {isOsm ? <>Source: <a href={safeUrl} target="_blank" rel="noreferrer" className="underline">OpenStreetMap — © OpenStreetMap contributors</a>, ODbL 1.0.</> : <>Source details are retained in the technical evidence below.</>}
         {sourceDate && <> Snapshot captured {new Date(sourceDate).toLocaleDateString()}.</>}
         {isWatkin && <> <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noreferrer" className="underline">Terrain attribution</a>. <a href="https://sdi.eea.europa.eu/catalogue/srv/api/records/19cff95e-61ac-45ed-8ee3-c43220d709cf" target="_blank" rel="noreferrer" className="underline">EU-DEM terms</a>.</>}

@@ -4,6 +4,7 @@ import { summitLayerScript } from "./summit-layer-script";
 import { recordingScript } from "./recording-script";
 import { mapControlsScript } from "./map-controls-script";
 import { initialMapLocationScript } from "./initial-map-location-script";
+import { reviewEditorScript } from "./route-review-editor-script";
 
 const router: IRouter = Router();
 
@@ -159,6 +160,7 @@ export function buildRouteMapHtml(
    *  on, so the walker never sees the planning chrome at all. */
   recording?: boolean,
   hostedRouting = false,
+  reviewEditor = false,
 ): string {
   const layers = baseLayers(osKey, tilePrefix, hasMapbox);
   const initial = layers[0];
@@ -434,7 +436,9 @@ function setMode(next) {
   if (fly) fly.disabled = !(next === "3d" && routePts.length > 1);
 }
 
-map.on("load", function () {
+// Review editing can initialize from the style immediately. Slow or rejected
+// background tiles must not prevent importing the owner's saved geometry.
+map.on(${JSON.stringify(reviewEditor ? "style.load" : "load")}, function () {
   mapLoaded = true;
   if (mode === "3d") setMode(mode);
   map.addSource("route", { type: "geojson", data: empty() });
@@ -1045,10 +1049,12 @@ function fitSavedRoute(points) {
   });
 }
 
+${reviewEditor ? reviewEditorScript() : ""}
 function handleMsg(ev) {
   var msg;
   try { msg = JSON.parse(ev.data); } catch (err) { return; }
   if (!msg || !msg.type) return;
+  ${reviewEditor ? 'if (ev.source !== window.parent || ev.origin !== window.location.origin) return;\n  if (loadReviewDraft(msg)) return;' : ""}
   if (msg.type === "communityPins" && Array.isArray(msg.routes)) { showCommunityPins(msg.routes); return; }
 
   if (msg.type === "route" && Array.isArray(msg.points)) {
@@ -1245,7 +1251,7 @@ ${recording ? `map.on("load", function () { setRecording(true); });` : ""}
 
 ${chrome === "full" ? mapControlsScript(Boolean(gpxUrl)) : ""}
 ${chrome === "full" ? "buildControls();" : ""}
-${recording ? "" : initialMapLocationScript()}
+${recording || reviewEditor ? "" : initialMapLocationScript()}
 </script>
 </body>
 </html>`;
@@ -1265,6 +1271,9 @@ router.get("/route-map", (req, res) => {
   /* The recorder opens this page with ?recording=1 so the walking chrome is
      there from the first paint — no flash of a search box being put away. */
   const recording = req.query["recording"] === "1";
+  // Reuse the actual planner in the private admin host, without automatic
+  // location/profile requests or personal-route saving. The host owns saving.
+  const adminReview = req.query["adminReview"] === "1";
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // Vary on the query so a chromeless response is not served to a browser.
   /* This page is application code, not an asset. Cached for an hour, a fix
@@ -1274,7 +1283,11 @@ router.get("/route-map", (req, res) => {
      both were fixed. The ETag above still makes a revalidation cheap: an
      unchanged page comes back 304 with no body. */
   res.setHeader("Cache-Control", "no-cache");
-  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl, summitsUrl, parkingUrl, recording, Boolean(process.env.OPENROUTESERVICE_API_KEY)));
+  let html = buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl,
+    adminReview ? undefined : profileUrl, adminReview ? undefined : gpxUrl,
+    summitsUrl, parkingUrl, recording, Boolean(process.env.OPENROUTESERVICE_API_KEY), adminReview);
+  if (adminReview) html = html.replace(/>Save route</g, ">Save as new draft<").replace('save.textContent = "Save route"', 'save.textContent = "Save as new draft"');
+  res.send(html);
 });
 
 export default router;

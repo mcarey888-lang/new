@@ -147,3 +147,12 @@ export function useExpeditionRouteQueue() {
     queryFn: () => routeReviewCall<ExpeditionRouteQueue>("/expedition-queue"),
   });
 }
+
+export function useEditRouteReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; coordinates: number[][]; note?: string; expectedLatestRevisionId: string }) =>
+      routeReviewCall<{ id: string }>(`/${id}/edit`, "POST", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["route-reviews"] }),
+  });
+}

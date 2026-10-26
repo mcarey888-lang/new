@@ -1,7 +1,7 @@
 import type { PoolClient } from "@workspace/db";
 import { expeditionRouteSourcing as sourcing } from "../data/expedition-route-sourcing.js";
 
-type Review = { id: string; candidateKey: string; revisionVersion: string; canonicalGeometryId: string | null; routeKey: string | null };
+type Review = { id: string; candidateKey: string; revisionVersion: string; canonicalGeometryId: string | null; routeKey: string | null; draftMethod?: string | null };
 type Source = { sourceLeads: { id: number; name: string; url: string; status: string }[]; blockers: string[] };
 type Stage = {
   challenge_id: string; route_key: string; route_name: string; region: string;
@@ -23,7 +23,9 @@ export function buildExpeditionRouteQueue(stages: Stage[], reviews: Review[]) {
     const matching = reviews.filter(r => r.routeKey === head.route_key);
     const source = sources.routes[head.route_key];
     const blockers = [
-      ...(source?.blockers ?? ["An exact reusable source for the full expedition route still needs to be acquired."]),
+      ...(matching[0]?.draftMethod?.includes("proposed-itinerary")
+        ? ["Editable network/engine draft, not a verified named itinerary. Confirm the start/parking, ridge or scramble variant, return leg and access. No elevation profile is supplied."]
+        : source?.blockers ?? ["An exact reusable source for the full expedition route still needs to be acquired."]),
       ...(!matching.some(r => r.canonicalGeometryId)
         ? ["No current canonical geometry binding; approval is unavailable."] : []),
       "Source rights, access and any elevation profile require explicit validation before approval.",
@@ -50,6 +52,8 @@ export async function expeditionRouteQueue(client: PoolClient) {
   // pilot relation/key pair is handled explicitly, never through fuzzy names.
   const reviews = await client.query<Review>(`SELECT r.id, r.candidate_key AS "candidateKey",
     r.revision_version AS "revisionVersion",r.canonical_geometry_id AS "canonicalGeometryId",
+    (SELECT s->>'draftMethod' FROM jsonb_array_elements(r.source_manifest) s
+     WHERE s->>'draftMethod' IS NOT NULL LIMIT 1) AS "draftMethod",
     COALESCE(
       (SELECT s->>'expeditionRouteKey' FROM jsonb_array_elements(r.source_manifest) s
        WHERE s->>'expeditionRouteKey' IS NOT NULL LIMIT 1),

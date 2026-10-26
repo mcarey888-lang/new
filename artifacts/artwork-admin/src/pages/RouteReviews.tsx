@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArtworkAdminHeader } from "@/components/ArtworkAdminHeader";
 import { RouteReviewMap } from "@/components/RouteReviewMap";
 import { ExpeditionRouteQueue } from "@/components/ExpeditionRouteQueue";
+import { RouteEditor } from "@/components/RouteEditor";
 import { RouteReviewSummary } from "@/components/RouteReviewSummary";
 import {
   useRouteReviews, useRouteReview, usePreviewRouteReview, useImportRouteReview,
@@ -315,21 +316,29 @@ function MapReviewPanel({ revisionId, reviews }: { revisionId: string; reviews: 
   );
 }
 
-function Detail({ id }: { id: string }) {
+function Detail({ id, latestId, onSaved, onDirtyChange }: { id: string; latestId: string; onSaved: (id: string) => void; onDirtyChange: (dirty: boolean) => void }) {
   const q = useRouteReview(id);
+  const [editing, setEditing] = useState(false);
   const [dlErr, setDlErr] = useState<unknown>(null);
   const [technicalOpen, setTechnicalOpen] = useState(false);
   if (q.isLoading) return <Skeleton className="h-96 w-full" />;
-  if (q.error) return <ErrBox error={q.error} onRetry={() => q.refetch()} />;
+  if (q.error && !q.data) return <ErrBox error={q.error} onRetry={() => q.refetch()} />;
   if (!q.data) return null;
   const { revision: r, validations, decisions } = q.data;
   const files = Object.entries(r.reviewFileHashes?.files ?? {});
   return (
     <div className="space-y-4" data-testid="route-detail">
+      {q.error && <ErrBox error={q.error} onRetry={() => q.refetch()} />}
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-lg font-semibold">{r.candidateKey} <span className="font-normal text-muted-foreground">v{r.revisionVersion}</span></h3>
       </div>
-      {r.geometry && <RouteReviewMap identity={`${r.id}:${r.geometrySha256}`} coordinates={r.geometry.coordinates} sourceManifest={r.sourceManifest} fallback={<RoutePreviewSvg coords={r.geometry.coordinates} />} />}
+      {r.geometry && (editing
+        ? <RouteEditor key={`editor-${r.id}`} revisionId={r.id} latestRevisionId={latestId} coordinates={r.geometry.coordinates} onSaved={onSaved} onCancel={() => setEditing(false)} onDirtyChange={onDirtyChange} />
+        : <div className="space-y-2">
+            {latestId !== r.id && <div className="text-sm text-amber-600" data-testid="text-older-revision">This is an older revision. Editing is only available on the latest revision of this candidate.</div>}
+            <Button type="button" size="sm" variant="secondary" disabled={latestId !== r.id} onClick={() => setEditing(true)} data-testid="button-edit-draft">Edit draft route</Button>
+          </div>)}
+      {r.geometry && !editing && <RouteReviewMap identity={`${r.id}:${r.geometrySha256}`} coordinates={r.geometry.coordinates} sourceManifest={r.sourceManifest} fallback={<RoutePreviewSvg coords={r.geometry.coordinates} />} />}
       <MapReviewPanel key={r.id} revisionId={r.id} reviews={q.data.mapReviews ?? []} />
       <RouteReviewSummary revision={r} validations={validations} />
       <details className="rounded-md border border-border p-3" data-testid="details-advanced">
@@ -386,18 +395,28 @@ function Detail({ id }: { id: string }) {
 }
 
 export default function RouteReviews() {
+  const dirtyEditor = useRef(false);
   const list = useRouteReviews();
   const [sel, setSel] = useState<string | null>(() => {
     const requested = new URLSearchParams(window.location.search).get("candidate");
     return requested && UUID.test(requested) ? requested : null;
   });
   const choose = (id: string | null) => {
+    if (dirtyEditor.current && !window.confirm("Discard unsaved route edits and open another route?")) return;
+    dirtyEditor.current = false;
     setSel(id);
     const url = new URL(window.location.href);
     if (id) url.searchParams.set("candidate", id); else url.searchParams.delete("candidate");
     window.history.replaceState(null, "", url);
   };
-  const items = list.data?.items ?? [];
+  const [history, setHistory] = useState(false);
+  const all = list.data?.items ?? [];
+  const family = (r: RouteRevision) => String(r.sourceManifest.find(s => s.expeditionRouteKey)?.expeditionRouteKey
+    ?? (r.candidateKey === "Snowdon via Watkin Path — pilot" ? "watkin" : r.candidateKey));
+  const latestByKey = useMemo(() => { const m = new Map<string, string>(); all.forEach((r) => { const key = family(r); if (!m.has(key)) m.set(key, r.id); }); return m; }, [all]);
+  const items = history ? all : all.filter((r) => latestByKey.get(family(r)) === r.id);
+  const selItem = all.find((r) => r.id === sel);
+  const selOlder = !!selItem && latestByKey.get(family(selItem)) !== sel;
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <ArtworkAdminHeader activeSection="route-reviews" actions={<Button size="sm" variant="secondary" onClick={() => choose(null)} data-testid="button-new-candidate">Import candidate</Button>} />
@@ -411,6 +430,8 @@ export default function RouteReviews() {
         <div className="lg:col-span-2"><ExpeditionRouteQueue onSelectReview={choose} /></div>
         <aside className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Candidates</h2>
+          <label className="flex items-center gap-2 text-xs"><input type="checkbox" data-testid="check-history" checked={history} onChange={(e) => setHistory(e.target.checked)} />Show older revisions (history)</label>
+          {selOlder && !history && <div className="rounded border border-border p-2 text-xs" data-testid="text-selected-older">Viewing an older revision, not shown in the latest-only list.</div>}
           {list.isLoading && [0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
           {list.error && <ErrBox error={list.error} onRetry={() => list.refetch()} />}
           {list.data && items.length === 0 && <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground" data-testid="text-empty">No saved candidates. Import one by pasting or loading JSON.</div>}
@@ -422,7 +443,7 @@ export default function RouteReviews() {
         </aside>
         <section className="min-w-0 space-y-4">
           <h2 className="text-lg font-semibold">{sel ? "Candidate review" : "Import candidate"}</h2>
-          {sel ? <Detail key={sel} id={sel} /> : <ImportPanel />}
+          {sel ? <Detail key={sel} id={sel} latestId={selItem ? latestByKey.get(family(selItem)) ?? sel : sel} onDirtyChange={dirty => { dirtyEditor.current = dirty; }} onSaved={(nid) => { toast.success("Draft revision saved"); choose(nid); }} /> : <ImportPanel />}
         </section>
       </main>
     </div>

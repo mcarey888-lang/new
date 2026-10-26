@@ -24,14 +24,16 @@ async function main() {
        FROM public.challenge_stages s) AS stages,
       (SELECT md5(string_agg(to_jsonb(c)::text,'' ORDER BY challenge_id))
        FROM public.signature_challenges c) AS expeditions,
-      (SELECT count(*)::int FROM public.route_geometry_review_decisions) AS decisions`)).rows[0];
+      (SELECT count(*)::int FROM public.route_geometry_review_decisions) AS decisions,
+      (SELECT count(*)::int FROM public.route_geometry_map_reviews) AS map_reviews,
+      (SELECT count(*)::int FROM public.route_geometry_review_validations) AS validations`)).rows[0];
     const before = await protectedSnapshot();
     for (const file of (await readdir(directory)).filter(f => f.endsWith(".input.json")).sort()) {
       const input = JSON.parse(await readFile(resolve(directory, file), "utf8"));
       const routeKey = basename(file, ".input.json");
       // Very short search hits are not useful expedition source geometry.
       // This also prevents importing the 290m 'Braeriach Trail' as a 28km walk.
-      if (routeKey === "braeriach") {
+      if (routeKey === "braeriach" && !["osm-network-proposed-itinerary-v1", "ors-proposed-itinerary-v1"].includes(input.sourceManifest?.[0]?.draftMethod)) {
         results.push({ routeKey, status: "blocked", reason: "Source is only a short fragment, not the expedition approach." });
         continue;
       }
