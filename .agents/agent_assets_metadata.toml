@@ -830,3 +830,17 @@ mtime_ms = 1793030264334
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/9ad8734c-ee77-42d5-a0bb-953d6dced413/3f4b2077-4045-4806-b590-09ce60658891"
 storage_version_token = "1793030381074072"
 content_type = "text/csv"
+
+[[outputs]]
+id = "jg0QcS8W2FOGHHYGlOTYX"
+uri = "file://generated-artifacts/route-licensing/supplier-route-shortlist.csv"
+type = "table"
+title = "Route licensing shortlist"
+description = "Supplier-ready list: five priority walks for a pilot, plus expansion to all 32 expedition routes. Exact published variants and commercial reuse rights must be confirmed."
+logical_id = "48e2b306-b55f-46a1-9e69-284172fcda2c"
+content_hash = "sha256:c9935377eba957c1bb10ce5abe5f1fda6658fe11dfc4fc49a45ddae3b8b38b17"
+size = 6230
+mtime_ms = 1793033854872
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/48e2b306-b55f-46a1-9e69-284172fcda2c/9f01f40d-39e0-4f46-a83e-8c0c104af0ff"
+storage_version_token = "1793033861347913"
+content_type = "text/csv"

@@ -25,6 +25,9 @@ Retain source fragments as incomplete unless the full itinerary is proven.
 The owner is now open to paid commercial access to published route content.
 Evaluate catalogue coverage and reuse terms before choosing a supplier.
 This is not permission to purchase a subscription or accept a contract.
+Keep initial costs as low as possible with an option to scale; no numeric
+budget or supplier price has been approved. Seek a small pilot and expansion
+quotes rather than assuming a full-catalogue subscription is affordable.
 
 **Why:** Free sourcing produced only one additional published review candidate,
 so the owner changed the earlier free-only restriction. Freely downloadable
