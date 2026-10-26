@@ -1,3 +1,4 @@
+import { MembershipGate } from "@/components/MembershipGate";
 import type { LucideIcon } from "lucide-react-native";
 import { Flag, Minus, Plus, Check, ChevronDown, ChevronUp, ChevronLeft, TrendingUp, Zap, Pencil, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Activity, Square, Package, Anchor, Droplet, Wind, Mountain, Play, Settings, Moon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -1171,6 +1172,10 @@ const celebStyles = StyleSheet.create({
 });
 
 export default function PlanScreen() {
+  return <MembershipGate allowExpedition><PlanScreenContent /></MembershipGate>;
+}
+
+function PlanScreenContent() {
   useScreenView("plan");
   const insets = useSafeAreaInsets();
   const {

@@ -594,7 +594,7 @@ export default function LogHillScreen() {
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
           const inMyHills = myHills.some(h => h.name === hill.name);
           const wasJustAdded = justAdded === hill.name;
-          const isLocked = !isSubscribed && i >= FREE_HILLS_LIMIT;
+          const isLocked = false; // Nearby discovery is part of Explore, not a paid training entitlement.
           if (isLocked && i === FREE_HILLS_LIMIT) {
             return (
               <Animated.View key={i} entering={FadeInDown.delay(60).duration(400)}>

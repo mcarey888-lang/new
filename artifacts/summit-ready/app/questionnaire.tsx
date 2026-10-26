@@ -1,9 +1,10 @@
 import { Check, MapPin, Minus, Plus, ArrowLeft, Zap, ArrowRight, TrendingUp, X, Search, Mountain } from "lucide-react-native";
+import { MembershipGate } from "@/components/MembershipGate";
 import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PENDING_PAST_HIKES_KEY, type PastHike } from "@/context/AppContext";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -738,6 +739,11 @@ function deriveFitnessLevel(level: number): "Beginner" | "Average" | "Strong" {
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function QuestionnaireScreen() {
+  return <MembershipGate><QuestionnaireContent /></MembershipGate>;
+}
+
+function QuestionnaireContent() {
+  const intent = useLocalSearchParams<{ mountain?: string; goal?: string }>();
   useScreenView("questionnaire");
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
@@ -755,7 +761,7 @@ export default function QuestionnaireScreen() {
   // ── Shared state ────────────────────────────────────────────────────────
   const [showBaselineModal, setShowBaselineModal] = useState(false);
 
-  const [mountainName, setMountainName] = useState("");
+  const [mountainName, setMountainName] = useState(intent.mountain ?? intent.goal ?? "");
   const [fitnessLevel, setFitnessLevel] = useState(0);
   const [exerciseFreq, setExerciseFreq] = useState(0);
   const [elevation, setElevation] = useState(0);

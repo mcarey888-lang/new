@@ -1,3 +1,4 @@
+import { MembershipGate } from "@/components/MembershipGate";
 import type { LucideIcon } from "lucide-react-native";
 import { searchTrainingHills } from "@/utils/trainingHillSearch";
 import { ArrowLeft, Zap, Search, AlertCircle, Check, Calendar, ChevronDown, CheckCircle, Clock, AlertTriangle, XCircle, SlidersHorizontal, Info, TrendingUp, Heart, Flag, ChevronLeft, ChevronRight, Activity, Link, MapPin, Wrench, Map, Navigation, Repeat } from "lucide-react-native";
@@ -128,6 +129,10 @@ const LOCATIONS = [
 ];
 
 export default function SetupScreen() {
+  return <MembershipGate><SetupContent /></MembershipGate>;
+}
+
+function SetupContent() {
   useScreenView("setup");
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();

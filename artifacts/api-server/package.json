@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@workspace/membership": "workspace:*",
     "@clerk/express": "^2.1.33",
     "@clerk/shared": "^4.22.1",
     "@google-cloud/storage": "^7.21.0",

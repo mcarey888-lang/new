@@ -1,3 +1,4 @@
+import { MembershipGate } from "@/components/MembershipGate";
 import {
   Activity, Calendar, Check, CheckCircle, ChevronRight, Flag,
   Globe, Minus, Mountain, Plus, TrendingUp, Zap,
@@ -274,6 +275,10 @@ const trk = StyleSheet.create({
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function SessionDetailScreen() {
+  return <MembershipGate><SessionDetailContent /></MembershipGate>;
+}
+
+function SessionDetailContent() {
   const insets = useSafeAreaInsets();
   const { weekNum: weekNumStr, sessionIdx: sessionIdxStr } = useLocalSearchParams<{
     weekNum: string;

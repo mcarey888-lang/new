@@ -377,10 +377,11 @@ export default function ExpeditionMountainsScreen() {
     trainingPlan,
     shellMode,
   } = useApp();
-  const { isSubscribed } = useSubscription();
+  const { access, canAccessExpedition } = useSubscription();
+  const isSubscribed = access.fullExpeditions;
   const { userId } = useAuth();
   const readinessInput = useMemo(
-    () => userId && summitGoal
+    () => access.training && userId && summitGoal
       ? createReadinessInput(
         userId,
         new Date().toISOString(),
@@ -390,7 +391,7 @@ export default function ExpeditionMountainsScreen() {
         trainingPlan,
       )
       : null,
-    [userId, summitGoal, sessions, exploreHikes, trainingPlan],
+    [access.training, userId, summitGoal, sessions, exploreHikes, trainingPlan],
   );
 
   // view state
@@ -731,8 +732,8 @@ export default function ExpeditionMountainsScreen() {
 
   // ── Bundle tap ───────────────────────────────────────────────────────────────
   function handleBundleTap(bundle: VirtualBundle) {
-    if (!bundle.free && !isSubscribed) {
-      setUpsellVisible(true);
+    if (!isSubscribed) {
+      router.push({ pathname: "/paywall", params: { tier: "expeditions", trigger: "expedition_builder" } });
       return;
     }
     setActiveBundle(bundle);
@@ -2607,7 +2608,7 @@ export default function ExpeditionMountainsScreen() {
             </View>
             <View style={{ paddingHorizontal: 16 }}>
               {filteredBundles.map((bundle, idx) => {
-                const locked = !bundle.free && !isSubscribed;
+                const locked = !isSubscribed;
                 const prog = bundleProgress(bundle);
                 return (
                   <Animated.View key={bundle.id} entering={FadeInDown.delay(80 + idx * 30).duration(400)}>

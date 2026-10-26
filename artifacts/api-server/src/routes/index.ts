@@ -47,8 +47,15 @@ import canonicalHistoryRouter from "./canonical-history";
 import canonicalRouteRecordsRouter, { canonicalRouteRecordsEnabled } from "./canonical-route-records";
 import communityRouter from "./community";
 import { requireAuth } from "../middlewares/requireAuth";
+import { requireMembership } from "../middlewares/requireMembership";
+import { membershipRouter } from "./membership";
 
 const router: IRouter = Router();
+
+router.use(membershipRouter);
+// Keep personal recording, history, safety and public catalogue browsing free.
+router.use(["/coach-assessment", "/coach-ask", "/adjust-plan", "/alpine-assessment"], requireMembership("training"));
+router.use("/virtual-expedition", requireMembership("expedition"));
 
 // ── Public routes (no auth required) ─────────────────────────────────────────
 router.use(healthRouter);

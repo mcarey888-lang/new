@@ -1,3 +1,4 @@
+import { MembershipGate } from "@/components/MembershipGate";
 /**
  * FULL READINESS — rebuilt to `summitready-readiness-mockup.html`.
  *
@@ -57,6 +58,10 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 export default function ReadinessDetailScreen() {
+  return <MembershipGate><ReadinessDetailContent /></MembershipGate>;
+}
+
+function ReadinessDetailContent() {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const v2 = useReadinessV2();

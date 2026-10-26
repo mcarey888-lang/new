@@ -1,16 +1,18 @@
 import { useMemo } from "react";
 import { useAuth } from "@clerk/expo";
 import { useApp } from "@/context/AppContext";
+import { useSubscription } from "@/lib/revenuecat";
 import { evaluateReadiness } from "@/utils/readinessV2";
 import { selectReadinessNextAction, ReadinessActionCandidate, ReadinessActionContext } from "@/utils/readinessActions";
 import { createReadinessInput } from "@/utils/readinessAdapter";
 
 export function useReadinessV2() {
+  const { access } = useSubscription();
   const { userId } = useAuth();
   const { summitGoal, sessions, trainingPlan, exploreHikes } = useApp();
 
   return useMemo(() => {
-    if (!summitGoal) return null;
+    if (!summitGoal || !access.training) return null;
 
     const ownerId = userId ?? "local";
     const asOf = new Date().toISOString();
@@ -93,5 +95,5 @@ export function useReadinessV2() {
     const nextAction = selectReadinessNextAction(actionContext);
 
     return { result, nextAction, trend, input };
-  }, [summitGoal, sessions, trainingPlan, exploreHikes, userId]);
+  }, [summitGoal, sessions, trainingPlan, exploreHikes, userId, access.training]);
 }

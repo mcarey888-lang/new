@@ -18,6 +18,9 @@
   "exclude": ["**/*.test.ts", "**/*.test.tsx"],
   "references": [
     {
+      "path": "../../lib/membership"
+    },
+    {
       "path": "../../lib/api-client-react"
     }
   ]

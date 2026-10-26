@@ -86,7 +86,7 @@
 - [Git sequencer lock recovery](git-sequencer-lock-recovery.md) — after an index-lock failure, verify applied history before continuing; the failed pick may be skipped.
 - [Summit map review boundary](summit-query-review-boundary.md) — verify author-owned summit logic; preserve globe integration and report failures rather than creating a second version.
 - [MapLibre browser WebGL](maplibre-browser-webgl.md) — disabled GL in managed runners can be an environment issue; local Chromium software rendering enabled real map verification.
-- [Free/Pro access policy](free-version-product-requirement.md) — Free exploration, recording and readiness snapshot; Pro preparation; core safety and personal-data access stays free.
+- [Three-tier access policy](free-version-product-requirement.md) — Free discovery/recording + verified starter; Expeditions collection; Pro-only training/readiness; supersedes earlier free previews.
 - [Store build source](store-build-source.md) — build the tested workspace snapshot through a separate release ref when shared development has advanced independently.
 - [Conditional HTTP checks](http-conditional-checks.md) — Node fetch can force a full response when testing ETags; use ordinary max-age=0 revalidation or curl.
 - [Durable runtime dates](durable-runtime-dates.md) — durableptc v1 may reject documented date APIs; isolate timestamps in impure code rather than repeating completed reads.

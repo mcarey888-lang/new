@@ -24,6 +24,8 @@ import { useApp } from "@/context/AppContext";
 import type { AlpineExperience, AlpineExperienceCategory } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
+import { useAuth } from "@clerk/expo";
+import { MembershipGate } from "@/components/MembershipGate";
 import { logAiCoachUsed, logReadinessScoreViewed, useScreenView } from "@/lib/analytics";
 import { AchievementToast } from "@/components/AchievementToast";
 import { getDaysRemaining, getWeeklyCompletion, isRequirementMet } from "@/utils/readinessScore";
@@ -308,6 +310,12 @@ function AlpineCard({
 }
 
 export default function DashboardScreen() {
+  const { summitGoal } = useApp();
+  return summitGoal ? <MembershipGate><DashboardContent /></MembershipGate> : <DashboardContent />;
+}
+
+function DashboardContent() {
+  const { getToken } = useAuth();
   const [isFocused, setIsFocused] = useState(false);
   useFocusEffect(useCallback(() => {
     setIsFocused(true);
@@ -367,7 +375,7 @@ export default function DashboardScreen() {
   }, [summitGoal, hasViewedPlan, markPlanViewed]);
 
   const fetchCoach = useCallback(async () => {
-    if (!summitGoal) return;
+    if (!summitGoal || !isSubscribed) return;
     // Cancel any previous in-flight request
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -389,7 +397,7 @@ export default function DashboardScreen() {
 
       const res = await fetch(`${API_BASE}/coach-assessment`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await getToken()}` },
         signal: controller.signal,
         body: JSON.stringify({
           summitGoal,
@@ -414,7 +422,7 @@ export default function DashboardScreen() {
     } finally {
       if (!controller.signal.aborted) setCoachLoading(false);
     }
-  }, [summitGoal, sessions, trainingPlan, readinessScore]);
+  }, [summitGoal, sessions, trainingPlan, readinessScore, isSubscribed, getToken]);
 
   useEffect(() => {
     if (summitGoal && !hasFetched.current) {
@@ -462,7 +470,7 @@ export default function DashboardScreen() {
       const days = summitGoal ? getDaysRemaining(summitGoal.summitDate) : undefined;
       const res = await fetch(`${API_BASE}/coach-ask`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await getToken()}` },
         body: JSON.stringify({
           question: q,
           summitGoal,

@@ -4,7 +4,10 @@ import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { logPurchase, logTrialStarted, logSubscriptionStarted } from "@/lib/analytics";
+import { onceMembershipAnalytics } from "@/lib/membershipAnalytics";
+import { logAnalyticsEvent } from "@/lib/analytics";
 import { loadPurchases } from "@/lib/revenuecatSdk";
+import { MEMBERSHIP, accessFromEntitlements, activeEntitlementIds, canUseExpedition, tierForPackage, type MembershipTier } from "@workspace/membership";
 
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
@@ -91,6 +94,11 @@ async function getPurchasesForUser(userId: string | null | undefined) {
 }
 
 function useSubscriptionContext() {
+  const [accessClock, setAccessClock] = useState(Date.now);
+  useEffect(() => {
+    const interval = setInterval(() => setAccessClock(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
   const queryClient = useQueryClient();
   const { isLoaded: authLoaded, userId } = useAuth();
   const [sdkReady, setSdkReady] = useState(false);
@@ -177,30 +185,63 @@ function useSubscriptionContext() {
     staleTime: 300 * 1000,
   });
 
+  const trialEligibility = useQuery({
+    queryKey: ["revenuecat", "intro-eligibility", revenueCatUserKey, offeringsQuery.data?.current?.identifier],
+    enabled: sdkReady && !!userId && Platform.OS === "ios" && !!offeringsQuery.data,
+    queryFn: async () => {
+      const Purchases = await getPurchasesForUser(userId);
+      const products = Object.values(offeringsQuery.data?.all ?? {})
+        .flatMap(offering => offering.availablePackages.map(pkg => pkg.product.identifier));
+      const result = await Purchases.checkTrialOrIntroductoryPriceEligibility([...new Set(products)]);
+      return Object.fromEntries(Object.entries(result).map(([id, value]) =>
+        [id, value.status === Purchases.INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE]));
+    },
+    staleTime: 60_000,
+  });
+
   const purchaseMutation = useMutation({
     mutationFn: async (packageToPurchase: any) => {
       const Purchases = await getPurchasesForUser(userId);
-      const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
+      const before = accessFromEntitlements(activeEntitlementIds(customerInfoQuery.data));
+      const target = tierForPackage(packageToPurchase?.identifier ?? "",
+        packageToPurchase?.presentedOfferingContext?.offeringIdentifier ?? packageToPurchase?.offeringIdentifier);
+      const upgrading = before.tier === "expeditions" && target === "pro";
+      if (upgrading && !MEMBERSHIP.nativeUpgradesVerified)
+        throw new Error("Manage your existing subscription in the store. Native replacement has not been enabled yet.");
+      const oldProduct = customerInfoQuery.data?.entitlements.active[MEMBERSHIP.entitlements.expeditions]?.productIdentifier;
+      if (upgrading && Platform.OS === "android" && !oldProduct) throw new Error("Restore your existing subscription before upgrading.");
+      // StoreKit handles same-group changes. Play receives the old product so
+      // this is a replacement, never a second independent subscription.
+      const { customerInfo } = upgrading && Platform.OS === "android"
+        ? await Purchases.purchasePackage(packageToPurchase, null, { oldProductIdentifier: oldProduct! })
+        : await Purchases.purchasePackage(packageToPurchase);
       return { customerInfo, packageToPurchase };
     },
     onSuccess: ({ customerInfo, packageToPurchase }) => {
+      const before = accessFromEntitlements(activeEntitlementIds(customerInfoQuery.data));
       queryClient.setQueryData(customerInfoKey, customerInfo);
-      const entitlement = customerInfo.entitlements.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER];
+      void queryClient.invalidateQueries({ queryKey: ["revenuecat", "intro-eligibility", revenueCatUserKey] });
+      const canonicalProduct = (value: string) => value.split(":")[0];
+      const entitlement = Object.values(customerInfo.entitlements.active).find(e =>
+        canonicalProduct(e.productIdentifier) === canonicalProduct(packageToPurchase?.product?.identifier ?? ""));
       if (entitlement) {
         const plan = entitlement.productIdentifier;
-        if (entitlement.periodType === "TRIAL" || entitlement.periodType === "INTRO") {
-          void logTrialStarted({ plan });
-        } else {
-          void logSubscriptionStarted({ plan });
-          const product = packageToPurchase?.product;
-          void logPurchase({
-            plan,
-            value: typeof product?.price === "number" ? product.price : undefined,
-            currency: typeof product?.currencyCode === "string"
-              ? product.currencyCode.toUpperCase()
-              : undefined,
-          });
-        }
+        const after = accessFromEntitlements(activeEntitlementIds(customerInfo));
+        void onceMembershipAnalytics(userId, "verified_purchase", `${plan}_${entitlement.latestPurchaseDate}`, async () => {
+          if (entitlement.periodType === "TRIAL") await logTrialStarted({ plan });
+          else {
+            await logSubscriptionStarted({ plan });
+            const product = packageToPurchase?.product;
+            await logPurchase({
+              plan,
+              value: typeof product?.price === "number" ? product.price : undefined,
+              currency: typeof product?.currencyCode === "string" ? product.currencyCode.toUpperCase() : undefined,
+            });
+          }
+          await logAnalyticsEvent("subscription_purchase_verified", { tier: after.tier, plan });
+          if (before.tier === "expeditions" && after.training)
+            await logAnalyticsEvent("expeditions_to_pro_upgrade", { tier: "pro" });
+        });
       }
     },
   });
@@ -218,14 +259,44 @@ function useSubscriptionContext() {
     },
   });
 
-  const isSubscribed =
-    customerInfoQuery.data?.entitlements?.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER] !== undefined;
+  const access = accessFromEntitlements(activeEntitlementIds(customerInfoQuery.data, accessClock));
+  // Legacy callers mean training access, not "any paid tier".
+  const isSubscribed = access.training;
+  const packagesForTier = (tier: Exclude<MembershipTier, "explore">) => {
+    const all = offeringsQuery.data?.all;
+    const offering = tier === "expeditions"
+      ? all?.[MEMBERSHIP.offerings.expeditions]
+      : all?.[MEMBERSHIP.offerings.pro] ?? all?.[MEMBERSHIP.offerings.legacy];
+    return { monthly: offering?.monthly ?? null, annual: offering?.annual ?? null };
+  };
+  const trialDaysForPackage = (pkg: any): number | null => {
+    if (tierForPackage(pkg?.identifier ?? "", pkg?.presentedOfferingContext?.offeringIdentifier ?? pkg?.offeringIdentifier) !== "pro") return null;
+    const product = pkg?.product;
+    if (Platform.OS === "ios" && trialEligibility.data?.[product?.identifier] === true) {
+      const intro = product?.introPrice;
+      if (intro?.price !== 0 || intro?.cycles !== 1) return null;
+      const days = intro.periodUnit === "DAY" ? intro.periodNumberOfUnits
+        : intro.periodUnit === "WEEK" ? intro.periodNumberOfUnits * 7 : null;
+      return days === 14 ? 14 : null;
+    }
+    // Play returns eligible subscription options; defaultOption is the option
+    // RevenueCat will purchase, not an arbitrary advertised offer.
+    if (Platform.OS === "android") {
+      const phase = product?.defaultOption?.freePhase;
+      return phase?.billingPeriod?.iso8601 === "P2W" || phase?.billingPeriod?.iso8601 === "P14D" ? 14 : null;
+    }
+    return null;
+  };
   const sdkPending = !!userId && !sdkReady && !sdkError;
 
   return {
     customerInfo: customerInfoQuery.data,
     offerings: offeringsQuery.data,
     isSubscribed,
+    access,
+    canAccessExpedition: (id: string | null | undefined) => canUseExpedition(access, id),
+    packagesForTier,
+    trialDaysForPackage,
     isLoading: sdkPending || customerInfoQuery.isLoading || offeringsQuery.isLoading,
     isError: !!sdkError || customerInfoQuery.isError,
     offeringsLoading: sdkPending || offeringsQuery.isLoading,

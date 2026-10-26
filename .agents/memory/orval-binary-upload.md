@@ -8,3 +8,9 @@ Generated binary upload helpers may JSON-stringify a Blob even when the OpenAPI 
 **Why:** A generated community-photo upload helper sent JSON-shaped bytes under an image content type, so the API correctly rejected an otherwise valid photo.
 
 **How to apply:** When adding or regenerating binary OpenAPI endpoints, inspect the generated transport rather than trusting its TypeScript Blob signature; maintain a request-level regression check or a separate supported binary transport.
+
+Run transport preservation/checks as an explicit step after the full generator
+command, and keep a failing regression test in addition to the generator exit code.
+
+**Why:** Orval printed a failed lifecycle-hook warning but still returned success
+and printed a successful generation summary, leaving the unsafe JSON body intact.

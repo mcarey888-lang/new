@@ -12,7 +12,12 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
 import { restoreTrainingPlan } from "@/utils/trainingPlanRestore";
 import { repairDurations } from "@/utils/hikeDurationMigration";
-import { calculateReadiness, diagnoseScoreStagnation, ScoreInsight } from "@/utils/readinessScore";
+import { calculateReadiness as calculateReadinessRaw, diagnoseScoreStagnation, ScoreInsight } from "@/utils/readinessScore";
+import { useSubscription } from "@/lib/revenuecat";
+import { logMembershipOnce } from "@/lib/membershipAnalytics";
+import { MEMBERSHIP } from "@workspace/membership";
+import { assertMembership, authorizeNewAction } from "@/lib/membershipActions";
+import { canUseExpedition } from "@workspace/membership";
 import { resolveSessionHill } from "@/utils/hillDetailNavigation";
 import { computeUnlocked } from "@/utils/achievements";
 import { logTrainingPlanGenerated, logReadinessScoreImproved } from "@/lib/analytics";
@@ -614,11 +619,12 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 async function fetchAlpineAssessment(
   mountainName: string,
   highestAltitude: number,
+  getToken?: () => Promise<string | null>,
 ): Promise<AlpineProfile | null> {
   try {
     const res = await fetch(`${API_BASE}/alpine-assessment`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(getToken ? { Authorization: `Bearer ${await getToken()}` } : {}) },
       body: JSON.stringify({ mountainName, highestAltitude, difficulty: "Alpine" }),
     });
     if (!res.ok) return null;
@@ -698,6 +704,16 @@ const DEMO_SESSIONS: Session[] = [
 ];
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const membership = useSubscription();
+  const membershipRef = useRef(membership.access);
+  membershipRef.current = membership.access;
+  const calculateReadiness = (...args: Parameters<typeof calculateReadinessRaw>) => {
+    if (!membershipRef.current.training) return 0;
+    const score = calculateReadinessRaw(...args);
+    if (userId) void AsyncStorage.setItem(`membership_readiness_history_${userId}`,
+      JSON.stringify({ score, at: new Date().toISOString() })).catch(() => {});
+    return score;
+  };
   const { userId, getToken } = useAuth();
   const _uid = userId ?? "";
   const hikeStorageOwnerRef = useRef(_uid);
@@ -999,7 +1015,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // restore the missing plan from its own Training goal.
           const storedPlan: TrainingWeek[] | null = planStr ? JSON.parse(planStr) : null;
           const rawPlan: TrainingWeek[] = ensurePlanSessionIds(
-            restoreTrainingPlan(storedPlan, loadedTrainingGoal, generatePlan),
+            membershipRef.current.training
+              ? restoreTrainingPlan(storedPlan, loadedTrainingGoal, generatePlan)
+              : storedPlan ?? [],
           ) as TrainingWeek[];
 
           // Migrate stored plans that are missing fields added in later versions.
@@ -1118,7 +1136,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Fetch Alpine profile in background if not already stored
           if (goal.difficulty === "Alpine" && !goal.alpineProfile) {
             setAlpineProfileLoading(true);
-            fetchAlpineAssessment(goal.mountainName, goal.highestAltitude).then(async (profile) => {
+            if (membershipRef.current.training) fetchAlpineAssessment(goal.mountainName, goal.highestAltitude, getToken).then(async (profile) => {
               if (profile && isCurrent()) {
                 await applyAlpineProfile(loadedShellMode, goal, profile);
               }
@@ -1186,6 +1204,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [loadKey, _uid]);
 
   const setSummitGoal = useCallback(async (goal: SummitGoal) => {
+    await authorizeNewAction(membershipRef.current, "training");
     // Archive the outgoing goal + its training stats before wiping
     if (trainingGoal && sessions.length > 0) {
       const archived: CompletedGoal = {
@@ -1276,7 +1295,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Fire-and-forget Alpine profile fetch — doesn't block the goal save
     if (goal.difficulty === "Alpine") {  
       setAlpineProfileLoading(true);
-      fetchAlpineAssessment(goal.mountainName, goal.highestAltitude).then(async (profile) => {
+      fetchAlpineAssessment(goal.mountainName, goal.highestAltitude, getToken).then(async (profile) => {
         if (profile) {
           await applyAlpineProfile("training", goal, profile);
         }
@@ -1286,6 +1305,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [trainingGoal, sessions, trainingPlan, completedGoals, GOAL_KEY, TRAINING_GOAL_KEY, SHELL_MODE_KEY, applyAlpineProfile]);
 
   const changeSummit = useCallback(async (goal: SummitGoal) => {
+    await authorizeNewAction(membershipRef.current, "training");
     // Update the summit target WITHOUT archiving the old goal or clearing sessions.
     // Existing logged sessions are preserved — only the plan is regenerated.
     const plan = ensurePlanSessionIds(generatePlan(goal)) as TrainingWeek[];
@@ -1324,7 +1344,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Fire-and-forget Alpine profile fetch
     if (goal.difficulty === "Alpine") {
       setAlpineProfileLoading(true);
-      fetchAlpineAssessment(goal.mountainName, goal.highestAltitude).then(async (profile) => {
+      fetchAlpineAssessment(goal.mountainName, goal.highestAltitude, getToken).then(async (profile) => {
         if (profile) {
           await applyAlpineProfile("training", goal, profile);
         }
@@ -1339,6 +1359,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const patchGoal = useCallback(async (updates: Partial<SummitGoal>) => {
     if (!summitGoal) return;
+    if (shellMode === "training" && !membershipRef.current.training) return;
+    if (shellMode === "expedition" && !canUseExpedition(membershipRef.current,
+      expeditions.find(e => e.id === activeExpeditionId)?.challengeId)) return;
     const updated = { ...summitGoal, ...updates };
     setSummitGoalState(updated);
     if (shellMode === "expedition") {
@@ -1380,6 +1403,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const startExpedition = useCallback(async (
     data: Omit<SavedExpedition, "id" | "savedAt" | "completedRoutes" | "expeditionStatus" | "virtualHikeProgress">
   ): Promise<string> => {
+    await authorizeNewAction(membershipRef.current, "expedition", data.challengeId ?? "custom");
     const id = `exp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const now = new Date().toISOString();
 
@@ -1464,6 +1488,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       [EXPEDITION_GOAL_KEY, JSON.stringify(updatedGoal)],
       [SHELL_MODE_KEY, "expedition"],
     ]);
+    if (data.challengeId && data.challengeId === MEMBERSHIP.starterExpeditionId)
+      void logMembershipOnce(userId, "starter_expedition_started", { expedition_id: data.challengeId }, id);
 
     return id;
   }, [expeditions, summitGoal, trainingGoal, expeditionGoal, EXPEDITIONS_KEY, ACTIVE_EXPEDITION_KEY, GOAL_KEY, EXPEDITION_GOAL_KEY, SHELL_MODE_KEY]);
@@ -1471,6 +1497,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setActiveExpedition = useCallback(async (id: string) => {
     const target = expeditions.find(e => e.id === id);
     if (!target) return;
+    assertMembership(membershipRef.current, "expedition", target.challengeId);
 
     // Sync the current expedition's live progress back to the library before switching
     const syncedLibrary = expeditions.map(e => {
@@ -1533,6 +1560,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [expeditions, activeExpeditionId, summitGoal, trainingGoal, expeditionGoal, shellMode, EXPEDITIONS_KEY, ACTIVE_EXPEDITION_KEY, GOAL_KEY, EXPEDITION_GOAL_KEY]);
 
   const patchExpedition = useCallback(async (id: string, updates: Partial<SavedExpedition>) => {
+    const target = expeditions.find(e => e.id === id);
+    const changesProgress = ["virtualHills", "completedRoutes", "virtualHikeProgress", "expeditionPlan", "simulationScore", "completionStats", "expeditionStatus"]
+      .some(field => field in updates);
+    if (changesProgress && !canUseExpedition(membershipRef.current, target?.challengeId)) return;
     const updated = expeditions.map(e => e.id === id ? { ...e, ...updates } : e);
     setExpeditions(updated);
 
@@ -1566,6 +1597,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const completeExpedition = useCallback(async (id: string, stats?: SavedExpedition["completionStats"]): Promise<boolean> => {
     const expedition = expeditions.find(e => e.id === id);
+    if (!canUseExpedition(membershipRef.current, expedition?.challengeId)) return false;
     if (
       !expedition
       || !isExpeditionComplete(expedition)
@@ -1592,6 +1624,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else {
       await AsyncStorage.setItem(EXPEDITIONS_KEY, JSON.stringify(updated));
     }
+    if (expedition.challengeId && expedition.challengeId === MEMBERSHIP.starterExpeditionId)
+      void logMembershipOnce(userId, "starter_expedition_completed", { expedition_id: expedition.challengeId }, id);
     return true;
   }, [expeditions, activeExpeditionId, shellMode, EXPEDITIONS_KEY, ACTIVE_EXPEDITION_KEY, EXPEDITION_GOAL_KEY, GOAL_KEY]);
 
@@ -1633,7 +1667,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSessions(updated);
     const oldScore = readinessScore;
     let score = readinessScore;
-    if (summitGoal) {
+    if (summitGoal && membershipRef.current.training) {
       score = calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals, exploreHikes });
       setReadinessScore(score);
       if (score > oldScore) {
@@ -1646,6 +1680,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
+    if (session.completed && shellMode === "training" && membershipRef.current.training)
+      void logMembershipOnce(userId, "first_pro_training_session_completed");
     checkAndNotifyAchievements(updated, score, submittedPlanSessions, unlockedAchievements, exploreHikes);
     return id;
   }, [summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, readinessScore, submittedPlanSessions, unlockedAchievements, exploreHikes, checkAndNotifyAchievements]);
@@ -1876,7 +1912,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     const oldScore = readinessScore;
     let score = readinessScore;
-    if (summitGoal) {
+    if (summitGoal && membershipRef.current.training) {
       score = calculateReadiness(summitGoal, trainingPlan, sessions, { sessionReps, assignedHills, completedGoals, exploreHikes: updated });
       setReadinessScore(score);
       if (score > oldScore) {
@@ -1902,6 +1938,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     const updated = exploreHikesRef.current.filter(h => h.id !== id);
     await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
+    void logMembershipOnce(userId, "first_ordinary_hike_completed");
     if (hikeStorageOwnerRef.current !== _uid) throw new Error("Your account changed while deleting.");
     exploreHikesRef.current = updated;
     setExploreHikes(updated);
@@ -2040,6 +2077,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [summitGoal]);
 
   const togglePlanSession = useCallback(async (weekNum: number, sessionIdx: number) => {
+    assertMembership(membershipRef.current, "training");
     const key = planSessionKey(trainingPlan, weekNum, sessionIdx);
     const updated = { ...completedPlanSessions, [key]: !completedPlanSessions[key] };
     setCompletedPlanSessions(updated);
@@ -2068,6 +2106,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const submitWeekSessions = useCallback(async (weekNum: number): Promise<number> => {
+    assertMembership(membershipRef.current, "training");
     const week = trainingPlan.find(w => w.weekNumber === weekNum);
     if (!week || !summitGoal) return 0;
 
@@ -2286,6 +2325,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [summitGoal, shellMode, GOAL_KEY, TRAINING_GOAL_KEY, EXPEDITION_GOAL_KEY]);
 
   const setSessionReps = useCallback(async (key: string, reps: number) => {
+    if (!membershipRef.current.training) return;
     // Allow zero to clear an entry (shows "–" again); negative values treated as zero.
     let updated: Record<string, number>;
     if (reps <= 0) {
@@ -2349,6 +2389,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [trainingPlan]);
 
   const adjustPlanWithAI = useCallback(async () => {
+    await authorizeNewAction(membershipRef.current, "training");
     if (!summitGoal || trainingPlan.length === 0) return;
     setPlanAdjusting(true);
 
@@ -2377,7 +2418,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch(`${API_BASE}/adjust-plan`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await getToken()}` },
         body: JSON.stringify({
           summitGoal,
           completedCount,

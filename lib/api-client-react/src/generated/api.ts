@@ -25,6 +25,7 @@ import type {
   ArtworkPrompt,
   ArtworkRejectResult,
   ArtworkStatusList,
+  AuthorizeMembershipAction200,
   BackupRecordedHike200,
   CanonicalHistoryResponse,
   CommunityPostCreate,
@@ -47,6 +48,8 @@ import type {
   GetCanonicalHistoryParams,
   GetCommunityPosts200,
   GetCommunityPostsParams,
+  GetMembershipAccess200,
+  GetMembershipAccessParams,
   GetMountainDiscoveryParams,
   GetMountainWeatherParams,
   HealthStatus,
@@ -54,6 +57,7 @@ import type {
   ListAdminExpeditions200,
   ListRecordedHikeBackups200,
   ListRecordedHikeBackupsParams,
+  MembershipActionInput,
   MountainDiscoveryPage,
   MountainHeroGenerationInput,
   MountainHeroGenerationStarted,
@@ -86,6 +90,186 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getGetMembershipAccessUrl = (
+  params?: GetMembershipAccessParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/membership/access?${stringifiedParams}`
+    : `/api/membership/access`;
+};
+
+export const getMembershipAccess = async (
+  params?: GetMembershipAccessParams,
+  options?: RequestInit,
+): Promise<GetMembershipAccess200> => {
+  return customFetch<GetMembershipAccess200>(
+    getGetMembershipAccessUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetMembershipAccessQueryKey = (
+  params?: GetMembershipAccessParams,
+) => {
+  return [`/api/membership/access`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetMembershipAccessQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMembershipAccess>>,
+  TError = ErrorType<void>,
+>(
+  params?: GetMembershipAccessParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMembershipAccess>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMembershipAccessQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMembershipAccess>>
+  > = ({ signal }) =>
+    getMembershipAccess(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMembershipAccess>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMembershipAccessQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMembershipAccess>>
+>;
+export type GetMembershipAccessQueryError = ErrorType<void>;
+
+export function useGetMembershipAccess<
+  TData = Awaited<ReturnType<typeof getMembershipAccess>>,
+  TError = ErrorType<void>,
+>(
+  params?: GetMembershipAccessParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMembershipAccess>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMembershipAccessQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getAuthorizeMembershipActionUrl = () => {
+  return `/api/membership/authorize`;
+};
+
+export const authorizeMembershipAction = async (
+  membershipActionInput: MembershipActionInput,
+  options?: RequestInit,
+): Promise<AuthorizeMembershipAction200> => {
+  return customFetch<AuthorizeMembershipAction200>(
+    getAuthorizeMembershipActionUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(membershipActionInput),
+    },
+  );
+};
+
+export const getAuthorizeMembershipActionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authorizeMembershipAction>>,
+    TError,
+    { data: BodyType<MembershipActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof authorizeMembershipAction>>,
+  TError,
+  { data: BodyType<MembershipActionInput> },
+  TContext
+> => {
+  const mutationKey = ["authorizeMembershipAction"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof authorizeMembershipAction>>,
+    { data: BodyType<MembershipActionInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return authorizeMembershipAction(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AuthorizeMembershipActionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof authorizeMembershipAction>>
+>;
+export type AuthorizeMembershipActionMutationBody =
+  BodyType<MembershipActionInput>;
+export type AuthorizeMembershipActionMutationError = ErrorType<void>;
+
+export const useAuthorizeMembershipAction = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authorizeMembershipAction>>,
+    TError,
+    { data: BodyType<MembershipActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof authorizeMembershipAction>>,
+  TError,
+  { data: BodyType<MembershipActionInput> },
+  TContext
+> => {
+  return useMutation(getAuthorizeMembershipActionMutationOptions(options));
+};
 
 export const getListRouteReviewsUrl = () => {
   return `/api/admin/route-reviews`;
@@ -4171,7 +4355,7 @@ export const uploadCommunityPostPhoto = async (
       ...options,
       method: "PUT",
       headers: { "Content-Type": "image/jpeg", ...options?.headers },
-      body: JSON.stringify(uploadCommunityPostPhotoBody),
+      body: uploadCommunityPostPhotoBody,
     },
   );
 };

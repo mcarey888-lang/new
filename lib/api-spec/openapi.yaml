@@ -15,6 +15,53 @@ tags:
   - name: community
     description: Authenticated SummitReady member sharing
 paths:
+  /membership/access:
+    get:
+      operationId: getMembershipAccess
+      tags: [membership]
+      parameters:
+        - { in: query, name: refresh, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Server-verified access for the authenticated Clerk owner
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tier, fullExpeditions, training, legacy, starterExpeditionId]
+                properties:
+                  tier: { type: string, enum: [explore, expeditions, pro] }
+                  fullExpeditions: { type: boolean }
+                  training: { type: boolean }
+                  legacy: { type: boolean }
+                  starterExpeditionId: { type: [string, "null"] }
+        "401": { description: Authentication required }
+        "503": { description: Verification unavailable; not a downgrade }
+  /membership/authorize:
+    post:
+      operationId: authorizeMembershipAction
+      tags: [membership]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MembershipActionInput"
+      responses:
+        "200":
+          description: Action authorized by verified entitlements
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [allowed, tier]
+                properties:
+                  allowed: { type: boolean }
+                  tier: { type: string, enum: [explore, expeditions, pro] }
+        "400": { description: Invalid action identity }
+        "401": { description: Authentication required }
+        "403": { description: Paid access required }
+        "503": { description: Verification temporarily unavailable }
   /admin/route-reviews:
     get:
       operationId: listRouteReviews
@@ -978,6 +1025,12 @@ paths:
 
 components:
   schemas:
+    MembershipActionInput:
+      type: object
+      required: [feature]
+      properties:
+        feature: { type: string, enum: [training, expedition] }
+        expeditionId: { type: string, description: Catalogue identity, never a client free flag }
     RouteCandidateInput:
       type: object
       additionalProperties: false

@@ -5,6 +5,20 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type MembershipActionInputFeature =
+  (typeof MembershipActionInputFeature)[keyof typeof MembershipActionInputFeature];
+
+export const MembershipActionInputFeature = {
+  training: "training",
+  expedition: "expedition",
+} as const;
+
+export interface MembershipActionInput {
+  feature: MembershipActionInputFeature;
+  /** Catalogue identity */
+  expeditionId?: string;
+}
+
 export type RouteCandidateInputSourceManifestItem = { [key: string]: unknown };
 
 export interface RouteCandidateInput {
@@ -869,6 +883,42 @@ export interface CanonicalHistoryResponse {
   reason: string | null;
   items: CanonicalHistoryItem[];
 }
+
+export type GetMembershipAccessParams = {
+  refresh?: boolean;
+};
+
+export type GetMembershipAccess200Tier =
+  (typeof GetMembershipAccess200Tier)[keyof typeof GetMembershipAccess200Tier];
+
+export const GetMembershipAccess200Tier = {
+  explore: "explore",
+  expeditions: "expeditions",
+  pro: "pro",
+} as const;
+
+export type GetMembershipAccess200 = {
+  tier: GetMembershipAccess200Tier;
+  fullExpeditions: boolean;
+  training: boolean;
+  legacy: boolean;
+  /** @nullable */
+  starterExpeditionId: string | null;
+};
+
+export type AuthorizeMembershipAction200Tier =
+  (typeof AuthorizeMembershipAction200Tier)[keyof typeof AuthorizeMembershipAction200Tier];
+
+export const AuthorizeMembershipAction200Tier = {
+  explore: "explore",
+  expeditions: "expeditions",
+  pro: "pro",
+} as const;
+
+export type AuthorizeMembershipAction200 = {
+  allowed: boolean;
+  tier: AuthorizeMembershipAction200Tier;
+};
 
 export type ListAdminExpeditions200 = {
   expeditions: AdminExpeditionRecord[];

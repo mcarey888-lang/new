@@ -646,7 +646,7 @@ export default function ChallengeDetailScreen() {
 
   const color = c.color;
   const diffColor = DIFF_COLOR[c.difficulty];
-  const locked = c.isPremium && !isSubscribed;
+  const locked = false; // General hiking challenges remain free; simulated expeditions have their own policy.
   const isActive = ac && !ac.completed;
   const isCompleted = ac?.completed === true;
 

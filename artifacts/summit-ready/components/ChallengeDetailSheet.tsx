@@ -15,6 +15,8 @@ import {
   ChevronDown, ChevronUp, Star, AlertTriangle,
 } from "lucide-react-native";
 import { router } from "expo-router";
+import { useSubscription } from "@/lib/revenuecat";
+import { logAnalyticsEvent } from "@/lib/analytics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { T } from "@/constants/theme";
@@ -100,6 +102,7 @@ export function ChallengeDetailSheet({
   readinessInput,
   readinessEnabled = true,
 }: Props) {
+  const { canAccessExpedition, access } = useSubscription();
   const insets = useSafeAreaInsets();
   const [challenge, setChallenge] = useState<SigChallenge | null>(null);
   const [loading, setLoading]     = useState(false);
@@ -107,6 +110,10 @@ export function ChallengeDetailSheet({
   const [stagesExpanded, setStagesExpanded] = useState(true);
   const [limitsExpanded, setLimitsExpanded] = useState(false);
   const [imgError, setImgError]   = useState(false);
+  useEffect(() => {
+    if (challengeId && !canAccessExpedition(challengeId))
+      void logAnalyticsEvent("paid_expedition_preview_viewed", { expedition_id: challengeId, offered_tier: "expeditions" });
+  }, [challengeId]);
 
   useEffect(() => {
     if (!challengeId) { setChallenge(null); return; }
@@ -134,7 +141,7 @@ export function ChallengeDetailSheet({
       || mountainImageUri(challenge.targetMountainName, { width: 800, height: 500 })
     : null;
   const readinessProjection = projectExpeditionReadiness(
-    readinessEnabled ? readinessInput : null,
+    readinessEnabled && access.training ? readinessInput : null,
     challenge?.stages ?? [],
   );
   const localTarget = signatureChallengeTarget(challenge?.stages ?? []);
@@ -319,7 +326,7 @@ export function ChallengeDetailSheet({
               </View>
 
               {/* ── Pre-start readiness impact ─────────────────────────────── */}
-              {readinessEnabled && <View style={s.card}>
+              {readinessEnabled && access.training && <View style={s.card}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
                   <TrendingUp size={13} color={T.blue} />
                   <Text style={s.cardLabel}>TRAINING READINESS · PREVIEW</Text>
@@ -452,6 +459,11 @@ export function ChallengeDetailSheet({
               style={s.ctaBtn}
               activeOpacity={0.85}
               onPress={() => {
+                if (!canAccessExpedition(challengeId)) {
+                  onClose();
+                  router.push({ pathname: "/paywall", params: { tier: "expeditions", trigger: "paid_expedition", expeditionId: challengeId ?? "" } });
+                  return;
+                }
                 if (onStart && challenge) {
                   onStart(challenge);
                 } else {
@@ -461,7 +473,7 @@ export function ChallengeDetailSheet({
               }}
             >
               <Mountain size={16} color="#fff" />
-              <Text style={s.ctaBtnText}>Start this Expedition</Text>
+              <Text style={s.ctaBtnText}>{canAccessExpedition(challengeId) ? "Start this Expedition" : "Unlock Expeditions"}</Text>
             </TouchableOpacity>
           </View>
         )}

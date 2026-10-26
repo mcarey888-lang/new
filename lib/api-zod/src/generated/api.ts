@@ -7,6 +7,28 @@
  */
 import * as zod from "zod";
 
+export const GetMembershipAccessQueryParams = zod.object({
+  refresh: zod.coerce.boolean().optional(),
+});
+
+export const GetMembershipAccessResponse = zod.object({
+  tier: zod.enum(["explore", "expeditions", "pro"]),
+  fullExpeditions: zod.boolean(),
+  training: zod.boolean(),
+  legacy: zod.boolean(),
+  starterExpeditionId: zod.string().nullable(),
+});
+
+export const AuthorizeMembershipActionBody = zod.object({
+  feature: zod.enum(["training", "expedition"]),
+  expeditionId: zod.string().optional().describe("Catalogue identity"),
+});
+
+export const AuthorizeMembershipActionResponse = zod.object({
+  allowed: zod.boolean(),
+  tier: zod.enum(["explore", "expeditions", "pro"]),
+});
+
 export const ListRouteReviewsResponse = zod
   .record(zod.string(), zod.unknown())
   .describe("Admin-only version metadata and review histories");
