@@ -135,7 +135,7 @@ proof. The additional findings and limitations are in
 `docs/WATKIN_TERRAIN_EDITION_EVIDENCE.json`; they do not grant rights approval.
 
 The owner separately authorised preparing Watkin's development draft link and a
-readable review. This permits new needs-review route/geometry/source records,
+readable review, including a private geographic review map. This permits new needs-review route/geometry/source records,
 not changing an existing peak's imported status, certifying rights, granting
 human attestations, approving navigation or promoting to production.
 

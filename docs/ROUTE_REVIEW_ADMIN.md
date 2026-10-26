@@ -1,5 +1,18 @@
 # Development route review admin
 
+The detail review includes a private geographic map of the exact saved
+coordinates, backed by OpenStreetMap tiles. It has pan/zoom, reset-to-route,
+a marker key and a separately identified catalogue summit reference. The
+out-and-back turnaround uses matching reversed geometry and its middle vertex,
+not the farthest point from the start. Nearby alternative return paths and
+generic loops are not labelled as proven out-and-back walks.
+
+The map keeps its view through unchanged detail polling. Failed library/tile
+loads show the existing explicitly labelled schematic and a retry action.
+Map display never accepts a validation, attests to rights/access, changes
+coordinates or activates navigation/publication. The elevation profile,
+protected downloads and existing approval gates remain separate and intact.
+
 Open **Artwork Admin → Route Reviews (DEV)** (`/artwork-admin/route-reviews`).
 Use the existing admin key; no Clerk/Users & Auth changes are involved. The page
 and its API are development-only. The server also confirms the development

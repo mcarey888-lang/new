@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArtworkAdminHeader } from "@/components/ArtworkAdminHeader";
+import { RouteReviewMap } from "@/components/RouteReviewMap";
 import { RouteReviewSummary } from "@/components/RouteReviewSummary";
 import {
   useRouteReviews, useRouteReview, usePreviewRouteReview, useImportRouteReview,
@@ -277,7 +278,7 @@ function Detail({ id }: { id: string }) {
         <Badge variant={r.eligible ? "secondary" : "outline"}>{r.eligible ? "Eligible" : "Not eligible"}</Badge>
         <Badge variant="secondary">{r.latestDecision ?? "no decision"}</Badge>
       </div>
-      {r.geometry && <RoutePreviewSvg coords={r.geometry.coordinates} />}
+      {r.geometry && <RouteReviewMap identity={`${r.id}:${r.geometrySha256}`} coordinates={r.geometry.coordinates} sourceManifest={r.sourceManifest} fallback={<RoutePreviewSvg coords={r.geometry.coordinates} />} />}
       <RouteReviewSummary revision={r} validations={validations} />
       <details className="rounded-md border border-border p-3" open={technicalOpen} onToggle={e => setTechnicalOpen(e.currentTarget.open)}>
       <summary className="cursor-pointer text-sm font-medium">Technical evidence and source metadata</summary>
