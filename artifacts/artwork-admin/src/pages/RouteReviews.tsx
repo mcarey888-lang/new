@@ -325,6 +325,13 @@ function Detail({ id, latestId, onSaved, onDirtyChange }: { id: string; latestId
   if (q.error && !q.data) return <ErrBox error={q.error} onRetry={() => q.refetch()} />;
   if (!q.data) return null;
   const { revision: r, validations, decisions } = q.data;
+  if (r.sourceStatus === "withdrawn_constructed") return (
+    <div role="alert" className="space-y-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-4" data-testid="text-withdrawn-source">
+      <h3 className="font-semibold">Constructed route withdrawn</h3>
+      <p>This track was generated through approximate waypoints, not downloaded as a published named itinerary. It cannot be edited or approved as a replacement source.</p>
+      <p>The record and earlier feedback remain in history for audit. A matching published track with permission to reuse it is still required.</p>
+    </div>
+  );
   const files = Object.entries(r.reviewFileHashes?.files ?? {});
   return (
     <div className="space-y-4" data-testid="route-detail">
@@ -396,7 +403,8 @@ function Detail({ id, latestId, onSaved, onDirtyChange }: { id: string; latestId
 
 export default function RouteReviews() {
   const dirtyEditor = useRef(false);
-  const list = useRouteReviews();
+  const [history, setHistory] = useState(false);
+  const list = useRouteReviews(history);
   const [sel, setSel] = useState<string | null>(() => {
     const requested = new URLSearchParams(window.location.search).get("candidate");
     return requested && UUID.test(requested) ? requested : null;
@@ -409,7 +417,6 @@ export default function RouteReviews() {
     if (id) url.searchParams.set("candidate", id); else url.searchParams.delete("candidate");
     window.history.replaceState(null, "", url);
   };
-  const [history, setHistory] = useState(false);
   const all = list.data?.items ?? [];
   const family = (r: RouteRevision) => String(r.sourceManifest.find(s => s.expeditionRouteKey)?.expeditionRouteKey
     ?? (r.candidateKey === "Snowdon via Watkin Path — pilot" ? "watkin" : r.candidateKey));
@@ -424,13 +431,13 @@ export default function RouteReviews() {
         <div className="space-y-2 lg:col-span-2">
           <AdminKeyBar />
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="text-dev-banner">
-            Development only. Quarantine and review workflow: candidates are not navigation-ready, there is no production promotion and no bulk edit. Nothing here publishes a route or changes routes, expeditions or user progress.
+            Published source tracks only. Constructed waypoint/network itineraries have been withdrawn and are available only in history. Remaining source tracks may be partial: none is automatically a complete expedition route. Nothing here publishes routes or changes user progress.
           </div>
         </div>
         <div className="lg:col-span-2"><ExpeditionRouteQueue onSelectReview={choose} /></div>
         <aside className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Candidates</h2>
-          <label className="flex items-center gap-2 text-xs"><input type="checkbox" data-testid="check-history" checked={history} onChange={(e) => setHistory(e.target.checked)} />Show older revisions (history)</label>
+          <label className="flex items-center gap-2 text-xs"><input type="checkbox" data-testid="check-history" checked={history} onChange={(e) => setHistory(e.target.checked)} />Show older and withdrawn revisions (history)</label>
           {selOlder && !history && <div className="rounded border border-border p-2 text-xs" data-testid="text-selected-older">Viewing an older revision, not shown in the latest-only list.</div>}
           {list.isLoading && [0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
           {list.error && <ErrBox error={list.error} onRetry={() => list.refetch()} />}

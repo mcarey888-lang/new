@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import type { PoolClient } from "@workspace/db";
 import { checkEvidence, sha256, validationInput, decisionInput, type CheckedEvidence, type EvidenceFile } from "./routeReviewEvidence.js";
 import { reviewFileStore, type ReviewFileStore, type StoredReviewFile } from "./routeReviewStorage.js";
+import { isConstructedRoute, constructedRouteSql, constructedSourceMessage } from "./routeSourcePolicy.js";
 
 export class ReviewError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -52,11 +53,14 @@ function summary(row: Record<string, any>) {
       return [name, { sha256, bytes }];
     })),
   };
-  return publicRow({ ...safe, ...rest });
+  const withdrawn = isConstructedRoute(data.source_manifest, data.revision_version, data.candidate_key);
+  return publicRow({ ...safe, ...rest, ...(withdrawn ? { eligible: false } : {}),
+    source_status: withdrawn ? "withdrawn_constructed" : "source_track_unverified" });
 }
-export async function listReviews(client: PoolClient) {
+export async function listReviews(client: PoolClient, includeWithdrawn = false) {
   const p = await reviewPolicy();
   const { rows } = await client.query(`${baseSelect} FROM public.route_geometry_review_revisions r
+    WHERE ${includeWithdrawn ? "TRUE" : `NOT ${constructedRouteSql}`}
     ORDER BY r.created_at DESC,r.id DESC LIMIT 200`, [p.version, p.sha256]);
   return { environment: "development" as const, evaluator: p, items: rows.map(summary) };
 }
@@ -74,6 +78,12 @@ export async function getReview(client: PoolClient, id: string) {
 }
 export async function previewReview(client: PoolClient, raw: unknown): Promise<CheckedEvidence> {
   const checked = checkEvidence(raw);
+  const source = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  if (isConstructedRoute(source.sourceManifest, source.revisionVersion, source.candidateKey)) {
+    checked.valid = false;
+    checked.errors.push(constructedSourceMessage);
+    return checked;
+  }
   if (!checked.valid || !checked.input || !checked.geometry) return checked;
   const { rows: duplicate } = await client.query(`SELECT id FROM public.route_geometry_review_revisions
     WHERE candidate_key=$1 AND revision_version=$2`, [checked.input.candidateKey, checked.input.revisionVersion]);

@@ -3,6 +3,7 @@ import type { PoolClient } from "@workspace/db";
 import { z } from "zod";
 import { ReviewError, importReview } from "./routeReviewAdmin.js";
 import type { ReviewFileStore } from "./routeReviewStorage.js";
+import { isConstructedRoute, constructedSourceMessage } from "./routeSourcePolicy.js";
 
 export const routeEditInput = z.object({
   coordinates: z.array(z.tuple([
@@ -20,6 +21,8 @@ export async function editReview(client: PoolClient, id: string, raw: unknown, s
     source_manifest,source_manifest_sha256,revision_version
     FROM public.route_geometry_review_revisions WHERE id=$1`, [id]);
   if (!parent) throw new ReviewError(404, "Review candidate not found.");
+  if (isConstructedRoute(parent.source_manifest, parent.revision_version, parent.candidate_key))
+    throw new ReviewError(422, constructedSourceMessage);
   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`route-edit:${parent.candidate_key}`]);
   const { rows: [latest] } = await client.query(`SELECT id
     FROM public.route_geometry_review_revisions WHERE candidate_key=$1

@@ -12,6 +12,7 @@ import { hostedRoutingStore } from "../src/services/routing/hostedRoutingStore.j
 
 const digest = (s: string) => createHash("sha256").update(s).digest("hex");
 async function main() {
+  throw Error("Withdrawn: do not construct expedition itineraries from approximate anchors. Import matching published source tracks with reuse permission.");
   const c = await pool.connect();
   try { await assertReviewDatabase(c); } finally { c.release(); }
   if (!process.env.OPENROUTESERVICE_API_KEY) throw Error("Existing hiking provider key is unavailable.");

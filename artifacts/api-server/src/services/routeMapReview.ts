@@ -1,6 +1,7 @@
 import type { PoolClient } from "@workspace/db";
 import { z } from "zod";
 import { ReviewError } from "./routeReviewAdmin.js";
+import { isConstructedRoute, constructedSourceMessage } from "./routeSourcePolicy.js";
 
 /** This contract is deliberately distinct from validationInput/decisionInput. */
 export const mapReviewInput = z.object({
@@ -26,9 +27,11 @@ export async function listMapReviews(client: PoolClient, revisionId: string) {
 export async function recordMapReview(client: PoolClient, revisionId: string, raw: unknown) {
   const input = mapReviewInput.parse(raw);
   // Lock the revision, including for its first feedback, to serialize concurrent saves.
-  const found = await client.query(`SELECT id FROM public.route_geometry_review_revisions
+  const found = await client.query(`SELECT id,candidate_key,source_manifest,revision_version FROM public.route_geometry_review_revisions
     WHERE id=$1 FOR UPDATE`, [revisionId]);
   if (!found.rows.length) throw new ReviewError(404, "Review candidate not found.");
+  if (isConstructedRoute(found.rows[0].source_manifest, found.rows[0].revision_version, found.rows[0].candidate_key))
+    throw new ReviewError(422, constructedSourceMessage);
   const latest = await client.query(`SELECT id FROM public.route_geometry_map_reviews
     WHERE review_revision_id=$1 ORDER BY created_at DESC,id DESC LIMIT 1`, [revisionId]);
   if ((latest.rows[0]?.id ?? null) !== input.expectedReviewId) {

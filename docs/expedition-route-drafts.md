@@ -1,5 +1,27 @@
 # Development expedition review drafts
 
+## Current policy — published sources only
+
+The owner rejected generated expedition itineraries. The network and hosted
+routing acquisition scripts below are disabled; their thirty constructed
+revisions and the two earlier assembled Watkin pilots are excluded from the active list and requirement coverage. They
+remain available only as withdrawn audit history and cannot be reimported,
+edited, map-reviewed, validated or approved through the admin API.
+
+The retained original source tracks are **not** confirmed full expedition
+routes. All requirements still need an exact matching published track and
+appropriate reuse rights. Never report the historical “32 mapped drafts”
+count as 32 reliably sourced routes.
+
+Walking Britain's Helvellyn source page
+https://www.walkingbritain.co.uk/walk-1156-gps explicitly limits GPX downloads
+to private use and prohibits use on other websites. Walkhighlands export terms
+likewise specify personal use. Reference links are not permission to copy
+their geometry into SummitReady. No such restricted track was imported.
+
+The remainder documents the withdrawn acquisition workflow for audit, not
+instructions to generate more replacement routes.
+
 ## What the review list contains
 
 The 32 distinct route requirements can be inspected as mapped drafts, covering

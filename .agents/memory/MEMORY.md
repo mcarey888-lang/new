@@ -99,4 +99,4 @@
 - [Weather provider scope](weather-provider-scope.md) — WeatherAPI free three-day forecasts first; seven days needs later approval; location weather is not summit weather.
 - [Expedition distance meaning](expedition-distance-meaning.md) — manual stage totals use full listed route distance; GPS completions use recorded distance, never the plan.
 - [Expedition authoring policy](expedition-authoring-policy.md) — support owner-created Claude/ChatGPT batches; catalogue identity does not verify imported route facts.
-- [Expedition review drafting](expedition-review-drafting.md) — reuse the planner for owner corrections; proposed itineraries are not verified routes, and edits never inherit approval.
+- [Expedition source-only policy](expedition-review-drafting.md) — no invented itineraries; require published tracks and reuse rights; keep withdrawn geometry only as audit history.

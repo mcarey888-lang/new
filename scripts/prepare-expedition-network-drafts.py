@@ -216,6 +216,7 @@ def prepare(key, anchors, row, out, cache):
 
 
 def main():
+    raise SystemExit("Withdrawn: do not construct expedition itineraries from approximate anchors. Import matching published source tracks with reuse permission.")
     parser = argparse.ArgumentParser()
     parser.add_argument("--audit",required=True)
     parser.add_argument("--output",required=True)

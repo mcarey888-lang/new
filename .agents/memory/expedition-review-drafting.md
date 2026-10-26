@@ -3,19 +3,28 @@ name: Expedition review drafting
 description: Proposed route graphs, owner corrections, and the boundary between visual review and verified itineraries.
 ---
 
-The owner wants to inspect every expedition itinerary and correct routes in the
-admin area using the existing app planner, especially missing approaches from
-parking. Retain original source revisions and their review history.
+The owner explicitly requires expedition routes from reliable published
+sources: **no made-up routes**. Do not create replacement expedition tracks by
+selecting approximate waypoints, asking a routing engine to join them, or
+running shortest paths over OSM edges. A real path network is not a sourced
+named walking itinerary.
 
-**Why:** The original Ben Nevis source contained an arête section, not the
-complete walk from a car park. A plausible line or named OSM relation alone was
-not evidence of a complete expedition variant.
+**Why:** The owner rejected constructed Helvellyn geometry that contained
+spurious turnarounds, and clarified that routes must be acquired from reliable
+sources rather than generated. The earlier permission to provide editable
+drafts did not authorize inventing the expedition itineraries.
 
-**How to apply:** Clearly distinguish original source tracks from proposed
-network/engine itineraries. Proposed anchors and generic hiking-engine results
-are drafts for inspection, never verified named ridges/scrambles or confirmed
-parking starts. Flag detours/distance disagreements; do not silently force a
-draft to agree with an old expedition estimate.
+**How to apply:** Acquire actual published GPX/geometry with publisher/author,
+source URL, exact route-variant evidence and reuse permission. Do not confuse
+free personal downloads, summit databases, footpath data or routing-engine
+results with a commercially reusable route catalogue. Leave gaps explicit
+when a matching authorized track cannot be obtained. Constructed historical
+drafts are withdrawn, not silently replaced, relabelled or counted as sources.
+Retain source fragments as incomplete unless the full itinerary is proven.
+
+The owner still has the app planner for deliberate corrections to sourced
+tracks, especially missing parking approaches. Preserve original files and
+review history; do not automatically apply such corrections for them.
 
 Owner edits are new revisions, not updates to reviewed evidence. Positive map
 feedback applies only to the exact revision inspected. Never inherit canonical

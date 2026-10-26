@@ -11,6 +11,7 @@ import type { PoolClient } from "@workspace/db";
 import { expeditionRouteQueue } from "../services/expeditionRouteQueue.js";
 import { listMapReviews, recordMapReview } from "../services/routeMapReview.js";
 import { editReview } from "../services/routeReviewEdit.js";
+import { constructedSourceMessage } from "../services/routeSourcePolicy.js";
 
 export const routeReviewAdminRouter = Router();
 const base = "/admin/route-reviews";
@@ -32,6 +33,11 @@ async function request(req: Request, res: Response, run: (client: PoolClient) =>
     await client.query("SET LOCAL lock_timeout='3s'");
     await assertReviewDatabase(client);
     if (req.params.id && !z.string().uuid().safeParse(req.params.id).success) throw new ReviewError(400, "Invalid review ID.");
+    if (req.method === "POST" && req.params.id) {
+      const existing = await getReview(client, String(req.params.id));
+      if (existing.revision.sourceStatus === "withdrawn_constructed")
+        throw new ReviewError(422, constructedSourceMessage);
+    }
     const result = await run(client);
     await client.query("COMMIT");
     if (Buffer.isBuffer(result)) {
@@ -51,7 +57,7 @@ async function request(req: Request, res: Response, run: (client: PoolClient) =>
       "Development review or private evidence storage unavailable. No database changes saved." });
   } finally { client?.release(); }
 }
-routeReviewAdminRouter.get(base, (req, res) => request(req, res, listReviews));
+routeReviewAdminRouter.get(base, (req, res) => request(req, res, c => listReviews(c, req.query.includeWithdrawn === "1")));
 routeReviewAdminRouter.get(`${base}/expedition-queue`, (req, res) => request(req, res, expeditionRouteQueue));
 routeReviewAdminRouter.post(`${base}/preview`, (req, res) => request(req, res, async c => previewResponse(await previewReview(c, req.body))));
 routeReviewAdminRouter.post(`${base}/import`, (req, res) => request(req, res, c => importReview(c, req.body), 201));

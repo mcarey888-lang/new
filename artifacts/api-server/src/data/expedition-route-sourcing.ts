@@ -34,7 +34,11 @@ export const expeditionRouteSourcing = {
       blockers: [missing, "Automatic source-chain preparation rejected branched or non-open geometry; exposed ridge and bypass choices need individual preparation."] },
     cruachan: { sourceLeads: [], blockers: [missing] },
     carneddau: { sourceLeads: [], blockers: [missing, "Cwm Idwal and Llyn Ogwen tourist circuits are not the required Carneddau traverse."] },
-    helvellyn_edge: { sourceLeads: [], blockers: [missing, "The full route must include both Striding Edge and Swirral Edge, with explicit direction."] },
+    helvellyn_edge: { sourceLeads: [{
+      id: -1156, name: "Walking Britain: Helvellyn via Striding Edge from Glenridding",
+      url: "https://www.walkingbritain.co.uk/walk-1156-gps",
+      status: "published_reference_only_private_use_download_terms_no_app_reuse_permission",
+    }], blockers: [missing, "The full route must include both Striding Edge and Swirral Edge, with explicit direction.", "Walking Britain's GPX is private-use only and must not be copied into the app without permission. Variant matching remains required."] },
     scafell_corridor: { sourceLeads: [], blockers: [missing, "Hollow Stones is not the Corridor Route; no substitution was made."] },
     y3p: { sourceLeads: [], blockers: [missing, "Generic Three Peaks search results do not establish the Yorkshire circuit or its start and direction."] },
     bla_bheinn: { sourceLeads: [], blockers: [missing, "The South Ridge variant must be identified, not a nearby similarly named mountain."] },

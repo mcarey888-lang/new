@@ -15,6 +15,7 @@ export type RouteReviewPreview = {
   files: { name: string; sha256: string; bytes: number }[];
 };
 export type RouteRevision = {
+  sourceStatus?: "withdrawn_constructed" | "source_track_unverified";
   id: string; candidateKey: string; revisionVersion: string;
   canonicalGeometryId: string | null; geometrySha256: string;
   sourceManifestSha256: string; profileSha256: string | null;
@@ -71,10 +72,10 @@ export async function routeReviewCall<T>(path: string, method = "GET", body?: un
   });
   return readArtworkJson<T>(response);
 }
-export function useRouteReviews() {
+export function useRouteReviews(includeWithdrawn = false) {
   return useQuery({
-    queryKey: ["route-reviews"], staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 30_000,
-    queryFn: () => routeReviewCall<{ environment: "development"; items: RouteRevision[] }>("/"),
+    queryKey: ["route-reviews", "list", includeWithdrawn], staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 30_000,
+    queryFn: () => routeReviewCall<{ environment: "development"; items: RouteRevision[] }>(`/?includeWithdrawn=${includeWithdrawn ? "1" : "0"}`),
   });
 }
 export function useRouteReview(id: string | null) {

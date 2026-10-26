@@ -7,7 +7,7 @@ import { useExpeditionRouteQueue, type ExpeditionRouteQueueRoute } from "../hook
 const field = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
 
 function status(r: ExpeditionRouteQueueRoute) {
-  if (r.reviews.length > 0) return "Map review available";
+  if (r.reviews.length > 0) return "Source track only";
   return "Needs route source";
 }
 const range = (v: number[], u: string) => v.length ? `${Math.min(...v)}${v.length > 1 && Math.max(...v) !== Math.min(...v) ? `-${Math.max(...v)}` : ""} ${u}` : "none";
@@ -23,7 +23,7 @@ export function ExpeditionRouteQueue({ onSelectReview }: { onSelectReview: (id: 
     return routes.filter((r) => [r.routeName, r.region, ...r.expeditionIds].some((s) => s.toLowerCase().includes(t)));
   }, [routes, term]);
   const counts = useMemo(() => {
-    const c = { "Map review available": 0, "Needs route source": 0 };
+    const c = { "Source track only": 0, "Needs route source": 0 };
     routes.forEach((r) => { c[status(r) as keyof typeof c]++; });
     return c;
   }, [routes]);
@@ -33,12 +33,12 @@ export function ExpeditionRouteQueue({ onSelectReview }: { onSelectReview: (id: 
       <button type="button" className="flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left" aria-expanded={open} onClick={() => setOpen(!open)} data-testid="button-toggle-queue">
         <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Expedition route requirements</span>
         <span className="text-xs text-muted-foreground">
-          {q.data ? `${q.data.summary.distinctRoutes} routes, ${q.data.summary.stages} stages, ${q.data.summary.expeditions} expeditions · ${counts["Map review available"]} mapped for review` : q.isLoading ? "Loading..." : "Unavailable"} · {open ? "Hide" : "Show"}
+          {q.data ? `${q.data.summary.distinctRoutes} required routes · ${counts["Source track only"]} have source tracks, completeness unverified` : q.isLoading ? "Loading..." : "Unavailable"} · {open ? "Hide" : "Show"}
         </span>
       </button>
       {open && (
         <div className="space-y-3 border-t border-border p-3">
-          <div className="text-xs text-muted-foreground">Inspect mapped drafts and edit their starts or itinerary. Map feedback is separate from technical clearance or publication. Source leads and expedition snapshot figures remain unverified.</div>
+          <div className="text-xs text-muted-foreground">Constructed itineraries are withdrawn. Existing source tracks may be incomplete; none is presented as a verified full expedition route. Replacements require an exact published track and permission for app reuse—not inferred waypoints or automatic pathfinding.</div>
           {q.isLoading && [0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
           {q.error && (
             <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive" data-testid="text-queue-error">
@@ -49,7 +49,7 @@ export function ExpeditionRouteQueue({ onSelectReview }: { onSelectReview: (id: 
           {q.data && (
             <>
               <input aria-label="Search routes" data-testid="input-queue-search" className={field} placeholder="Search route, region or expedition ID" value={term} onChange={(e) => setTerm(e.target.value)} />
-              <div className="text-xs text-muted-foreground">{rows.length} of {routes.length} routes shown · {counts["Map review available"]} mapped for review · {counts["Needs route source"]} need route source</div>
+              <div className="text-xs text-muted-foreground">{rows.length} of {routes.length} routes shown · {counts["Source track only"]} have unverified source tracks · {counts["Needs route source"]} have no source track</div>
               {rows.length === 0 && <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">No routes match.</div>}
               <ul className="max-h-[32rem] space-y-2 overflow-auto">
                 {rows.map((r) => {
@@ -58,7 +58,7 @@ export function ExpeditionRouteQueue({ onSelectReview }: { onSelectReview: (id: 
                     <li key={`${r.routeKey}:${r.region}`} className="space-y-2 rounded-md border border-border bg-background p-3 text-sm" data-testid={`row-queue-${r.routeKey}`}>
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div><span className="font-medium">{r.routeName}</span> <span className="text-muted-foreground">{r.region}</span></div>
-                        <Badge variant={s === "Map review available" ? "secondary" : "outline"}>{s}</Badge>
+                        <Badge variant="outline">{s}</Badge>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {r.stageUses} stage use{r.stageUses === 1 ? "" : "s"} · Expeditions: {r.expeditionIds.join(", ") || "none"} · Unverified snapshot: {range(r.distanceKm, "km")}, ascent {range(r.ascentM, "m")}

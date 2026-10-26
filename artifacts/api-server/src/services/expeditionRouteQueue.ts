@@ -1,5 +1,6 @@
 import type { PoolClient } from "@workspace/db";
 import { expeditionRouteSourcing as sourcing } from "../data/expedition-route-sourcing.js";
+import { constructedRouteSql, isConstructedRoute } from "./routeSourcePolicy.js";
 
 type Review = { id: string; candidateKey: string; revisionVersion: string; canonicalGeometryId: string | null; routeKey: string | null; draftMethod?: string | null };
 type Source = { sourceLeads: { id: number; name: string; url: string; status: string }[]; blockers: string[] };
@@ -20,12 +21,12 @@ export function buildExpeditionRouteQueue(stages: Stage[], reviews: Review[]) {
   }
   const routes = [...groups.values()].map(group => {
     const head = group[0];
-    const matching = reviews.filter(r => r.routeKey === head.route_key);
+    const matching = reviews.filter(r => r.routeKey === head.route_key &&
+      !isConstructedRoute([{draftMethod:r.draftMethod}], r.revisionVersion, r.candidateKey));
     const source = sources.routes[head.route_key];
     const blockers = [
-      ...(matching[0]?.draftMethod?.includes("proposed-itinerary")
-        ? ["Editable network/engine draft, not a verified named itinerary. Confirm the start/parking, ridge or scramble variant, return leg and access. No elevation profile is supplied."]
-        : source?.blockers ?? ["An exact reusable source for the full expedition route still needs to be acquired."]),
+      "A matching, complete published route track with reuse permission is still required. Existing source fragments are not verified full expedition itineraries.",
+      ...(source?.blockers ?? []),
       ...(!matching.some(r => r.canonicalGeometryId)
         ? ["No current canonical geometry binding; approval is unavailable."] : []),
       "Source rights, access and any elevation profile require explicit validation before approval.",
@@ -61,6 +62,6 @@ export async function expeditionRouteQueue(client: PoolClient) {
         AND EXISTS(SELECT 1 FROM jsonb_array_elements(r.source_manifest) s
           WHERE COALESCE(s->>'relationId',s->'metadata'->>'relationId')='4004198')
         THEN 'watkin' END) AS "routeKey"
-    FROM public.route_geometry_review_revisions r ORDER BY r.created_at DESC,r.id`);
+    FROM public.route_geometry_review_revisions r WHERE NOT ${constructedRouteSql} ORDER BY r.created_at DESC,r.id`);
   return buildExpeditionRouteQueue(stages.rows, reviews.rows);
 }
