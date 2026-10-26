@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArtworkAdminHeader } from "@/components/ArtworkAdminHeader";
 import { RouteReviewMap } from "@/components/RouteReviewMap";
+import { ExpeditionRouteQueue } from "@/components/ExpeditionRouteQueue";
 import { RouteReviewSummary } from "@/components/RouteReviewSummary";
 import {
   useRouteReviews, useRouteReview, usePreviewRouteReview, useImportRouteReview,
@@ -346,6 +347,7 @@ export default function RouteReviews() {
             Development only. Quarantine and review workflow: candidates are not navigation-ready, there is no production promotion and no bulk edit. Nothing here publishes a route or changes routes, expeditions or user progress.
           </div>
         </div>
+        <div className="lg:col-span-2"><ExpeditionRouteQueue onSelectReview={choose} /></div>
         <aside className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Candidates</h2>
           {list.isLoading && [0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}

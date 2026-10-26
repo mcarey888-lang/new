@@ -52,6 +52,11 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
           {text(mountain.name) || "Mountain not specified"} · {text(prepared.routeKind) || "Proposed route — see source evidence"}
         </p>
         <p className="mt-1 text-sm text-amber-400">Development review only — not cleared for navigation.</p>
+        {sources.some(s => s.fullExpeditionVariantConfirmed === false) && (
+          <p role="note" className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+            Source geometry only—not the confirmed full expedition walk. The approach, return leg, summit connection and exact variant still need preparation. No missing sections or elevation have been invented.
+          </p>
+        )}
       </div>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div><dt className="text-xs text-muted-foreground">Route length (geometry)</dt><dd className="text-lg font-semibold">{distance === null ? "Unavailable" : `${distance.toFixed(2)} km`}</dd></div>

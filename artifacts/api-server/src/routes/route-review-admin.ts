@@ -8,6 +8,7 @@ import {
   listReviews, getReview, importReview, validateReview, decideReview, loadReviewFile,
 } from "../services/routeReviewAdmin.js";
 import type { PoolClient } from "@workspace/db";
+import { expeditionRouteQueue } from "../services/expeditionRouteQueue.js";
 
 export const routeReviewAdminRouter = Router();
 const base = "/admin/route-reviews";
@@ -49,6 +50,7 @@ async function request(req: Request, res: Response, run: (client: PoolClient) =>
   } finally { client?.release(); }
 }
 routeReviewAdminRouter.get(base, (req, res) => request(req, res, listReviews));
+routeReviewAdminRouter.get(`${base}/expedition-queue`, (req, res) => request(req, res, expeditionRouteQueue));
 routeReviewAdminRouter.post(`${base}/preview`, (req, res) => request(req, res, async c => previewResponse(await previewReview(c, req.body))));
 routeReviewAdminRouter.post(`${base}/import`, (req, res) => request(req, res, c => importReview(c, req.body), 201));
 routeReviewAdminRouter.get(`${base}/:id`, (req, res) => request(req, res, c => getReview(c, String(req.params.id))));

@@ -110,3 +110,22 @@ export async function downloadRouteReviewFile(id: string, name: string) {
   const a = document.createElement("a"); a.href = url; a.download = `${name}.json`; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export type ExpeditionRouteQueueRoute = {
+  routeKey: string; routeName: string; region: string; stageUses: number;
+  expeditionIds: string[]; distanceKm: number[]; ascentM: number[];
+  reviews: { id: string; candidateKey: string; revisionVersion: string; canonicalGeometryId: string | null }[];
+  sourceLeads: { id: number; name: string; url: string; status: string }[];
+  blockers: string[];
+};
+export type ExpeditionRouteQueue = {
+  environment: "development"; generatedAt: string | null;
+  summary: { expeditions: number; stages: number; distinctRoutes: number };
+  routes: ExpeditionRouteQueueRoute[];
+};
+export function useExpeditionRouteQueue() {
+  return useQuery({
+    queryKey: ["route-reviews", "expedition-queue"], staleTime: 0, refetchOnWindowFocus: true,
+    queryFn: () => routeReviewCall<ExpeditionRouteQueue>("/expedition-queue"),
+  });
+}

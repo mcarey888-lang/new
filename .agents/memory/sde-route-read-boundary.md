@@ -165,6 +165,18 @@ This confirms the review UI, not route safety, reusable rights or publication.
 **How to apply:** Preserve the geographic review and its distinct route/catalogue
 markers while keeping validation and production approval gates independent.
 
+A named OSM hiking relation is not necessarily the full expedition walk.
+Keep source-chain reviews distinct from complete route candidates, including
+their approach, return, summit connection and precise scramble variant.
+
+**Why:** Real expedition sourcing found a 290 m Braeriach fragment, an arête
+without its full Ben Nevis approach, and nearby tourist loops with plausible
+mountain names. Silently treating them as complete walks would mislead reviewers.
+
+**How to apply:** Retain source provenance and explicit coverage blockers.
+Never fill missing geometry with straight lines, silently double a one-way
+source, substitute another route variant or overwrite existing stage figures.
+
 Source-hashed evaluator policies must work in the bundled API, not just under
 tsx. The managed development command builds and runs dist from the package root.
 

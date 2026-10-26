@@ -21,6 +21,44 @@ database and installed review schema before every request. Production receives
 
 ## Import, without altering expeditions
 
+### Expedition coverage and source queue
+
+Expand **Expedition route requirements** above the candidate area. The protected
+development endpoint derives requirements live from existing stages, deduplicates
+shared route keys/regions, shows their expedition uses and unverified existing
+planning figures, and links actual immutable reviews. Search by route, region or
+expedition ID. Its metadata-only dated source leads are not full route matches.
+
+The initial audit found 60 expeditions, 120 stages and 32 distinct requirements.
+Watkin retains its previous linked draft. Three additional unbound **source-only**
+reviews retain exact named OSM chains: Carn Mor Dearg arête, Aonach Eagach and
+Llanberis Path. These are not asserted to cover the full requested expedition
+variant, return leg or summit connection. No ascent/profile is invented.
+
+The source-only lines are approximately 5.88 km, 9.49 km and 6.03 km respectively;
+they must never replace existing 18 km, 10 km and 14.5 km expedition snapshots
+without full-route preparation and explicit validation. A 0.29 km Braeriach lead
+was rejected as a fragment. Crib Goch and Liathach source relations failed the
+strict open-chain topology check; no gaps were bridged. Missing or ambiguous
+routes stay **Needs route source**, never a placeholder approval candidate.
+
+Source search/ingestion tools:
+
+- `scripts/source-expedition-route-batch.py`: bounded named relation discovery
+  through Waymarked Trails, with source leads explicitly unverified.
+- `scripts/prepare-expedition-route-sources.py`: bounded main OSM full-relation
+  acquisition, removes contributor personal metadata, retains source versions
+  and exact ordered source edges; rejects branches, duplicates and disconnection.
+- `artifacts/api-server/scripts/import-expedition-route-sources.ts`: development
+  rehearsal by default; `--commit` stores original geometry and protected source
+  snapshots as new unbound revisions. Advisory locking and duplicate checks make
+  reruns nonduplicating. It checks that expedition/stage data and approval history
+  remain unchanged. It does not create canonical catalogue links or approvals.
+
+Generated acquisition evidence stays under ignored `generated-artifacts/`.
+Compact dated lead/blocker metadata is retained with the server, but live review
+IDs, candidate availability and stage usage are read from the development database.
+
 Paste the fields or load one JSON input file, preview, then explicitly save.
 Editing any input invalidates its preview. Duplicate candidate key/revision
 pairs are rejected rather than overwritten. A new revision is a separate record.
