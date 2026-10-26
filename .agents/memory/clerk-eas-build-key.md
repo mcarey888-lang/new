@@ -54,3 +54,17 @@ Do not delete the Clerk app or keep retrying managed-secret overrides. An
 explicitly configured, separately named credential path would be a proposed
 workaround requiring owner consent and verification, not a repair to Replit's
 binding or an already proven solution.
+
+Replit's public Clerk Auth documentation explicitly says **Delete Clerk app**
+removes the managed tenant and releases its associated domains. It is not
+documented as a non-destructive disconnect.
+
+**Why:** A later support reply recommended deleting the integration to stop key
+overwrites without explaining tenant deletion. The public documentation resolves
+the action's general semantics, but cannot identify which mismatched tenant a
+specific project's deletion control would target.
+
+**How to apply:** Do not delete to preserve the current intended instance.
+Researching an explicit credential path must include backend API clients as well
+as JWT middleware: user/profile operations otherwise still use the wrong tenant.
+Keep this workaround distinct from a supported managed-binding repair.
