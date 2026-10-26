@@ -1,3 +1,38 @@
+# Simple owner map review
+
+The route detail now offers **Route looks correct**, **Needs changes**, or
+**Reject**, plus an optional note (maximum 2,000 characters). Save the selection
+with **Save map review**. The current result and timestamp reload from the server;
+earlier feedback is retained, and the candidate list shows the latest map status.
+This is map/intended-itinerary feedback only, never publication or certification
+of safety, access, elevation or reusable rights. Partial-source warnings remain
+visible. Technical forms, evidence downloads and decision history are under
+**Advanced: evidence and publication checks**.
+
+Development-only persistence is installed explicitly from
+`summit-data-engine/sql/route_map_reviews_v1.sql`, not at API startup. It adds an
+append-only feedback table linked to the exact review revision, without changing
+canonical geometry, existing validation/decision records or eligibility rules.
+
+API contract (same existing admin-key and development-only guards):
+- GET `/api/admin/route-reviews/:id` adds `mapReviews`, newest first, containing
+  `{id, reviewRevisionId, outcome, note, createdAt}`.
+- List items add `latestMapReview`, nullable, for map feedback status only.
+- POST `/api/admin/route-reviews/:id/map-review` accepts
+  `{outcome: "looks_correct" | "needs_changes" | "rejected", note?: string,
+  expectedReviewId: string | null}` and returns the saved record (201).
+  Unknown fields and missing concurrency tokens are rejected (400).
+  A stale latest-review ID returns 409 without writing; reload and review again.
+  Exact revision locking serializes concurrent first saves as well as revisions.
+  Feedback never expires automatically; it is historical feedback on that exact
+  snapshot, not a current-access clearance.
+
+Verification: `pnpm --filter @workspace/api-server exec vitest run
+src/__tests__/routeMapReview.test.ts`; the transactional integration script
+`NODE_ENV=development pnpm exec tsx scripts/test-route-map-review.ts` (run in
+`artifacts/api-server`) checks all outcomes, history, conflicts, database
+immutability and unchanged eligibility/decisions, and rolls back its test data.
+
 # Development route review admin
 
 The detail review includes a private geographic map of the exact saved

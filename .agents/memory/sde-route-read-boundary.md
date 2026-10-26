@@ -165,6 +165,18 @@ This confirms the review UI, not route safety, reusable rights or publication.
 **How to apply:** Preserve the geographic review and its distinct route/catalogue
 markers while keeping validation and production approval gates independent.
 
+Owner map/itinerary review is separate from technical validation and publication.
+Offer simple looks-correct, needs-changes and reject feedback with an optional
+note, without requiring expiry dates or rights/safety attestations.
+
+**Why:** The owner explicitly requested an easier review after inspecting the
+map. Confirming the intended walk does not certify access, elevation or licensing,
+and technical blockers must not prevent recording useful map feedback.
+
+**How to apply:** Save feedback against the exact immutable revision, retain
+history, and keep technical controls collapsed. Never translate positive map
+feedback into accepted validation, verified catalogue status or publication.
+
 A named OSM hiking relation is not necessarily the full expedition walk.
 Keep source-chain reviews distinct from complete route candidates, including
 their approach, return, summit connection and precise scramble variant.

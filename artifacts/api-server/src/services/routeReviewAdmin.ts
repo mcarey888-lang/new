@@ -39,7 +39,8 @@ const baseSelect = `SELECT to_jsonb(r)-'geometry_snapshot' AS data,
   public.sde_review_eligible(r.id,$1,$2) AS eligible,
   (SELECT decision FROM public.route_geometry_review_decisions WHERE review_revision_id=r.id ORDER BY created_at DESC,id DESC LIMIT 1) AS latest_decision,
   (SELECT id FROM public.route_geometry_review_decisions WHERE review_revision_id=r.id ORDER BY created_at DESC,id DESC LIMIT 1) AS latest_decision_id,
-  (SELECT id FROM public.route_geometry_review_validations WHERE review_revision_id=r.id ORDER BY created_at DESC,id DESC LIMIT 1) AS latest_validation_id`;
+  (SELECT id FROM public.route_geometry_review_validations WHERE review_revision_id=r.id ORDER BY created_at DESC,id DESC LIMIT 1) AS latest_validation_id,
+  (SELECT outcome FROM public.route_geometry_map_reviews WHERE review_revision_id=r.id ORDER BY created_at DESC,id DESC LIMIT 1) AS latest_map_review`;
 function summary(row: Record<string, any>) {
   const { data, ...rest } = row;
   const safe = { ...data };

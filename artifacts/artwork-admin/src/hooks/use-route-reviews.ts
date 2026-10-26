@@ -24,6 +24,7 @@ export type RouteRevision = {
   geometry?: { type: "LineString"; coordinates: number[][] };
   bindingCurrent: boolean; eligible: boolean;
   latestDecision: "approved" | "revoked" | null;
+  latestMapReview: "looks_correct" | "needs_changes" | "rejected" | null;
   latestDecisionId: string | null; latestValidationId: string | null;
   reviewFileHashes: { files?: Record<string, { sha256: string; bytes: number }> };
 };
@@ -38,8 +39,17 @@ export type RouteDecision = {
   id: string; decision: "approved" | "revoked"; validationId: string;
   reason: string; reviewAuthority: string; createdAt: string;
 };
+export type RouteMapReview = {
+  id: string; reviewRevisionId: string;
+  outcome: "looks_correct" | "needs_changes" | "rejected";
+  note: string; createdAt: string;
+};
+export type RouteMapReviewInput = {
+  outcome: RouteMapReview["outcome"]; note?: string; expectedReviewId: string | null;
+};
 export type RouteReviewDetail = {
   revision: RouteRevision; validations: RouteValidation[]; decisions: RouteDecision[];
+  mapReviews?: RouteMapReview[];
 };
 export type RouteValidationInput = {
   outcome: "needs_review" | "rejected" | "accepted";
@@ -97,6 +107,14 @@ export function useDecideRouteReview() {
   return useMutation({
     mutationFn: ({ id, ...body }: RouteDecisionInput & { id: string }) =>
       routeReviewCall<{ id: string }>(`/${id}/decision`, "POST", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["route-reviews"] }),
+  });
+}
+export function useSaveMapReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: RouteMapReviewInput & { id: string }) =>
+      routeReviewCall<RouteMapReview>(`/${id}/map-review`, "POST", body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["route-reviews"] }),
   });
 }

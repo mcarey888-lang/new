@@ -9,6 +9,7 @@ import {
 } from "../services/routeReviewAdmin.js";
 import type { PoolClient } from "@workspace/db";
 import { expeditionRouteQueue } from "../services/expeditionRouteQueue.js";
+import { listMapReviews, recordMapReview } from "../services/routeMapReview.js";
 
 export const routeReviewAdminRouter = Router();
 const base = "/admin/route-reviews";
@@ -53,7 +54,12 @@ routeReviewAdminRouter.get(base, (req, res) => request(req, res, listReviews));
 routeReviewAdminRouter.get(`${base}/expedition-queue`, (req, res) => request(req, res, expeditionRouteQueue));
 routeReviewAdminRouter.post(`${base}/preview`, (req, res) => request(req, res, async c => previewResponse(await previewReview(c, req.body))));
 routeReviewAdminRouter.post(`${base}/import`, (req, res) => request(req, res, c => importReview(c, req.body), 201));
-routeReviewAdminRouter.get(`${base}/:id`, (req, res) => request(req, res, c => getReview(c, String(req.params.id))));
+routeReviewAdminRouter.get(`${base}/:id`, (req, res) => request(req, res, async c => ({
+  ...await getReview(c, String(req.params.id)),
+  mapReviews: await listMapReviews(c, String(req.params.id)),
+})));
+routeReviewAdminRouter.post(`${base}/:id/map-review`, (req, res) =>
+  request(req, res, c => recordMapReview(c, String(req.params.id), req.body), 201));
 routeReviewAdminRouter.post(`${base}/:id/validate`, (req, res) => request(req, res, c => validateReview(c, String(req.params.id), req.body), 201));
 routeReviewAdminRouter.post(`${base}/:id/decision`, (req, res) => request(req, res, c => decideReview(c, String(req.params.id), req.body), 201));
 routeReviewAdminRouter.get(`${base}/:id/files/:name`, (req, res) => request(req, res, c => {

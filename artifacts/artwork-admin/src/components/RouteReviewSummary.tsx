@@ -74,6 +74,8 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
       {(oldDistance !== null || oldAscent !== null) && <p className="text-xs text-muted-foreground">
         Existing expedition snapshot: {oldDistance !== null ? `${oldDistance} km` : "distance unavailable"} · {oldAscent !== null ? metres(oldAscent) : "ascent unavailable"}. These figures and all recorded activities are unchanged.
       </p>}
+      <details className="space-y-3 text-sm">
+      <summary className="cursor-pointer font-medium">Evidence checks and outstanding publication requirements</summary>
       <div className="space-y-2 text-sm">
         <h5 className="font-medium">What has been checked</h5>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
@@ -97,6 +99,7 @@ export function RouteReviewSummary({ revision: r, validations = [] }: { revision
         </ul>
         <p className="mt-2 font-medium">No approval is required just to inspect this route. Only attest to checks you have actually completed.</p>
       </div>
+      </details>
       <p className="text-xs text-muted-foreground">
         {isOsm ? <>Source: <a href={safeUrl} target="_blank" rel="noreferrer" className="underline">OpenStreetMap — © OpenStreetMap contributors</a>, ODbL 1.0.</> : <>Source details are retained in the technical evidence below.</>}
         {sourceDate && <> Snapshot captured {new Date(sourceDate).toLocaleDateString()}.</>}

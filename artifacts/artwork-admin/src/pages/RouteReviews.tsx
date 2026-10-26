@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { ExpeditionRouteQueue } from "@/components/ExpeditionRouteQueue";
 import { RouteReviewSummary } from "@/components/RouteReviewSummary";
 import {
   useRouteReviews, useRouteReview, usePreviewRouteReview, useImportRouteReview,
-  useValidateRouteReview, useDecideRouteReview, downloadRouteReviewFile,
+  useValidateRouteReview, useDecideRouteReview, useSaveMapReview, type RouteMapReview, downloadRouteReviewFile,
   type RouteCandidateInput, type RouteReviewPreview, type RouteRevision, type RouteValidation, type RouteDecision,
 } from "../hooks/use-route-reviews";
 
@@ -262,6 +262,59 @@ function DecisionForm({ r, validations, decisions }: { r: RouteRevision; validat
   );
 }
 
+const MAP_CHOICES: { v: RouteMapReview["outcome"]; l: string }[] = [
+  { v: "looks_correct", l: "Route looks correct" }, { v: "needs_changes", l: "Needs changes" }, { v: "rejected", l: "Reject" },
+];
+const outcomeLabel = (o: string) => MAP_CHOICES.find((c) => c.v === o)?.l ?? o;
+
+function MapReviewPanel({ revisionId, reviews }: { revisionId: string; reviews: RouteMapReview[] }) {
+  const qc = useQueryClient();
+  const m = useSaveMapReview();
+  const [outcome, setOutcome] = useState<RouteMapReview["outcome"] | null>(null);
+  const [note, setNote] = useState("");
+  const [err, setErr] = useState<unknown>(null);
+  const [stale, setStale] = useState(false);
+  const lock = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const latest = reviews[0] ?? null;
+  const save = () => {
+    if (!outcome || lock.current) return;
+    lock.current = true; setErr(null); setStale(false);
+    m.mutate({ id: revisionId, outcome, note: note.trim() || undefined, expectedReviewId: latest?.id ?? null }, {
+      onSuccess: () => { if (!alive.current) return; toast.success("Map review saved"); setOutcome(null); setNote(""); },
+      onError: (e) => {
+        if (/409|stale/i.test(msg(e))) { void qc.invalidateQueries({ queryKey: ["route-reviews"] }); if (alive.current) setStale(true); }
+        else if (alive.current) setErr(e);
+      },
+      onSettled: () => { lock.current = false; },
+    });
+  };
+  return (
+    <section className="space-y-3 rounded-md border border-border bg-card p-4" data-testid="map-review">
+      <h4 className="font-semibold">Map review</h4>
+      <p className="text-xs text-muted-foreground">Map and intended itinerary review only. This does not publish the route or certify safety, access, elevation or reuse rights.</p>
+      <div className="text-sm" data-testid="text-map-review-status">
+        {latest ? <>Saved: <strong>{outcomeLabel(latest.outcome)}</strong> on {new Date(latest.createdAt).toLocaleString()}{latest.note && <div className="text-xs text-muted-foreground">{latest.note}</div>}</> : <span className="text-muted-foreground">Not reviewed yet.</span>}
+      </div>
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Map review outcome">
+        {MAP_CHOICES.map((c) => (
+          <Button key={c.v} type="button" role="radio" aria-checked={outcome === c.v} variant={outcome === c.v ? "default" : "secondary"} disabled={m.isPending} onClick={() => setOutcome(c.v)} data-testid={`button-map-${c.v}`}>{c.l}</Button>
+        ))}
+      </div>
+      <Lbl t="Note (optional)"><Textarea data-testid="input-map-note" rows={3} maxLength={2000} value={note} disabled={m.isPending} onChange={(e) => setNote(e.target.value)} /></Lbl>
+      {stale && <div role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="text-map-stale">This review changed since you opened it. The latest has been reloaded; check it and save again if still needed.</div>}
+      {!!err && <ErrBox error={err} />}
+      <Button type="button" disabled={!outcome || m.isPending} onClick={save} data-testid="button-save-map-review">{m.isPending ? "Saving..." : "Save map review"}</Button>
+      {reviews.length > 1 && (
+        <details data-testid="map-review-history"><summary className="cursor-pointer text-sm font-medium">Earlier map reviews ({reviews.length - 1})</summary>
+          <ul className="mt-2 space-y-2">{reviews.slice(1).map((x) => <li key={x.id} className="rounded border border-border p-2 text-xs"><strong>{outcomeLabel(x.outcome)}</strong>, {new Date(x.createdAt).toLocaleString()}{x.note && <div>{x.note}</div>}</li>)}</ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
 function Detail({ id }: { id: string }) {
   const q = useRouteReview(id);
   const [dlErr, setDlErr] = useState<unknown>(null);
@@ -275,12 +328,18 @@ function Detail({ id }: { id: string }) {
     <div className="space-y-4" data-testid="route-detail">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-lg font-semibold">{r.candidateKey} <span className="font-normal text-muted-foreground">v{r.revisionVersion}</span></h3>
+      </div>
+      {r.geometry && <RouteReviewMap identity={`${r.id}:${r.geometrySha256}`} coordinates={r.geometry.coordinates} sourceManifest={r.sourceManifest} fallback={<RoutePreviewSvg coords={r.geometry.coordinates} />} />}
+      <MapReviewPanel key={r.id} revisionId={r.id} reviews={q.data.mapReviews ?? []} />
+      <RouteReviewSummary revision={r} validations={validations} />
+      <details className="rounded-md border border-border p-3" data-testid="details-advanced">
+      <summary className="cursor-pointer text-sm font-medium">Advanced: evidence and publication checks</summary>
+      <div className="mt-3 space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline">{r.bindingCurrent ? "Binding checks passed" : r.canonicalGeometryId ? "Draft linked — needs checks" : "Unbound"}</Badge>
         <Badge variant={r.eligible ? "secondary" : "outline"}>{r.eligible ? "Eligible" : "Not eligible"}</Badge>
         <Badge variant="secondary">{r.latestDecision ?? "no decision"}</Badge>
       </div>
-      {r.geometry && <RouteReviewMap identity={`${r.id}:${r.geometrySha256}`} coordinates={r.geometry.coordinates} sourceManifest={r.sourceManifest} fallback={<RoutePreviewSvg coords={r.geometry.coordinates} />} />}
-      <RouteReviewSummary revision={r} validations={validations} />
       <details className="rounded-md border border-border p-3" open={technicalOpen} onToggle={e => setTechnicalOpen(e.currentTarget.open)}>
       <summary className="cursor-pointer text-sm font-medium">Technical evidence and source metadata</summary>
       {technicalOpen && <div className="mt-3 space-y-3">
@@ -320,6 +379,8 @@ function Detail({ id }: { id: string }) {
         {decisions.length === 0 && <div className="text-sm text-muted-foreground">None yet.</div>}
         {decisions.map((d) => <div key={d.id} className="rounded-md border border-border bg-card p-3 text-xs" data-testid={`row-decision-${d.id}`}><Badge variant="secondary">{d.decision}</Badge> {d.reviewAuthority}, {new Date(d.createdAt).toLocaleString()}: {d.reason}</div>)}
       </div>
+      </div>
+      </details>
     </div>
   );
 }
@@ -355,7 +416,7 @@ export default function RouteReviews() {
           {list.data && items.length === 0 && <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground" data-testid="text-empty">No saved candidates. Import one by pasting or loading JSON.</div>}
           <ul className="space-y-2">{items.map((r) => (
             <li key={r.id}><button type="button" data-testid={`row-route-${r.id}`} onClick={() => choose(r.id)} className={`w-full rounded-md border p-3 text-left transition-colors ${sel === r.id ? "border-primary bg-secondary" : "border-border bg-card hover:bg-secondary"}`}>
-              <div className="flex items-center justify-between gap-2"><span className="font-medium">{r.candidateKey}</span><Badge variant="secondary">{r.latestDecision ?? "pending"}</Badge></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{r.candidateKey}</span><Badge variant="secondary">{r.latestMapReview ? outcomeLabel(r.latestMapReview) : "Map not reviewed"}</Badge></div>
               <div className="text-xs text-muted-foreground">v{r.revisionVersion} · {r.bindingCurrent ? "binding checks passed" : r.canonicalGeometryId ? "draft linked" : "unbound"} · {new Date(r.createdAt).toLocaleDateString()}</div>
             </button></li>))}</ul>
         </aside>
