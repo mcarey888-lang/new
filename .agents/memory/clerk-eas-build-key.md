@@ -19,6 +19,17 @@ route catalogue, artwork or other product data. Explain the chosen reset and its
 effects before deletion, and update/rebuild affected native clients as needed.
 Reassess this constraint if real users have joined since the statement.
 
+The owner accepts sending a new mobile build for the auth fix, but requires
+preserving all existing product work, including workspace changes not yet
+published.
+
+**Why:** Willingness to start fresh applies to test authentication accounts,
+not the app, its content, or unreleased development.
+
+**How to apply:** Base any auth changes and release on the intended current
+workspace snapshot. Do not restore an older production version, reset the
+repository, or erase product databases as part of the authentication reset.
+
 **Why:** EAS builds run in a clean environment, while the Replit-hosted native bundle has its own build script and environment. A missing key can crash at launch; a live key whose encoded frontend hostname has broken TLS leaves Clerk loading forever and makes every sign-in time out.
 
 **How to apply:** Keep the publishable key explicit in every EAS profile and make the hosted production bundle read the production profile as its source of truth. Before release, inspect the generated bundle without printing the key, decode only its frontend hostname, and confirm its Clerk environment endpoint responds over HTTPS.
