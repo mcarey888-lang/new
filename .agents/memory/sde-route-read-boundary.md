@@ -156,6 +156,15 @@ catalogue verification or publication approval.
 Do not substitute circular geometry or treat this confirmation as an accepted
 validation or approval decision.
 
+The owner checked and approved the private geographic route-review presentation.
+Retain it as the review approach rather than reverting to a schematic-only view.
+
+**Why:** The owner explicitly confirmed the result was correct after inspecting it.
+This confirms the review UI, not route safety, reusable rights or publication.
+
+**How to apply:** Preserve the geographic review and its distinct route/catalogue
+markers while keeping validation and production approval gates independent.
+
 Source-hashed evaluator policies must work in the bundled API, not just under
 tsx. The managed development command builds and runs dist from the package root.
 
