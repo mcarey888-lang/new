@@ -71,6 +71,8 @@ export interface FallbackProfileResult {
 }
 
 export interface VirtualExpeditionHandlerDependencies {
+  /** Admin authoring can adapt the successful result without duplicating matching. */
+  transformResult?: (result: Record<string, unknown>) => unknown;
   resolveFallbackProfile: (targetMountain: string) => Promise<FallbackProfileResult>;
   prepareCandidateHills: (hills: Hill[], profileDna: TargetMountainProfile["routeDna"]) => Hill[];
   computePhysicalScore: (
@@ -1336,7 +1338,7 @@ export function createVirtualExpeditionHandler(
         }, "Virtual expedition provenance");
       }
 
-      return res.json({
+      const result = {
         targetProfile: effectiveProfile,
         expedition,
         recommendedHills,
@@ -1365,7 +1367,8 @@ export function createVirtualExpeditionHandler(
           hillsAvailable: candidateHills.length,
           timingsMs: process.env.NODE_ENV === "production" ? undefined : timings,
         },
-      });
+      };
+      return res.json(dependencies.transformResult ? dependencies.transformResult(result) : result);
     } catch (error) {
       timings.total = Math.round(performance.now() - startedAt);
       log?.error?.({ err: error, timingsMs: timings }, "virtual-expedition failed");

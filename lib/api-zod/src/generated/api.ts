@@ -237,6 +237,106 @@ export const SearchExpeditionCatalogueResponse = zod.object({
 });
 
 /**
+ * Admin-only preview using the app expedition engine. Does not save or approve content.
+ */
+export const generateAdminExpeditionBodyTargetMountainMin = 2;
+export const generateAdminExpeditionBodyTargetMountainMax = 200;
+
+export const generateAdminExpeditionBodyTargetCountryMin = 2;
+export const generateAdminExpeditionBodyTargetCountryMax = 120;
+
+export const generateAdminExpeditionBodyTargetRegionMin = 2;
+export const generateAdminExpeditionBodyTargetRegionMax = 160;
+
+export const generateAdminExpeditionBodyTargetRouteIdentityKeyMax = 200;
+
+export const generateAdminExpeditionBodyDifficultyPreferenceMax = 80;
+
+export const generateAdminExpeditionBodyUserLocationMin = 2;
+export const generateAdminExpeditionBodyUserLocationMax = 300;
+
+export const generateAdminExpeditionBodyRadiusDefault = 30;
+export const generateAdminExpeditionBodyRadiusMax = 200;
+
+export const generateAdminExpeditionBodyDaysOverrideMax = 9007199254740991;
+
+export const GenerateAdminExpeditionBody = zod.object({
+  targetMountain: zod
+    .string()
+    .min(generateAdminExpeditionBodyTargetMountainMin)
+    .max(generateAdminExpeditionBodyTargetMountainMax),
+  targetCountry: zod
+    .string()
+    .min(generateAdminExpeditionBodyTargetCountryMin)
+    .max(generateAdminExpeditionBodyTargetCountryMax)
+    .optional(),
+  targetRegion: zod
+    .string()
+    .min(generateAdminExpeditionBodyTargetRegionMin)
+    .max(generateAdminExpeditionBodyTargetRegionMax)
+    .optional(),
+  targetRouteIdentityKey: zod
+    .string()
+    .min(1)
+    .max(generateAdminExpeditionBodyTargetRouteIdentityKeyMax)
+    .optional(),
+  difficultyPreference: zod
+    .string()
+    .max(generateAdminExpeditionBodyDifficultyPreferenceMax)
+    .optional(),
+  userLocation: zod
+    .string()
+    .min(generateAdminExpeditionBodyUserLocationMin)
+    .max(generateAdminExpeditionBodyUserLocationMax),
+  radius: zod
+    .number()
+    .min(1)
+    .max(generateAdminExpeditionBodyRadiusMax)
+    .default(generateAdminExpeditionBodyRadiusDefault),
+  daysOverride: zod
+    .number()
+    .min(1)
+    .max(generateAdminExpeditionBodyDaysOverrideMax)
+    .nullish()
+    .describe(
+      "Available walking days or stages, not consecutive calendar days.",
+    ),
+  mode: zod.enum(["automatic", "manual", "manual_builder"]).optional(),
+  resolveOnly: zod.boolean().optional(),
+});
+
+export const GenerateAdminExpeditionResponse = zod.object({
+  draft: zod.object({
+    challengeId: zod.string(),
+    challengeName: zod.string(),
+    targetMountainName: zod.string(),
+    status: zod.enum(["draft", "active", "hidden"]),
+    updatedAt: zod.string(),
+    stages: zod.array(
+      zod.object({
+        catalogueMountain: zod
+          .union([
+            zod.object({
+              id: zod.string().uuid(),
+              name: zod.string(),
+              country: zod.string().nullish(),
+              region: zod.string().nullish(),
+              latitude: zod.number(),
+              longitude: zod.number(),
+              elevationM: zod.number().nullish(),
+              status: zod.string(),
+            }),
+            zod.null(),
+          ])
+          .optional(),
+      }),
+    ),
+    limitations: zod.array(zod.string()),
+  }),
+  warnings: zod.array(zod.string()),
+});
+
+/**
  * Admin key required. Read-only validation, never writes.
  */
 export const previewExpeditionImportBodyExpeditionsItemChallengeIdRegExp =
@@ -1550,6 +1650,16 @@ export const DeleteRecordedHikeBackupParams = zod.object({
 export const searchVirtualExpeditionBodyTargetMountainMin = 2;
 export const searchVirtualExpeditionBodyTargetMountainMax = 200;
 
+export const searchVirtualExpeditionBodyTargetCountryMin = 2;
+export const searchVirtualExpeditionBodyTargetCountryMax = 120;
+
+export const searchVirtualExpeditionBodyTargetRegionMin = 2;
+export const searchVirtualExpeditionBodyTargetRegionMax = 160;
+
+export const searchVirtualExpeditionBodyTargetRouteIdentityKeyMax = 200;
+
+export const searchVirtualExpeditionBodyDifficultyPreferenceMax = 80;
+
 export const searchVirtualExpeditionBodyUserLocationMin = 2;
 export const searchVirtualExpeditionBodyUserLocationMax = 300;
 
@@ -1563,6 +1673,25 @@ export const SearchVirtualExpeditionBody = zod.object({
     .string()
     .min(searchVirtualExpeditionBodyTargetMountainMin)
     .max(searchVirtualExpeditionBodyTargetMountainMax),
+  targetCountry: zod
+    .string()
+    .min(searchVirtualExpeditionBodyTargetCountryMin)
+    .max(searchVirtualExpeditionBodyTargetCountryMax)
+    .optional(),
+  targetRegion: zod
+    .string()
+    .min(searchVirtualExpeditionBodyTargetRegionMin)
+    .max(searchVirtualExpeditionBodyTargetRegionMax)
+    .optional(),
+  targetRouteIdentityKey: zod
+    .string()
+    .min(1)
+    .max(searchVirtualExpeditionBodyTargetRouteIdentityKeyMax)
+    .optional(),
+  difficultyPreference: zod
+    .string()
+    .max(searchVirtualExpeditionBodyDifficultyPreferenceMax)
+    .optional(),
   userLocation: zod
     .string()
     .min(searchVirtualExpeditionBodyUserLocationMin)

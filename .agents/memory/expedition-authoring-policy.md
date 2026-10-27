@@ -7,6 +7,18 @@ The owner wants to create expedition content in Claude and ChatGPT and bulk
 import it into the existing SummitReady expedition library, not replace the
 library or rebuild users' saved expeditions.
 
+The owner also wants app-like expedition generation in the admin panel, using
+the **same creation engine as custom expeditions**, rather than needing JSON
+for every new catalogue addition. Keep both authoring paths.
+
+**Why:** The owner requested an easier way to add new expeditions using the
+creation workflow already available in the app.
+
+**How to apply:** Reuse the engine rather than maintaining a divergent admin
+matcher. Results are editable drafts; saving, owner review and artwork approval
+remain deliberate separate actions. This does not resume paid route acquisition
+or turn generated estimates into verified route facts.
+
 **Why:** The older curated library was imported separately from the summit
 catalogue; the owner requested reusable database-backed additions and bulk imports.
 

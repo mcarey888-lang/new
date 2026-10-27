@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminKeyHeader } from "@/lib/adminKey";
 import { readArtworkJson } from "@/lib/artworkResponse";
+import { generateAdminExpedition, type VirtualExpeditionSearchInput } from "@workspace/api-client-react";
 
 const BASE = "/api/admin/expeditions";
 
@@ -80,5 +81,11 @@ export function useDeleteExpedition() {
     mutationFn: (v: { id: string; expectedUpdatedAt: string }) =>
       call<{ deleted: true }>(`/${encodeURIComponent(v.id)}`, "DELETE", { expectedUpdatedAt: v.expectedUpdatedAt }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["expeditions"] }),
+  });
+}
+
+export function useGenerateExpedition() {
+  return useMutation({
+    mutationFn: (input: VirtualExpeditionSearchInput) => generateAdminExpedition(input, { headers: adminHeaders() }),
   });
 }

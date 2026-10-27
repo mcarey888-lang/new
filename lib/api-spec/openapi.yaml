@@ -195,6 +195,30 @@ paths:
                   hasMore: { type: boolean }
         "401": { description: Admin key required }
         "503": { description: Catalogue unavailable }
+  /admin/expeditions/generate:
+    post:
+      operationId: generateAdminExpedition
+      description: Admin-only preview using the app expedition engine. Does not save or approve content.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VirtualExpeditionSearchInput" }
+      responses:
+        "200":
+          description: Editable unsaved draft and evidence warnings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminExpeditionGenerationPreview" }
+        "400": { description: Invalid generation inputs }
+        "401": { description: Admin key required }
+        "409":
+          description: Select the exact target mountain or route and retry
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "429": { description: Another admin generation is already running }
+        "500": { description: Expedition engine unavailable }
   /admin/expeditions/preview:
     post:
       operationId: previewExpeditionImport
@@ -1123,6 +1147,12 @@ components:
         longitude: { type: number }
         elevationM: { type: ["number", "null"] }
         status: { type: string }
+    AdminExpeditionGenerationPreview:
+      type: object
+      required: [draft, warnings]
+      properties:
+        draft: { $ref: "#/components/schemas/AdminExpeditionRecord" }
+        warnings: { type: array, items: { type: string } }
     AdminExpeditionStageInput:
       type: object
       additionalProperties: false
@@ -1370,6 +1400,10 @@ components:
       required: [targetMountain, userLocation]
       properties:
         targetMountain: { type: string, minLength: 2, maxLength: 200 }
+        targetCountry: { type: string, minLength: 2, maxLength: 120 }
+        targetRegion: { type: string, minLength: 2, maxLength: 160 }
+        targetRouteIdentityKey: { type: string, minLength: 1, maxLength: 200 }
+        difficultyPreference: { type: string, maxLength: 80 }
         userLocation: { type: string, minLength: 2, maxLength: 300 }
         radius: { type: number, minimum: 1, maximum: 200, default: 30 }
         daysOverride:

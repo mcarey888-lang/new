@@ -247,6 +247,11 @@ export interface AdminExpeditionRecord {
   [key: string]: unknown;
 }
 
+export interface AdminExpeditionGenerationPreview {
+  draft: AdminExpeditionRecord;
+  warnings: string[];
+}
+
 export interface ExpeditionImportBatch {
   /**
    * @minItems 1
@@ -538,6 +543,23 @@ export interface VirtualExpeditionSearchInput {
    * @maxLength 200
    */
   targetMountain: string;
+  /**
+   * @minLength 2
+   * @maxLength 120
+   */
+  targetCountry?: string;
+  /**
+   * @minLength 2
+   * @maxLength 160
+   */
+  targetRegion?: string;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  targetRouteIdentityKey?: string;
+  /** @maxLength 80 */
+  difficultyPreference?: string;
   /**
    * @minLength 2
    * @maxLength 300
@@ -936,6 +958,8 @@ export type SearchExpeditionCatalogue200 = {
   items: ExpeditionCatalogueMountain[];
   hasMore: boolean;
 };
+
+export type GenerateAdminExpedition409 = { [key: string]: unknown };
 
 export type ImportExpeditionDrafts201 = {
   created: string[];

@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GeneratePanel } from "@/components/GeneratePanel";
+import type { AdminExpeditionGenerationPreview } from "@workspace/api-client-react";
 import { ArtworkAdminHeader } from "@/components/ArtworkAdminHeader";
 import {
   useExpeditionList, useExpedition, useCatalogueSearch, usePreviewExpeditions, useImportExpeditions,
@@ -121,9 +123,9 @@ function MountainPicker({ stage, onPick }: { stage: StageForm; onPick: (m: Catal
   );
 }
 
-function Editor({ source, isNew, onDirty, onDone }: { source: ExpeditionSummary | null; isNew: boolean; onDirty: (d: boolean) => void; onDone: (id: string | null) => void }) {
-  const [form, setForm] = useState<Form>(() => (source ? toForm(source) : blankForm()));
-  const [dirty, setDirty] = useState(false);
+function Editor({ source, isNew, seed, onDirty, onDone }: { source: ExpeditionSummary | null; isNew: boolean; seed?: ExpeditionSummary; onDirty: (d: boolean) => void; onDone: (id: string | null) => void }) {
+  const [form, setForm] = useState<Form>(() => (source ? toForm(source) : seed ? { ...toForm(seed), status: "draft", reviewed: false } : blankForm()));
+  const [dirty, setDirty] = useState(!!seed);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [serverErr, setServerErr] = useState<string | null>(null);
   const update = useUpdateExpedition();
@@ -345,17 +347,23 @@ function AdminKeyBar() {
   );
 }
 
+type Mode = "edit" | "new" | "import" | "generate" | "generated";
+
 export default function Expeditions() {
   const list = useExpeditionList();
   const [selected, setSelected] = useState<string | null>(null);
-  const [mode, setMode] = useState<"edit" | "new" | "import">("import");
+  const [mode, setMode] = useState<Mode>("generate");
+  const [genPending, setGenPending] = useState(false);
+  const [generated, setGenerated] = useState<AdminExpeditionGenerationPreview | null>(null);
   const [dirty, setDirty] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
   const detail = useExpedition(mode === "edit" ? selected : null);
 
   const guard = () => !dirty || window.confirm("You have unsaved edits. Discard them?");
-  const go = (m: "edit" | "new" | "import", id: string | null = null) => {
+  const go = (m: Mode, id: string | null = null) => {
+    if (genPending) return;
     if (!guard()) return;
+    if (m !== "generated") setGenerated(null);
     setDirty(false); setMode(m); setSelected(id); setEditorKey((k) => k + 1);
   };
   useEffect(() => {
@@ -369,8 +377,9 @@ export default function Expeditions() {
     <div className="min-h-[100dvh] bg-background text-foreground">
       <ArtworkAdminHeader activeSection="expeditions" actions={
         <div className="flex gap-2">
-          <Button size="sm" variant="secondary" onClick={() => go("import")}>Bulk import</Button>
-          <Button size="sm" onClick={() => go("new")}>New draft</Button>
+          <Button size="sm" variant="secondary" disabled={genPending} onClick={() => go("import")}>Bulk import</Button>
+          <Button size="sm" variant="secondary" disabled={genPending} onClick={() => go("new")}>New draft</Button>
+          <Button size="sm" data-testid="button-mode-generate" disabled={genPending} onClick={() => go("generate")}>Generate expedition</Button>
         </div>} />
       <main className="mx-auto grid max-w-7xl gap-6 p-4 sm:p-6 lg:grid-cols-[320px_1fr]">
         <AdminKeyBar />
@@ -382,7 +391,7 @@ export default function Expeditions() {
           <ul className="space-y-2">
             {items.map((e) => (
               <li key={e.challengeId}>
-                <button type="button" onClick={() => go("edit", e.challengeId)} data-testid={`row-expedition-${e.challengeId}`}
+                <button type="button" disabled={genPending} onClick={() => go("edit", e.challengeId)} data-testid={`row-expedition-${e.challengeId}`}
                   className={`w-full rounded-md border p-3 text-left transition-colors ${mode === "edit" && selected === e.challengeId ? "border-primary bg-secondary" : "border-border bg-card hover:bg-secondary"}`}>
                   <div className="flex items-center justify-between gap-2"><span className="font-medium">{e.challengeName}</span><Badge variant="secondary">{e.status}</Badge></div>
                   <div className="text-xs text-muted-foreground">{e.challengeId} · {e.targetMountainName} · {e.stages?.length ?? 0} stages</div>
@@ -392,9 +401,19 @@ export default function Expeditions() {
           </ul>
         </aside>
         <section className="min-w-0 space-y-4">
-          <h2 className="text-lg font-semibold">{mode === "import" ? "Bulk import" : mode === "new" ? "New draft expedition" : "Edit expedition"}</h2>
+          <h2 className="text-lg font-semibold">{mode === "import" ? "Bulk import" : mode === "new" ? "New draft expedition" : mode === "generate" ? "Generate expedition" : mode === "generated" ? "Generated draft (unsaved)" : "Edit expedition"}</h2>
           {mode === "import" && <ImportPanel onImported={() => list.refetch()} />}
           {mode === "new" && <Editor key={`new-${editorKey}`} source={null} isNew onDirty={setDirty} onDone={(id) => { setDirty(false); if (id) { setMode("edit"); setSelected(id); setEditorKey((k) => k + 1); } }} />}
+          {mode === "generate" && <GeneratePanel onPending={setGenPending} onGenerated={(p) => { setGenerated(p); setMode("generated"); setSelected(null); setDirty(true); setEditorKey((k) => k + 1); }} />}
+          {mode === "generated" && generated && <>
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+              <span>Not saved yet. Figures are estimates, not verified navigation. Empty distance or ascent fields must be filled before Create draft.</span>
+              <Button size="sm" variant="ghost" onClick={() => go("generate")}>Back to generator</Button>
+            </div>
+            {generated.warnings.length > 0 && <ul data-testid="list-generate-warnings" className="list-disc space-y-1 rounded-md border border-border bg-card p-3 pl-8 text-sm text-amber-600">{generated.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+            <Editor key={`gen-${editorKey}`} source={null} isNew seed={generated.draft as unknown as ExpeditionSummary} onDirty={setDirty}
+              onDone={(id) => { setDirty(false); setGenerated(null); if (id) { setMode("edit"); setSelected(id); setEditorKey((k) => k + 1); } }} />
+          </>}
           {mode === "edit" && !selected && <div className="text-sm text-muted-foreground">Select an expedition.</div>}
           {mode === "edit" && selected && detail.isLoading && <Skeleton className="h-96 w-full" />}
           {mode === "edit" && selected && detail.error && <div role="alert" className="text-sm text-destructive">{(detail.error as Error).message} <button className="underline" onClick={() => detail.refetch()}>Retry</button></div>}

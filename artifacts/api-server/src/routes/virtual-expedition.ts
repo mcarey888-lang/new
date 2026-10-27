@@ -867,7 +867,11 @@ function buildDeterministicExpedition(
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 
-const dataEngineVirtualExpeditionHandler = createVirtualExpeditionHandler({
+export function createDataEngineVirtualExpeditionHandler(
+  transformResult?: (result: Record<string, unknown>) => unknown,
+) {
+return createVirtualExpeditionHandler({
+  transformResult,
   resolveFallbackProfile: async targetMountain => {
     const slug = mountainSlug(targetMountain);
     const overrideKey = targetMountain
@@ -945,6 +949,9 @@ const dataEngineVirtualExpeditionHandler = createVirtualExpeditionHandler({
   prepareCandidateHills,
   computePhysicalScore,
 });
+}
+
+const dataEngineVirtualExpeditionHandler = createDataEngineVirtualExpeditionHandler();
 
 async function legacyVirtualExpeditionHandler(req: Request, res: Response) {
   const body = req.body as {

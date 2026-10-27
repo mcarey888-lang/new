@@ -7,6 +7,9 @@ import { requireAdminKey } from "../middlewares/requireAdminKey.js";
 import { CANONICAL_TRUST_SQL } from "../services/mountain/canonicalMountainLookup.js";
 import { expeditionInput, expeditionTotals, previewExpeditions,
   type CatalogueMountain, type ExpeditionInput } from "../services/expeditionAuthoring.js";
+import { GenerateAdminExpeditionBody, GenerateAdminExpeditionResponse } from "@workspace/api-zod";
+import { createDataEngineVirtualExpeditionHandler } from "./virtual-expedition.js";
+import { expeditionGenerationDraft } from "../services/expeditionGenerationDraft.js";
 
 export const expeditionAdminRouter = Router();
 expeditionAdminRouter.use("/admin/expeditions", requireAdminKey, json({ limit: "2mb" }), (_req, res, next) => {
@@ -18,6 +21,39 @@ const columns = { ...getTableColumns(signatureChallenges),
 const catalogueColumns = `m.id::text AS id, m.name, m.country, m.region,
   ST_Y(m.geom)::float8 AS latitude, ST_X(m.geom)::float8 AS longitude,
   m.elevation_m::float8 AS "elevationM", m.status`;
+
+const generateDraft = createDataEngineVirtualExpeditionHandler(result => {
+  const preview = expeditionGenerationDraft(result);
+  // Orval's Zod output strips additionalProperties from record-shaped DTOs.
+  // Validate required fields without discarding editable stage/provenance fields.
+  GenerateAdminExpeditionResponse.parse(preview);
+  return preview;
+});
+let generationInProgress = false;
+expeditionAdminRouter.post("/admin/expeditions/generate", async (req, res) => {
+  const parsed = GenerateAdminExpeditionBody.refine(input =>
+    input.targetMountain.trim().length >= 2 && input.userLocation.trim().length >= 2
+      && (input.daysOverride == null || Number.isSafeInteger(input.daysOverride)),
+  "Mountain and walking area must contain at least two characters.").safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Check the mountain, walking area, radius and whole-number walking allowance.", details: parsed.error.flatten() });
+    return;
+  }
+  if (generationInProgress) {
+    res.status(429).json({ error: "An admin generation is already running. Wait for it to finish before retrying." });
+    return;
+  }
+  generationInProgress = true;
+  try {
+    // Same target resolution, geographic discovery and matching as the app.
+    // This endpoint returns an unsaved authoring draft, never a catalogue write.
+    req.body = { ...parsed.data, mode: "automatic", builderMode: "automatic",
+      manualBuilder: false, resolveOnly: false, profileOnly: false };
+    await generateDraft(req, res);
+  } finally {
+    generationInProgress = false;
+  }
+});
 
 async function mountainBindings(body: unknown) {
   const parsed = z.object({ expeditions: z.array(z.unknown()).max(100) }).safeParse(body);

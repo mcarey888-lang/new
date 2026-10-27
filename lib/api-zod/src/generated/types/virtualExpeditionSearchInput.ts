@@ -15,6 +15,23 @@ export interface VirtualExpeditionSearchInput {
   targetMountain: string;
   /**
    * @minLength 2
+   * @maxLength 120
+   */
+  targetCountry?: string;
+  /**
+   * @minLength 2
+   * @maxLength 160
+   */
+  targetRegion?: string;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  targetRouteIdentityKey?: string;
+  /** @maxLength 80 */
+  difficultyPreference?: string;
+  /**
+   * @minLength 2
    * @maxLength 300
    */
   userLocation: string;

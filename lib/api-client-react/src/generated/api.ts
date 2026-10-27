@@ -19,6 +19,7 @@ import type {
 import type {
   ActivityAudienceInput,
   ActivityRouteActionInput,
+  AdminExpeditionGenerationPreview,
   ArtworkApproveResult,
   ArtworkClearResult,
   ArtworkGenerateResult,
@@ -39,6 +40,7 @@ import type {
   ExpeditionImportBatch,
   ExpeditionImportPreview,
   ExpeditionUpdateRequest,
+  GenerateAdminExpedition409,
   GenerateArtworkInput,
   GetActivityAudiencePreference200,
   GetActivityRoute200,
@@ -1037,6 +1039,94 @@ export function useSearchExpeditionCatalogue<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Admin-only preview using the app expedition engine. Does not save or approve content.
+ */
+export const getGenerateAdminExpeditionUrl = () => {
+  return `/api/admin/expeditions/generate`;
+};
+
+export const generateAdminExpedition = async (
+  virtualExpeditionSearchInput: VirtualExpeditionSearchInput,
+  options?: RequestInit,
+): Promise<AdminExpeditionGenerationPreview> => {
+  return customFetch<AdminExpeditionGenerationPreview>(
+    getGenerateAdminExpeditionUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(virtualExpeditionSearchInput),
+    },
+  );
+};
+
+export const getGenerateAdminExpeditionMutationOptions = <
+  TError = ErrorType<void | GenerateAdminExpedition409>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateAdminExpedition>>,
+    TError,
+    { data: BodyType<VirtualExpeditionSearchInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateAdminExpedition>>,
+  TError,
+  { data: BodyType<VirtualExpeditionSearchInput> },
+  TContext
+> => {
+  const mutationKey = ["generateAdminExpedition"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateAdminExpedition>>,
+    { data: BodyType<VirtualExpeditionSearchInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generateAdminExpedition(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateAdminExpeditionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateAdminExpedition>>
+>;
+export type GenerateAdminExpeditionMutationBody =
+  BodyType<VirtualExpeditionSearchInput>;
+export type GenerateAdminExpeditionMutationError =
+  ErrorType<void | GenerateAdminExpedition409>;
+
+export const useGenerateAdminExpedition = <
+  TError = ErrorType<void | GenerateAdminExpedition409>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateAdminExpedition>>,
+    TError,
+    { data: BodyType<VirtualExpeditionSearchInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateAdminExpedition>>,
+  TError,
+  { data: BodyType<VirtualExpeditionSearchInput> },
+  TContext
+> => {
+  return useMutation(getGenerateAdminExpeditionMutationOptions(options));
+};
 
 /**
  * Admin key required. Read-only validation, never writes.
