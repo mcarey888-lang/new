@@ -42,6 +42,15 @@ simulated adventures; Pro prepares users for a real mountain.
 
 ## Starter verification scope
 
+The owner chose **The Lake District Mont Blanc** as the intended free starter,
+superseding the suggested Fuji/Australian/Scottish shortlist.
+
+**Why:** The owner explicitly selected this existing expedition on 2026-10-27.
+
+**How to apply:** Focus starter verification on this expedition; selection is
+not approval of its route evidence, permission to invent tracks, or permission
+to publish. Do not substitute another candidate without asking.
+
 When selecting the free starter, inspect existing curated content and source
 approval evidence before proposing replacement geography. Missing verification
 metadata does not itself mean the underlying content is wrong.

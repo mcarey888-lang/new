@@ -3,6 +3,49 @@
 Date: 27 October 2026. Development only. No billing mutations, geographic
 generation, database writes, publishing or build submission.
 
+## Owner-selected starter: The Lake District Mont Blanc
+
+The owner selected **The Lake District Mont Blanc**, `SIG054`, instead of
+the three original shortlist candidates below. This supersedes the Fuji
+recommendation, but is a content selection, **not technical route approval**.
+The access-policy starter ID remains unset until the evidence checks pass.
+
+Read-only development inspection confirmed:
+
+| Stage | Existing expedition figures | Summit evidence |
+|---|---|---|
+| Fairfield Horseshoe | 18 km / 1,100 m | Fairfield, `cea28ba5-4a81-4762-add7-f36f85b8d071`, trusted DoBIH provenance |
+| Scafell Pike via Corridor Route | 15 km / 1,000 m | Scafell Pike, `a4bf692f-2b58-463e-9960-a293e6c6a687`, trusted DoBIH provenance |
+
+The two Hard stages correctly total **33 km / 2,100 m**; order, positive values
+and two-day structure pass. Artwork is approved. Summit links are absent, and
+there are no verified route identity+definition+facts records for either peak.
+Both saved route drafts are withdrawn hiking-engine constructions, not
+publishable evidence; no map approval or accepted technical validation exists
+on those revisions.
+
+Focused published-reference checks on 27 October 2026:
+
+- [Visit Lake District: Fairfield Horseshoe](https://www.visitlakedistrict.com/things-to-do/fairfield-horseshoe-p1221161)
+  describes an Ambleside circuit, 17.25 km and 1,090 m ascent.
+- [WalkLakes: Fairfield Horseshoe](https://www.walklakes.co.uk/walk_42.html)
+  describes a 16.4 km / 1,080 m variant. Its text/photos are copyrighted and its
+  GPX is offered for purchase; no commercial-app reuse grant was established.
+- [Walking Britain: Corridor Route from Seathwaite](https://www.walkingbritain.co.uk/walk-1114-gps)
+  lists 15.4 km / 970 m and explicitly restricts its GPX to private use.
+  No restricted GPX was downloaded or copied.
+
+These references corroborate the named walking itineraries and the broad
+scale of the stored planning estimates. They do not prove the exact existing
+variant, route measurement, legal access or reusable navigation geometry.
+Do not silently replace the existing 18/15 km targets with a different
+publisher's variant or sum different variants into a supposedly verified total.
+
+Remaining work is matching source/variant evidence, source reuse permission
+where geometry will be embedded, and access/elevation checks, followed by the
+full free start/stage/completion/replay journey. No replacement track was
+generated, published or approved. The wider route-database project stays paused.
+
 ## Completion summary
 
 ### Implemented and tested

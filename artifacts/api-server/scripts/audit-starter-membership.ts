@@ -21,7 +21,7 @@ async function main() {
         'catalogue',s.catalogue_mountain) ORDER BY s.stage_order) AS stages,
       sum(s.distance_km) AS stage_distance_sum,sum(s.ascent_m) AS stage_ascent_sum
       FROM public.signature_challenges c JOIN public.challenge_stages s USING(challenge_id)
-      WHERE c.challenge_id IN ('SIG047','SIG042','SIG031')
+      WHERE c.challenge_id IN ('SIG047','SIG042','SIG031','SIG054')
       GROUP BY c.id ORDER BY c.total_ascent_m`);
     const reviews = await client.query(`SELECT r.candidate_key,r.revision_version,
       r.canonical_geometry_id, r.source_manifest,
@@ -50,7 +50,7 @@ async function main() {
         AND s.source_trust='trusted_source' AND s.final_verification_status='trusted_source'
         AND s.qa_status IN ('pass','info')) AS trusted_dobih
       FROM public.mountains m WHERE m.name ILIKE ANY($1::text[]) ORDER BY m.name,m.id`,
-    [["%Mam Tor%", "Whernside%", "%Pen-y-ghent%", "Ingleborough%", "%Yr Wyddfa%"]]);
+    [["%Mam Tor%", "Whernside%", "%Pen-y-ghent%", "Ingleborough%", "%Yr Wyddfa%", "Fairfield", "Scafell Pike"]]);
     const verifiedRoutes = await executeEngineReadOnlyQuery(`SELECT ri.mountain_id,ri.canonical_name,
       rf.distance_km,rf.total_ascent_m,e.publisher,e.url
       FROM public.route_identities ri
@@ -61,7 +61,8 @@ async function main() {
         AND rd.status='verified' AND rf.status='verified'`,
     [peaks.map(p => p.id)]);
     console.log(JSON.stringify({
-      environment: "development", inventory: inventory.rows[0], candidates: candidates.rows,
+      environment: "development", ownerSelectedCandidate: "SIG054",
+      inventory: inventory.rows[0], candidates: candidates.rows,
       structuralChecks: candidates.rows.map(c => ({
         id: c.challenge_id,
         contiguousStageOrder: c.stages.every((s: any, index: number) => s.order === index + 1),
@@ -73,7 +74,7 @@ async function main() {
       cataloguePeaks: peaks, verifiedRouteFacts: verifiedRoutes, reviewCount: compact.length,
       retainedReviews: compact.filter(r => !r.withdrawnConstructed),
       candidateReviews: compact.filter(r => r.routeKeys.some(k =>
-        ["great_ridge", "whernside", "pen_y_ghent", "ingleborough", "llanberis"].includes(String(k)))),
+        ["great_ridge", "whernside", "pen_y_ghent", "ingleborough", "llanberis", "fairfield", "scafell_corridor"].includes(String(k)))),
     }, null, 2));
   } finally {
     await client.query("ROLLBACK");
