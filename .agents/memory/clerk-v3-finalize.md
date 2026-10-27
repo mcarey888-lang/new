@@ -34,8 +34,21 @@ if (sessionId && ssoSetActive) {
 
 ## SignIn status values for @clerk/expo v3
 - `"complete"` — sign-in done, call finalize
-- `"needs_second_factor"` — MFA required (NOT "needs_client_trust" which is not a valid SignInStatus)
-- `"needs_identifier"`, `"needs_factor_one"`, `"needs_new_password"`, `"abandoned"`
+- `"needs_second_factor"` — MFA required.
+- `"needs_client_trust"` — valid in the installed SDK: new-device verification
+  required. Send and verify the email code through `signIn.mfa`, as for the
+  email second-factor flow; never finalize until the status is `complete`.
+- `"needs_identifier"`, `"needs_first_factor"`, `"needs_new_password"`.
+
+**Why:** An earlier note incorrectly excluded `needs_client_trust`. The
+installed Clerk type definitions explicitly support it. Treating it as an
+unknown failure can strand an existing account after a successful password
+check, while registration still reports that the email is already used.
+
+**How to apply:** Check the installed SDK's status definitions rather than
+assuming this list is exhaustive. Preserve device-trust protection instead of
+disabling it or deleting accounts. A `needs_new_password` state should direct
+the user to the existing password reset flow, not account creation.
 
 ## SignUp verification check
 Check `signUp.unverifiedFields.includes("email_address") && signUp.missingFields.length === 0` to detect when email OTP screen is needed (instead of checking `signUp.status === "missing_requirements"` alone).

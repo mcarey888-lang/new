@@ -113,7 +113,17 @@ export default function SignInScreen() {
         } else {
           setError(getClerkErrorMessage(finalizeErr, "Could not finish signing in."));
         }
-      } else if (signIn.status === "needs_second_factor") {
+      } else if (
+        signIn.status === "needs_second_factor"
+        || signIn.status === "needs_client_trust"
+      ) {
+        // Clerk uses the same email-code methods for new-device trust.
+        // The password has passed; do not treat this as a failed login or
+        // activate a session before the verification code is accepted.
+        if (typeof signIn?.mfa?.sendEmailCode !== "function") {
+          setError("Email verification is unavailable. Please try again shortly.");
+          return;
+        }
         const { error: mfaSendErr } = await withTimeout(
           signIn.mfa.sendEmailCode(),
           20000,
@@ -124,6 +134,8 @@ export default function SignInScreen() {
         }
 
         setNeedsMFA(true);
+      } else if (signIn.status === "needs_new_password") {
+        setError("Your account requires a new password. Tap Forgot password? below to reset it.");
       } else {
         setError("Sign-in failed — please try again.");
       }
