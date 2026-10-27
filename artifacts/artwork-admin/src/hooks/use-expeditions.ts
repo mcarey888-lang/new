@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminKeyHeader } from "@/lib/adminKey";
 import { readArtworkJson } from "@/lib/artworkResponse";
-import { generateAdminExpedition, type VirtualExpeditionSearchInput } from "@workspace/api-client-react";
+import { generateAdminExpedition, getExpeditionArtworkLibrary, assignExpeditionArtwork, getAdminExpeditionTargetProfile, getGetArtworkStatusQueryKey, type VirtualExpeditionSearchInput, type ExpeditionArtworkAssignment } from "@workspace/api-client-react";
 
 const BASE = "/api/admin/expeditions";
 
@@ -33,6 +33,7 @@ export type ExpeditionSummary = {
   challengeId: string; challengeName: string; targetMountainName: string; targetRoute?: string | null;
   summary?: string | null; regions?: string[] | string | null; difficulty?: string | null;
   recommendedDays?: number | null; status: string; updatedAt: string;
+  imageVersion?: number | null; approved?: boolean | null; imageStatus?: string | null;
   stages?: ExpeditionStage[]; limitations?: string[];
 };
 export type ExpeditionInput = Record<string, unknown>;
@@ -87,5 +88,29 @@ export function useDeleteExpedition() {
 export function useGenerateExpedition() {
   return useMutation({
     mutationFn: (input: VirtualExpeditionSearchInput) => generateAdminExpedition(input, { headers: adminHeaders() }),
+  });
+}
+
+export function useArtworkLibrary(enabled: boolean) {
+  return useQuery({
+    queryKey: ["expeditions-artwork-library"], enabled, staleTime: 0,
+    queryFn: () => getExpeditionArtworkLibrary({ headers: adminHeaders() }),
+  });
+}
+export function useAssignExpeditionArtwork() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: ExpeditionArtworkAssignment }) => assignExpeditionArtwork(v.id, v.body, { headers: adminHeaders() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expeditions"] });
+      qc.invalidateQueries({ queryKey: ["expedition"] });
+      qc.invalidateQueries({ queryKey: ["expeditions-artwork-library"] });
+      qc.invalidateQueries({ queryKey: getGetArtworkStatusQueryKey() });
+    },
+  });
+}
+export function useTargetProfile() {
+  return useMutation({
+    mutationFn: (input: VirtualExpeditionSearchInput) => getAdminExpeditionTargetProfile(input, { headers: adminHeaders() }),
   });
 }

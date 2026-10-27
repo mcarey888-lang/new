@@ -14,6 +14,8 @@ type ArtworkAdminSection =
 interface ArtworkAdminHeaderProps {
   activeSection: ArtworkAdminSection;
   actions?: ReactNode;
+  navigationDisabled?: boolean;
+  onBeforeNavigate?: () => boolean;
 }
 
 const NAV_LINKS: Array<{
@@ -34,6 +36,8 @@ const NAV_LINKS: Array<{
 export function ArtworkAdminHeader({
   activeSection,
   actions,
+  navigationDisabled = false,
+  onBeforeNavigate,
 }: ArtworkAdminHeaderProps) {
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-card px-4 py-4 sm:px-6">
@@ -54,11 +58,19 @@ export function ArtworkAdminHeader({
             {NAV_LINKS.map((item) => {
               if (item.devOnly && !import.meta.env.DEV) return null;
               const isActive = item.section === activeSection;
+              if (navigationDisabled) return (
+                <span key={item.section} role="link" aria-disabled="true"
+                  data-testid={`link-nav-${item.section}`}
+                  className="shrink-0 cursor-not-allowed rounded px-3 py-1.5 text-sm font-medium text-muted-foreground opacity-50">
+                  {item.label}
+                </span>
+              );
 
               return (
                 <Link
                   key={item.section}
                   href={item.href}
+                  onClick={(event) => { if (onBeforeNavigate?.() === false) event.preventDefault(); }}
                   aria-current={isActive ? "page" : undefined}
                   className={`shrink-0 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
                     isActive

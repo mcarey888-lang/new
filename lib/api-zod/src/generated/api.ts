@@ -236,6 +236,159 @@ export const SearchExpeditionCatalogueResponse = zod.object({
   hasMore: zod.boolean(),
 });
 
+export const GetExpeditionArtworkLibraryResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      challengeId: zod.string(),
+      challengeName: zod.string(),
+      targetMountainName: zod.string(),
+      imageVersion: zod.number(),
+      heroUrl: zod.string(),
+      cardUrl: zod.string(),
+      thumbnailUrl: zod.string(),
+    }),
+  ),
+});
+
+export const AssignExpeditionArtworkParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const assignExpeditionArtworkBodySourceChallengeIdRegExp = new RegExp(
+  "^[A-Z0-9][A-Z0-9_-]{2,39}$",
+);
+export const assignExpeditionArtworkBodySourceImageVersionMax = 32767;
+
+export const assignExpeditionArtworkBodyExpectedUpdatedAtMax = 100;
+
+export const assignExpeditionArtworkBodyReplaceExistingDefault = false;
+
+export const AssignExpeditionArtworkBody = zod.object({
+  sourceChallengeId: zod
+    .string()
+    .regex(assignExpeditionArtworkBodySourceChallengeIdRegExp),
+  sourceImageVersion: zod
+    .number()
+    .min(1)
+    .max(assignExpeditionArtworkBodySourceImageVersionMax),
+  expectedUpdatedAt: zod
+    .string()
+    .min(1)
+    .max(assignExpeditionArtworkBodyExpectedUpdatedAtMax),
+  replaceExisting: zod
+    .boolean()
+    .default(assignExpeditionArtworkBodyReplaceExistingDefault),
+});
+
+export const AssignExpeditionArtworkResponse = zod.object({
+  assigned: zod.boolean(),
+  sourceChallengeId: zod.string(),
+  sourceImageVersion: zod.number(),
+  imageVersion: zod.number(),
+});
+
+export const getAdminExpeditionTargetProfileBodyTargetMountainMin = 2;
+export const getAdminExpeditionTargetProfileBodyTargetMountainMax = 200;
+
+export const getAdminExpeditionTargetProfileBodyTargetCountryMin = 2;
+export const getAdminExpeditionTargetProfileBodyTargetCountryMax = 120;
+
+export const getAdminExpeditionTargetProfileBodyTargetRegionMin = 2;
+export const getAdminExpeditionTargetProfileBodyTargetRegionMax = 160;
+
+export const getAdminExpeditionTargetProfileBodyTargetRouteIdentityKeyMax = 200;
+
+export const getAdminExpeditionTargetProfileBodyDifficultyPreferenceMax = 80;
+
+export const getAdminExpeditionTargetProfileBodyUserLocationMin = 2;
+export const getAdminExpeditionTargetProfileBodyUserLocationMax = 300;
+
+export const getAdminExpeditionTargetProfileBodyRadiusDefault = 30;
+export const getAdminExpeditionTargetProfileBodyRadiusMax = 200;
+
+export const getAdminExpeditionTargetProfileBodyDaysOverrideMax = 9007199254740991;
+
+export const getAdminExpeditionTargetProfileBodySelectedRouteIdentityKeysItemMax = 240;
+
+export const getAdminExpeditionTargetProfileBodySelectedRouteIdentityKeysMax = 30;
+
+export const GetAdminExpeditionTargetProfileBody = zod.object({
+  targetMountain: zod
+    .string()
+    .min(getAdminExpeditionTargetProfileBodyTargetMountainMin)
+    .max(getAdminExpeditionTargetProfileBodyTargetMountainMax),
+  targetCountry: zod
+    .string()
+    .min(getAdminExpeditionTargetProfileBodyTargetCountryMin)
+    .max(getAdminExpeditionTargetProfileBodyTargetCountryMax)
+    .optional(),
+  targetRegion: zod
+    .string()
+    .min(getAdminExpeditionTargetProfileBodyTargetRegionMin)
+    .max(getAdminExpeditionTargetProfileBodyTargetRegionMax)
+    .optional(),
+  targetRouteIdentityKey: zod
+    .string()
+    .min(1)
+    .max(getAdminExpeditionTargetProfileBodyTargetRouteIdentityKeyMax)
+    .optional(),
+  difficultyPreference: zod
+    .string()
+    .max(getAdminExpeditionTargetProfileBodyDifficultyPreferenceMax)
+    .optional(),
+  userLocation: zod
+    .string()
+    .min(getAdminExpeditionTargetProfileBodyUserLocationMin)
+    .max(getAdminExpeditionTargetProfileBodyUserLocationMax),
+  radius: zod
+    .number()
+    .min(1)
+    .max(getAdminExpeditionTargetProfileBodyRadiusMax)
+    .default(getAdminExpeditionTargetProfileBodyRadiusDefault),
+  daysOverride: zod
+    .number()
+    .min(1)
+    .max(getAdminExpeditionTargetProfileBodyDaysOverrideMax)
+    .nullish()
+    .describe(
+      "Available walking days or stages, not consecutive calendar days.",
+    ),
+  mode: zod.enum(["automatic", "manual", "manual_builder"]).optional(),
+  selectedRouteIdentityKeys: zod
+    .array(
+      zod
+        .string()
+        .min(1)
+        .max(
+          getAdminExpeditionTargetProfileBodySelectedRouteIdentityKeysItemMax,
+        ),
+    )
+    .max(getAdminExpeditionTargetProfileBodySelectedRouteIdentityKeysMax)
+    .optional(),
+  resolveOnly: zod.boolean().optional(),
+});
+
+export const GetAdminExpeditionTargetProfileResponse = zod.object({
+  targetProfile: zod.object({
+    name: zod.string(),
+    totalElevationGain: zod.number(),
+    totalDistance: zod.number(),
+    technicalGrade: zod.string().optional(),
+  }),
+  targetRoute: zod
+    .object({
+      identityKey: zod.string().nullish(),
+      name: zod.string().nullish(),
+    })
+    .optional(),
+  provenance: zod
+    .object({
+      targetRouteSource: zod.string().optional(),
+      warnings: zod.array(zod.string()).optional(),
+    })
+    .optional(),
+});
+
 /**
  * Admin-only preview using the app expedition engine. Does not save or approve content.
  */

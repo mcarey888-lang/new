@@ -8,10 +8,10 @@ vi.mock("../middlewares/requireAdminKey.js", () => ({
     req.headers["x-test-admin"] === "authorized" ? next() : res.status(401).json({ error: "Unauthorized" }),
 }));
 vi.mock("../routes/virtual-expedition.js", () => ({
-  createDataEngineVirtualExpeditionHandler: (transform: (data: unknown) => unknown) =>
+  createDataEngineVirtualExpeditionHandler: (transform?: (data: unknown) => unknown) =>
     async (req: express.Request, res: express.Response) => {
       const reply = await engine.run(req.body);
-      res.status(reply.status ?? 200).json(reply.status && reply.status !== 200 ? reply.body : transform(reply.body));
+      res.status(reply.status ?? 200).json(reply.status && reply.status !== 200 ? reply.body : transform ? transform(reply.body) : reply.body);
     },
 }));
 import { expeditionAdminRouter } from "../routes/expedition-admin";
@@ -37,6 +37,34 @@ describe("admin generation boundary (mocked providers, no paid calls or database
   it("requires admin authority before generation", async () => {
     expect((await request({ targetMountain: "Mont Blanc", userLocation: "Ambleside" }, false)).status).toBe(401);
     expect(engine.run).not.toHaveBeenCalled();
+  });
+  it("resolves editor target metrics through the app's profile-only path, without local discovery", async () => {
+    const profile = { resolutionOnly: true, targetProfile: { name: "Mont Blanc", totalElevationGain: 1800, totalDistance: 25 } };
+    engine.run.mockResolvedValue({ body: profile });
+    const response = await fetch(base.replace("/generate", "/target-profile"), {
+      method: "POST", headers: { "Content-Type": "application/json", "x-test-admin": "authorized" },
+      body: JSON.stringify({ targetMountain: "Mont Blanc", userLocation: "United Kingdom",
+        targetRouteIdentityKey: "verified:chosen", mode: "manual", resolveOnly: false }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(profile);
+    expect(engine.run.mock.calls[0][0]).toMatchObject({
+      profileOnly: true, resolveOnly: true, requireVerifiedRouteSelection: true,
+      mode: "automatic", manualBuilder: false, selectedRouteIdentityKeys: [],
+      targetRouteIdentityKey: "verified:chosen",
+    });
+  });
+  it("keeps the artwork library protected", async () => {
+    const response = await fetch(base.replace("/generate", "/artwork-library"));
+    expect(response.status).toBe(401);
+    expect(engine.run).not.toHaveBeenCalled();
+  });
+  it("rejects fractional artwork versions before storage work", async () => {
+    const response = await fetch(base.replace("/generate", "/EXP_TEST/artwork"), {
+      method: "POST", headers: { "Content-Type": "application/json", "x-test-admin": "authorized" },
+      body: JSON.stringify({ sourceChallengeId: "SIG053", sourceImageVersion: 1.5, expectedUpdatedAt: "latest" }),
+    });
+    expect(response.status).toBe(400);
   });
   it.each([
     {}, { targetMountain: "  ", userLocation: "Ambleside" },

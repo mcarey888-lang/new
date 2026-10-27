@@ -7,9 +7,12 @@ import { requireAdminKey } from "../middlewares/requireAdminKey.js";
 import { CANONICAL_TRUST_SQL } from "../services/mountain/canonicalMountainLookup.js";
 import { expeditionInput, expeditionTotals, previewExpeditions,
   type CatalogueMountain, type ExpeditionInput } from "../services/expeditionAuthoring.js";
-import { GenerateAdminExpeditionBody, GenerateAdminExpeditionResponse } from "@workspace/api-zod";
+import { GenerateAdminExpeditionBody, GenerateAdminExpeditionResponse,
+  GetAdminExpeditionTargetProfileBody, AssignExpeditionArtworkBody } from "@workspace/api-zod";
 import { createDataEngineVirtualExpeditionHandler } from "./virtual-expedition.js";
 import { expeditionGenerationPreview } from "../services/expeditionGenerationDraft.js";
+import { approvedSignatureArtworkLibrary, assignApprovedSignatureArtwork,
+  ExpeditionArtworkError } from "../services/artwork/expeditionArtworkAssignment.js";
 
 export const expeditionAdminRouter = Router();
 expeditionAdminRouter.use("/admin/expeditions", requireAdminKey, json({ limit: "2mb" }), (_req, res, next) => {
@@ -30,6 +33,43 @@ const generateDraft = createDataEngineVirtualExpeditionHandler(result => {
   return preview;
 });
 let generationInProgress = false;
+const resolveTargetProfile = createDataEngineVirtualExpeditionHandler();
+expeditionAdminRouter.post("/admin/expeditions/target-profile", async (req, res) => {
+  const parsed = GetAdminExpeditionTargetProfileBody.safeParse(req.body);
+  if (!parsed.success || parsed.data.targetMountain.trim().length < 2) {
+    return res.status(400).json({ error: "Enter a target mountain and optional exact route choice." });
+  }
+  if (generationInProgress) return res.status(429).json({ error: "Another admin calculation is running. Wait for it to finish." });
+  generationInProgress = true;
+  try {
+    req.body = { ...parsed.data, mode: "automatic", manualBuilder: false,
+      builderMode: "automatic", resolveOnly: true, profileOnly: true,
+      requireVerifiedRouteSelection: true, selectedRouteIdentityKeys: [] };
+    return await resolveTargetProfile(req, res);
+  } finally { generationInProgress = false; }
+});
+
+expeditionAdminRouter.get("/admin/expeditions/artwork-library", async (req, res) => {
+  try { return res.json(await approvedSignatureArtworkLibrary()); }
+  catch (err) {
+    req.log.error({ err }, "Approved Signature artwork library unavailable");
+    return res.status(503).json({ error: "Could not load approved artwork. Try again later." });
+  }
+});
+expeditionAdminRouter.post("/admin/expeditions/:id/artwork", async (req, res) => {
+  const id = z.string().regex(/^[A-Z0-9][A-Z0-9_-]{2,39}$/).safeParse(req.params.id);
+  const body = AssignExpeditionArtworkBody.safeParse(req.body);
+  if (!id.success || !body.success || !Number.isInteger(body.data.sourceImageVersion)) {
+    return res.status(400).json({ error: "Choose approved artwork and supply the latest expedition revision." });
+  }
+  try { return res.json(await assignApprovedSignatureArtwork(id.data, body.data)); }
+  catch (err) {
+    if (err instanceof ExpeditionArtworkError) return res.status(err.status).json({ error: err.message });
+    req.log.error({ err }, "Expedition artwork assignment failed");
+    return res.status(503).json({ error: "Artwork assignment could not be confirmed. Refresh this expedition before retrying." });
+  }
+});
+
 expeditionAdminRouter.post("/admin/expeditions/generate", async (req, res) => {
   const parsed = GenerateAdminExpeditionBody.refine(input =>
     input.targetMountain.trim().length >= 2 && input.userLocation.trim().length >= 2

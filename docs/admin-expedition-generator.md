@@ -66,3 +66,36 @@ Live paid generation is not run automatically as a verification step.
 Browser checks use intercepted provider/persistence responses to exercise the
 unsaved editor and payload contract without spending AI credits or changing
 existing catalogue data.
+
+## Expedition editor artwork
+
+After creating or opening a saved expedition, scroll below the stages to
+**Artwork → Choose artwork**. Save unsaved stage edits first. Search the approved
+Signatures library, inspect all three image crops, then use **Assign to this
+expedition → Confirm assign**. Existing images require a replacement checkbox.
+
+Assignment copies the exact approved source version into the destination's own
+artwork namespace, retains source lineage, and costs no AI generation. The source
+is unchanged, and the destination remains at its existing availability status.
+Later source regeneration/deletion cannot change the copied images.
+
+Both source approval and destination revision are checked again on assignment.
+Storage copying completes before publishing new image metadata. Generation and
+assignment share a destination lock. If a database commit acknowledgement fails,
+copied bytes are retained because a committed record might reference them;
+refresh the expedition before retrying. Unreferenced files may remain in this
+rare failure state rather than risking removal of referenced images.
+
+## Expedition editor target comparison
+
+Below the stages, **Target comparison → Load target comparison** resolves the
+same target profile as the app, without searching for local routes. Loading may
+use AI only when the target profile is not cached; it is always an explicit action.
+Ambiguous mountain identities and multiple verified routes require a choice.
+
+After loading, stage edits/additions/removals update ascent, distance, remaining
+amounts and symmetric match percentages locally. Missing or invalid stage facts
+show an incomplete comparison. Target name/route text changes clear the profile.
+Scores are diagnostics, not recorded activity or route approval, and do not
+overwrite existing stored match scores. Reloading the editor requires explicitly
+loading the comparison again.

@@ -26,6 +26,7 @@ import type {
   ArtworkPrompt,
   ArtworkRejectResult,
   ArtworkStatusList,
+  AssignExpeditionArtwork200,
   AuthorizeMembershipAction200,
   BackupRecordedHike200,
   CanonicalHistoryResponse,
@@ -36,6 +37,7 @@ import type {
   DeleteCommunityPost200,
   ElevationBankResponse,
   ElevationBankUnavailable,
+  ExpeditionArtworkAssignment,
   ExpeditionDeleteRequest,
   ExpeditionImportBatch,
   ExpeditionImportPreview,
@@ -47,9 +49,12 @@ import type {
   GetActivityRoutes200,
   GetActivityRoutesParams,
   GetAdminExpedition200,
+  GetAdminExpeditionTargetProfile200,
+  GetAdminExpeditionTargetProfile409,
   GetCanonicalHistoryParams,
   GetCommunityPosts200,
   GetCommunityPostsParams,
+  GetExpeditionArtworkLibrary200,
   GetMembershipAccess200,
   GetMembershipAccessParams,
   GetMountainDiscoveryParams,
@@ -1039,6 +1044,251 @@ export function useSearchExpeditionCatalogue<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+export const getGetExpeditionArtworkLibraryUrl = () => {
+  return `/api/admin/expeditions/artwork-library`;
+};
+
+export const getExpeditionArtworkLibrary = async (
+  options?: RequestInit,
+): Promise<GetExpeditionArtworkLibrary200> => {
+  return customFetch<GetExpeditionArtworkLibrary200>(
+    getGetExpeditionArtworkLibraryUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetExpeditionArtworkLibraryQueryKey = () => {
+  return [`/api/admin/expeditions/artwork-library`] as const;
+};
+
+export const getGetExpeditionArtworkLibraryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getExpeditionArtworkLibrary>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getExpeditionArtworkLibrary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetExpeditionArtworkLibraryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getExpeditionArtworkLibrary>>
+  > = ({ signal }) =>
+    getExpeditionArtworkLibrary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getExpeditionArtworkLibrary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetExpeditionArtworkLibraryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getExpeditionArtworkLibrary>>
+>;
+export type GetExpeditionArtworkLibraryQueryError = ErrorType<void>;
+
+export function useGetExpeditionArtworkLibrary<
+  TData = Awaited<ReturnType<typeof getExpeditionArtworkLibrary>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getExpeditionArtworkLibrary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetExpeditionArtworkLibraryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getAssignExpeditionArtworkUrl = (id: string) => {
+  return `/api/admin/expeditions/${id}/artwork`;
+};
+
+export const assignExpeditionArtwork = async (
+  id: string,
+  expeditionArtworkAssignment: ExpeditionArtworkAssignment,
+  options?: RequestInit,
+): Promise<AssignExpeditionArtwork200> => {
+  return customFetch<AssignExpeditionArtwork200>(
+    getAssignExpeditionArtworkUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(expeditionArtworkAssignment),
+    },
+  );
+};
+
+export const getAssignExpeditionArtworkMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof assignExpeditionArtwork>>,
+    TError,
+    { id: string; data: BodyType<ExpeditionArtworkAssignment> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof assignExpeditionArtwork>>,
+  TError,
+  { id: string; data: BodyType<ExpeditionArtworkAssignment> },
+  TContext
+> => {
+  const mutationKey = ["assignExpeditionArtwork"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof assignExpeditionArtwork>>,
+    { id: string; data: BodyType<ExpeditionArtworkAssignment> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return assignExpeditionArtwork(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AssignExpeditionArtworkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof assignExpeditionArtwork>>
+>;
+export type AssignExpeditionArtworkMutationBody =
+  BodyType<ExpeditionArtworkAssignment>;
+export type AssignExpeditionArtworkMutationError = ErrorType<void>;
+
+export const useAssignExpeditionArtwork = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof assignExpeditionArtwork>>,
+    TError,
+    { id: string; data: BodyType<ExpeditionArtworkAssignment> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof assignExpeditionArtwork>>,
+  TError,
+  { id: string; data: BodyType<ExpeditionArtworkAssignment> },
+  TContext
+> => {
+  return useMutation(getAssignExpeditionArtworkMutationOptions(options));
+};
+
+export const getGetAdminExpeditionTargetProfileUrl = () => {
+  return `/api/admin/expeditions/target-profile`;
+};
+
+export const getAdminExpeditionTargetProfile = async (
+  virtualExpeditionSearchInput: VirtualExpeditionSearchInput,
+  options?: RequestInit,
+): Promise<GetAdminExpeditionTargetProfile200> => {
+  return customFetch<GetAdminExpeditionTargetProfile200>(
+    getGetAdminExpeditionTargetProfileUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(virtualExpeditionSearchInput),
+    },
+  );
+};
+
+export const getGetAdminExpeditionTargetProfileMutationOptions = <
+  TError = ErrorType<void | GetAdminExpeditionTargetProfile409>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof getAdminExpeditionTargetProfile>>,
+    TError,
+    { data: BodyType<VirtualExpeditionSearchInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof getAdminExpeditionTargetProfile>>,
+  TError,
+  { data: BodyType<VirtualExpeditionSearchInput> },
+  TContext
+> => {
+  const mutationKey = ["getAdminExpeditionTargetProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof getAdminExpeditionTargetProfile>>,
+    { data: BodyType<VirtualExpeditionSearchInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return getAdminExpeditionTargetProfile(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GetAdminExpeditionTargetProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminExpeditionTargetProfile>>
+>;
+export type GetAdminExpeditionTargetProfileMutationBody =
+  BodyType<VirtualExpeditionSearchInput>;
+export type GetAdminExpeditionTargetProfileMutationError =
+  ErrorType<void | GetAdminExpeditionTargetProfile409>;
+
+export const useGetAdminExpeditionTargetProfile = <
+  TError = ErrorType<void | GetAdminExpeditionTargetProfile409>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof getAdminExpeditionTargetProfile>>,
+    TError,
+    { data: BodyType<VirtualExpeditionSearchInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof getAdminExpeditionTargetProfile>>,
+  TError,
+  { data: BodyType<VirtualExpeditionSearchInput> },
+  TContext
+> => {
+  return useMutation(
+    getGetAdminExpeditionTargetProfileMutationOptions(options),
+  );
+};
 
 /**
  * Admin-only preview using the app expedition engine. Does not save or approve content.

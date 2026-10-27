@@ -53,6 +53,44 @@ export function servingPath(challengeId: string, crop: CropType): string {
   return `/api/artwork/image/${challengeId}/${crop}`;
 }
 
+/** Shared by generation and owner-directed reuse; never run them concurrently. */
+export function acquireSignatureArtworkLock(challengeId: string) {
+  if (!/^[A-Z0-9][A-Z0-9_-]{2,39}$/.test(challengeId)) throw new Error("Invalid expedition identifier");
+  return acquireReviewBatchGenerationLock(`signature-${challengeId}`);
+}
+
+/** Copy approved bytes, not mutable source URLs, into the destination namespace. */
+export async function copyApprovedSignatureArtwork(
+  sourceId: string, sourceVersion: number, targetId: string, targetVersion: number,
+) {
+  if (![sourceId, targetId].every(id => /^[A-Z0-9][A-Z0-9_-]{2,39}$/.test(id))
+    || ![sourceVersion, targetVersion].every(v => Number.isInteger(v) && v > 0 && v <= 32767)) {
+    throw new Error("Invalid artwork reference");
+  }
+  const bucket = getBucket();
+  const created: ReturnType<typeof bucket.file>[] = [];
+  const cleanup = async () => {
+    await Promise.all(created.map(file => file.delete({ ignoreNotFound: true })));
+  };
+  try {
+    for (const crop of CROP_TYPES) {
+      const source = bucket.file(gcsPath(sourceId, sourceVersion, crop));
+      if (crop === "master" && !(await source.exists())[0]) continue;
+      const [metadata] = await source.getMetadata();
+      const destination = bucket.file(gcsPath(targetId, targetVersion, crop));
+      // Pin the exact source object generation; never overwrite a destination.
+      await bucket.file(source.name, { generation: metadata.generation }).copy(destination, {
+        preconditionOpts: { ifGenerationMatch: 0 },
+      });
+      created.push(destination);
+    }
+    return { cleanup };
+  } catch (error) {
+    await cleanup().catch(cleanupError => console.warn("Unreferenced artwork cleanup failed", cleanupError));
+    throw error;
+  }
+}
+
 export interface StoredArtwork {
   heroPath:      string;
   cardPath:      string;

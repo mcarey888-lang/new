@@ -73,6 +73,18 @@ export async function generateChallengeArtwork(
   force = false,
   provider: ImageProvider = defaultImageProvider,
 ): Promise<GenerateResult> {
+  const { acquireSignatureArtworkLock } = await import("./artworkStorage.js");
+  const lock = await acquireSignatureArtworkLock(challengeId);
+  try {
+    return await generateChallengeArtworkLocked(challengeId, force, provider);
+  } finally {
+    await lock.release();
+  }
+}
+
+async function generateChallengeArtworkLocked(
+  challengeId: string, force: boolean, provider: ImageProvider,
+): Promise<GenerateResult> {
   // 1. Fetch challenge + stages
   const data = await fetchChallengeWithStages(challengeId);
   if (!data) {

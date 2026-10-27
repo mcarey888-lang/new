@@ -305,6 +305,22 @@ export interface AdminExpeditionGenerationPreview {
   manualBuilder?: AdminExpeditionManualBuilder;
 }
 
+export interface ExpeditionArtworkAssignment {
+  /** @pattern ^[A-Z0-9][A-Z0-9_-]{2,39}$ */
+  sourceChallengeId: string;
+  /**
+   * @minimum 1
+   * @maximum 32767
+   */
+  sourceImageVersion: number;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  expectedUpdatedAt: string;
+  replaceExisting?: boolean;
+}
+
 export interface ExpeditionImportBatch {
   /**
    * @minItems 1
@@ -1013,6 +1029,55 @@ export type SearchExpeditionCatalogue200 = {
   items: ExpeditionCatalogueMountain[];
   hasMore: boolean;
 };
+
+export type GetExpeditionArtworkLibrary200ItemsItem = {
+  challengeId: string;
+  challengeName: string;
+  targetMountainName: string;
+  imageVersion: number;
+  heroUrl: string;
+  cardUrl: string;
+  thumbnailUrl: string;
+};
+
+export type GetExpeditionArtworkLibrary200 = {
+  items: GetExpeditionArtworkLibrary200ItemsItem[];
+};
+
+export type AssignExpeditionArtwork200 = {
+  assigned: boolean;
+  sourceChallengeId: string;
+  sourceImageVersion: number;
+  imageVersion: number;
+};
+
+export type GetAdminExpeditionTargetProfile200TargetProfile = {
+  name: string;
+  totalElevationGain: number;
+  totalDistance: number;
+  technicalGrade?: string;
+};
+
+export type GetAdminExpeditionTargetProfile200TargetRoute = {
+  /** @nullable */
+  identityKey?: string | null;
+  /** @nullable */
+  name?: string | null;
+};
+
+export type GetAdminExpeditionTargetProfile200Provenance = {
+  targetRouteSource?: string;
+  warnings?: string[];
+  [key: string]: unknown;
+};
+
+export type GetAdminExpeditionTargetProfile200 = {
+  targetProfile: GetAdminExpeditionTargetProfile200TargetProfile;
+  targetRoute?: GetAdminExpeditionTargetProfile200TargetRoute;
+  provenance?: GetAdminExpeditionTargetProfile200Provenance;
+};
+
+export type GetAdminExpeditionTargetProfile409 = { [key: string]: unknown };
 
 export type GenerateAdminExpedition409 = { [key: string]: unknown };
 

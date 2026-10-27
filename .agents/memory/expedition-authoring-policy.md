@@ -27,7 +27,8 @@ target-match workflow they use in the mobile app.
 
 **How to apply:** Preserve the app's identity, one-route-per-summit and match-score
 semantics. Compare route ascent and distance, not summit altitude; selection
-changes should not trigger paid generation automatically.
+changes should not trigger paid generation automatically. Keep target-match
+feedback available while editing stage figures as well as during initial selection.
 
 Expedition authoring should allow the owner to deliberately reuse approved
 artwork from the Signatures library, rather than requiring a fresh generation.
@@ -38,6 +39,17 @@ to the expeditions they create.
 **How to apply:** Keep reuse an explicit owner choice, with image previews and
 the source artwork's identity retained. Do not silently substitute another
 expedition's artwork, regenerate it, or activate a draft just to assign an image.
+The actual choice belongs in the expedition editor, not only in the artwork
+generation page.
+
+Reusing artwork should preserve a reviewed snapshot rather than a live link to
+another expedition's mutable artwork.
+
+**Why:** Regenerating or clearing the source must not silently change an image
+already chosen for a different expedition.
+
+**How to apply:** Keep approved source identity/version lineage and preserve the
+destination's independent approval and availability controls.
 
 **Why:** The older curated library was imported separately from the summit
 catalogue; the owner requested reusable database-backed additions and bulk imports.

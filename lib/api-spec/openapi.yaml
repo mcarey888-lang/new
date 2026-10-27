@@ -195,6 +195,107 @@ paths:
                   hasMore: { type: boolean }
         "401": { description: Admin key required }
         "503": { description: Catalogue unavailable }
+  /admin/expeditions/artwork-library:
+    get:
+      operationId: getExpeditionArtworkLibrary
+      tags: [artwork]
+      responses:
+        "200":
+          description: Approved Signature artwork available for explicit reuse
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [challengeId, challengeName, targetMountainName, imageVersion, heroUrl, cardUrl, thumbnailUrl]
+                      properties:
+                        challengeId: { type: string }
+                        challengeName: { type: string }
+                        targetMountainName: { type: string }
+                        imageVersion: { type: integer }
+                        heroUrl: { type: string }
+                        cardUrl: { type: string }
+                        thumbnailUrl: { type: string }
+        "401": { description: Admin key required }
+  /admin/expeditions/{id}/artwork:
+    post:
+      operationId: assignExpeditionArtwork
+      tags: [artwork]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpeditionArtworkAssignment" }
+      responses:
+        "200":
+          description: Approved artwork copied to this expedition without changing availability
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assigned, sourceChallengeId, sourceImageVersion, imageVersion]
+                properties:
+                  assigned: { type: boolean }
+                  sourceChallengeId: { type: string }
+                  sourceImageVersion: { type: integer }
+                  imageVersion: { type: integer }
+        "400": { description: Invalid selection }
+        "401": { description: Admin key required }
+        "404": { description: Expedition or source missing }
+        "409": { description: Artwork or expedition changed; refresh and review again }
+        "503": { description: Artwork unavailable; existing assignment preserved }
+  /admin/expeditions/target-profile:
+    post:
+      operationId: getAdminExpeditionTargetProfile
+      tags: [artwork]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VirtualExpeditionSearchInput" }
+      responses:
+        "200":
+          description: Same target route profile as the app; no local route discovery
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [targetProfile]
+                properties:
+                  targetProfile:
+                    type: object
+                    required: [name, totalElevationGain, totalDistance]
+                    properties:
+                      name: { type: string }
+                      totalElevationGain: { type: number }
+                      totalDistance: { type: number }
+                      technicalGrade: { type: string }
+                  targetRoute:
+                    type: object
+                    properties:
+                      identityKey: { type: ["string", "null"] }
+                      name: { type: ["string", "null"] }
+                  provenance:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      targetRouteSource: { type: string }
+                      warnings: { type: array, items: { type: string } }
+        "400": { description: Invalid target }
+        "401": { description: Admin key required }
+        "409":
+          description: Explicit mountain or route selection required
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "429": { description: Another admin calculation is in progress }
   /admin/expeditions/generate:
     post:
       operationId: generateAdminExpedition
@@ -1157,6 +1258,14 @@ components:
             - { type: "null" }
         warnings: { type: array, items: { type: string } }
         manualBuilder: { $ref: "#/components/schemas/AdminExpeditionManualBuilder" }
+    ExpeditionArtworkAssignment:
+      type: object
+      required: [sourceChallengeId, sourceImageVersion, expectedUpdatedAt]
+      properties:
+        sourceChallengeId: { type: string, pattern: "^[A-Z0-9][A-Z0-9_-]{2,39}$" }
+        sourceImageVersion: { type: integer, minimum: 1, maximum: 32767 }
+        expectedUpdatedAt: { type: string, minLength: 1, maxLength: 100 }
+        replaceExisting: { type: boolean, default: false }
     AdminExpeditionManualBuilder:
       type: object
       required: [eligibleSummitPool, selectedRouteIdentityKeys, targetDna]
