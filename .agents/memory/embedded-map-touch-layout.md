@@ -57,3 +57,15 @@ fix even when the imported server page is correct.
 **How to apply:** Retain measurements before map load, replay them on the map's
 request, and preserve ready-triggered route geometry and the full navigation
 footprint when resolving future imports.
+
+The embedded map's host bottom inset does not automatically move the planner's
+Save controls; it moves attribution and summit overlays. A smaller Track launch
+overlay can therefore expose Save visually while tabs still intercept its taps.
+
+**Why:** The Track landing card covered Save during drawing, while the map's
+own toolbar was positioned independently of the host navigation inset.
+
+**How to apply:** Keep hike-launch controls out of the way throughout drawing
+and any unsaved draft, and independently place map-owned Save controls above
+navigation and attribution. Keep the floating Start control clear of credits
+without hiding the required map attribution.

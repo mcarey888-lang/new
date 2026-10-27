@@ -342,11 +342,18 @@ function buildRouteBar() {
 function placeRouteBar() {
   if (!routeBar) return;
   var hud = document.getElementById("hud");
-  var bottom = 12;
+  /* Embedded Track extends behind the app tabs. Its navigation inset must
+     lift the planner's Save controls as well as the licensed attribution. */
+  var hostInset = typeof hostBottomInset === "number" ? hostBottomInset : 0;
+  var attribution = document.querySelector(".maplibregl-ctrl-attrib");
+  var creditHeight = attribution ? attribution.getBoundingClientRect().height : 24;
+  var clearBottom = hostInset > 0 ? hostInset + Math.max(24, creditHeight) + 10 : 12;
+  if (hud) hud.style.bottom = (hostInset > 0 ? clearBottom : 26) + "px";
+  var bottom = clearBottom;
   if (hud && !hud.hidden) {
     var box = hud.getBoundingClientRect();
     if (box.height > 0) {
-      bottom = Math.max(12, Math.round(window.innerHeight - box.top) + 10);
+      bottom = Math.max(clearBottom, Math.round(window.innerHeight - box.top) + 10);
     }
   }
   routeBar.style.bottom = bottom + "px";

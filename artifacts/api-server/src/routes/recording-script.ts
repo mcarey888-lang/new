@@ -60,6 +60,7 @@ function setBottomInset(px) {
      see — which reads as the tap having done nothing. */
   if (typeof liftSummitCard === "function") liftSummitCard(hostBottomInset);
   if (typeof liftSummitNotice === "function") liftSummitNotice(hostBottomInset);
+  if (typeof placeRouteBar === "function") placeRouteBar();
 }
 
 /**

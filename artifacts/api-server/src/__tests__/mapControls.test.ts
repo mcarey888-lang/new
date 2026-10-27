@@ -72,6 +72,45 @@ describe("small-screen control separation", () => {
   });
 });
 
+describe("embedded Track planner clearance", () => {
+  function placement(hostBottomInset: number) {
+    const body = script().match(/function placeRouteBar\(\) \{([\s\S]*?)\n\}/)?.[1];
+    if (!body) throw new Error("Map Save placement is missing");
+    const context = {
+      hostBottomInset,
+      window: { innerHeight: 874 },
+      routeBar: { style: { bottom: "" } },
+      hud: {
+        hidden: false,
+        style: { bottom: "" },
+        getBoundingClientRect() {
+          return { top: 874 - parseInt(this.style.bottom, 10) - 36, height: 36 };
+        },
+      },
+      document: {
+        getElementById: (id: string) => id === "hud" ? context.hud : null,
+        querySelector: () => ({ getBoundingClientRect: () => ({ height: 36 }) }),
+      },
+    };
+    runInNewContext(`function placeRouteBar() {${body}}; placeRouteBar();`, context);
+    return { hudBottom: context.hud.style.bottom, saveBottom: context.routeBar.style.bottom };
+  }
+
+  it("places Save above both native tabs and the attribution", () => {
+    const embedded = placement(88);
+    expect(parseInt(embedded.hudBottom, 10)).toBeGreaterThan(88 + 36);
+    expect(parseInt(embedded.saveBottom, 10)).toBeGreaterThan(parseInt(embedded.hudBottom, 10) + 36);
+  });
+
+  it("keeps standalone map placement unchanged", () => {
+    expect(placement(0).hudBottom).toBe("26px");
+  });
+
+  it("repositions Save whenever the host inset changes", () => {
+    expect(recordingScript()).toContain('if (typeof placeRouteBar === "function") placeRouteBar();');
+  });
+});
+
 describe("the script is valid JavaScript", () => {
   it("parses", () => {
     expect(() => new Function(`var map, post, LAYERS, drawing, snapping, mode, activeLayer,

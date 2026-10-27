@@ -22,7 +22,7 @@ describe("selected saved-route preview", () => {
   it("waits for the map handshake and resends on route, sheet or map changes", () => {
     expect(TRACK_CODE).toContain('message.type === "ready"');
     expect(TRACK_CODE).toContain("if (!mapRevision) return");
-    expect(TRACK_CODE).toContain("[mapRevision, sheetHeight, navigationHeight, route, sendInsets]");
+    expect(TRACK_CODE).toContain("[mapRevision, sheetHeight, navigationHeight, route, sendInsets, expanded, hideLaunchControls]");
     expect(TRACK_CODE).toContain("onMessage={handleMapMessage}");
     expect(TRACK_CODE).toContain('type: "recPlanned"');
     expect(TRACK_CODE).toContain("(route?.geometry ?? []).map(point => [point.lat, point.lng])");
@@ -30,7 +30,7 @@ describe("selected saved-route preview", () => {
   });
 
   it("retains measured host insets and answers the loaded map without losing navigation clearance", () => {
-    expect(TRACK_CODE).toContain("insetsRef.current.bottom = Math.round(sheetHeight + navigationHeight + 8)");
+    expect(TRACK_CODE).toContain("navigationHeight + (expanded && !hideLaunchControls ? sheetHeight + 8 : 8)");
     expect(TRACK_CODE).toContain("insetsRef.current.top = insets.top + 46");
     expect(TRACK_CODE).toContain('message["type"] === "needInsets" || message["type"] === "ready"');
     expect(TRACK_CODE).toContain('px: Math.round(insetsRef.current.bottom)');
@@ -117,10 +117,11 @@ describe("context does not leak between Training and Expeditions", () => {
 });
 
 describe("the map and its attribution", () => {
-  it("keeps the Start panel and map attribution above the full navigation footprint", () => {
+  it("keeps floating controls above navigation, with attribution below them", () => {
     expect(TRACK_CODE).toContain("primaryTabBarHeight(Platform.OS, insets.bottom)");
     expect(TRACK_CODE).toContain("bottom: navigationHeight");
-    expect(TRACK_CODE).toContain("Math.round(sheetHeight + navigationHeight + 8)");
+    expect(TRACK_CODE).toContain("navigationHeight + (expanded && !hideLaunchControls ? sheetHeight + 8 : 8)");
+    expect(TRACK_CODE).toContain("bottom: navigationHeight + (expanded ? 8 : 48)");
     expect(read("components/SharedTabBar.tsx")).toContain("primaryTabBarHeight(Platform.OS, insets.bottom)");
   });
   it("uses the shared map rather than a second one", () => {
@@ -133,6 +134,30 @@ describe("the map and its attribution", () => {
        where MapLibre puts it. */
     expect(TRACK_CODE).toMatch(/type: "bottomInset"/);
     expect(TRACK_CODE).toMatch(/onLayout=\{e => setSheetHeight/);
+  });
+});
+
+describe("compact Track launch controls", () => {
+  it("defaults to transparent floating controls, not the full card", () => {
+    expect(TRACK_CODE).toContain("expanded ? st.expandedSheet : st.floatingControls");
+    expect(TRACK_CODE).toContain('pointerEvents="box-none"');
+    expect(TRACK_CODE).toContain("!expanded && st.gpsPill");
+    expect(TRACK_CODE).toContain("!expanded && st.floatingStart");
+    expect(TRACK_CODE).toContain('expanded || context.kind !== "free"');
+  });
+
+  it("gets out of the way of drawing and unsaved planner geometry", () => {
+    expect(TRACK_CODE).toContain("const hideLaunchControls = drawing || hasPlannerDraft || summitOpen");
+    expect(TRACK_CODE).toContain('message.type === "drawingChanged"');
+    expect(TRACK_CODE).toContain("setDrawing(message.on === true)");
+    expect(TRACK_CODE).toContain("setHasPlannerDraft(Array.isArray(message.anchors) && message.anchors.length > 0)");
+    expect(TRACK_CODE).toContain("{!hideLaunchControls ?");
+  });
+
+  it("preserves optional context, saved route, manual log and resume controls", () => {
+    for (const id of ["track-sheet-toggle", "track-change-context", "track-route-row", "track-log-manually", "track-resume-activity"]) {
+      expect(TRACK_CODE).toContain(`testID="${id}"`);
+    }
   });
 });
 

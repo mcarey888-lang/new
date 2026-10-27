@@ -121,21 +121,23 @@ function SharedTrackScreenBody() {
   }, [summitTicks.ready, summitTicks.ids, sendTicks]);
 
   const [sheetHeight, setSheetHeight] = useState(0);
-  /* Collapsed by default. Opening Track is usually the last thing somebody
-     does before walking, and the common path is Start. The rest — changing
-     what this counts towards, attaching a route — is deliberate, so it can
-     cost a tap. */
+  /* The normal state is a GPS pill and floating Start button, not a card.
+     The existing hike options remain a deliberate tap away. */
   const [expanded, setExpanded] = useState(false);
   /* A tapped hill opens a card inside the map, at the bottom, which is
      exactly where this sheet sits. Getting out of its way beats drawing
      over it. */
   const [summitOpen, setSummitOpen] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const [hasPlannerDraft, setHasPlannerDraft] = useState(false);
+  const hideLaunchControls = drawing || hasPlannerDraft || summitOpen;
 
-  /* The sheet covers the bottom of the map, where the attribution sits.
-     "Contains OS data (c) Crown copyright" is a licence condition, so the map
-     is told how much room is taken and lifts it clear. */
+  /* Attribution sits below the floating controls, above navigation. Only
+     the expanded options need to lift it above a full-width panel. */
   useEffect(() => {
-    insetsRef.current.bottom = Math.round(sheetHeight + navigationHeight + 8);
+    insetsRef.current.bottom = Math.round(
+      navigationHeight + (expanded && !hideLaunchControls ? sheetHeight + 8 : 8),
+    );
     if (!mapRevision) return;
     sendInsets();
     /* The card is not the preview: send the selected geometry after the map
@@ -145,7 +147,7 @@ function SharedTrackScreenBody() {
       type: "recPlanned",
       points: (route?.geometry ?? []).map(point => [point.lat, point.lng]),
     });
-  }, [mapRevision, sheetHeight, navigationHeight, route, sendInsets]);
+  }, [mapRevision, sheetHeight, navigationHeight, route, sendInsets, expanded, hideLaunchControls]);
 
   /* The header sits across the top of the map, over the search box. */
   useEffect(() => {
@@ -155,7 +157,16 @@ function SharedTrackScreenBody() {
   }, [insets.top, mapRevision, sendInsets]);
 
   const handleMapMessage = useCallback((message: Record<string, unknown>) => {
-    if(message.type==="routeChanged"){setRoute(null);return;}
+    if (message.type === "routeChanged") {
+      setRoute(null);
+      setHasPlannerDraft(Array.isArray(message.anchors) && message.anchors.length > 0);
+      return;
+    }
+    if (message.type === "drawingChanged") {
+      setDrawing(message.on === true);
+      if (message.on === true) setExpanded(false);
+      return;
+    }
     if (message.type === "ready") setMapRevision(value => value + 1);
     /* The page says it is ready and asks for them, which is the only moment
        both sides are known to exist. */
@@ -336,17 +347,23 @@ function SharedTrackScreenBody() {
         <Text style={st.headerTitle}>Track</Text>
       </View>
 
-      <View
-        style={[st.sheet, { bottom: navigationHeight + 8, paddingBottom: 20 }]}
+      {!hideLaunchControls ? <View
+        pointerEvents="box-none"
+        style={[
+          st.sheet,
+          expanded ? st.expandedSheet : st.floatingControls,
+          { bottom: navigationHeight + (expanded ? 8 : 48) },
+        ]}
         accessibilityLabel="Start a hike"
         onLayout={e => setSheetHeight(e.nativeEvent.layout.height)}
+        testID="track-launch-controls"
       >
-        <View style={st.grabber} />
+        {expanded ? <View style={st.grabber} /> : null}
 
         {activeHike ? (
           <TouchableOpacity
             onPress={resume}
-            style={st.resumeRow}
+            style={[st.resumeRow, st.resumePill]}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel={`Resume ${activeHike.routeName || "hike in progress"}`}
@@ -364,24 +381,24 @@ function SharedTrackScreenBody() {
           </TouchableOpacity>
         ) : (
           <>
-            {/* Collapsed: the one line worth reading and the one button worth
-                pressing. Everything else is a tap away, because it is chosen
-                deliberately and rarely. */}
             <TouchableOpacity
               onPress={() => setExpanded(v => !v)}
-              style={st.summaryRow}
+              style={[st.summaryRow, !expanded && st.gpsPill]}
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityState={{ expanded }}
               accessibilityLabel={`${contextLabel(context)}. ${gpsText.label}. ${expanded ? "Hide" : "Show"} options`}
+              accessibilityHint="Change the hike target, choose a saved route, or add a hike by hand"
               testID="track-sheet-toggle"
             >
-              <View style={{ flex: 1 }}>
-                <Text style={st.rowValue} numberOfLines={1}>{contextLabel(context)}</Text>
+              <View style={expanded ? { flex: 1 } : st.compactSummary}>
+                {expanded || context.kind !== "free" ? (
+                  <Text style={expanded ? st.rowValue : st.contextText} numberOfLines={1}>{contextLabel(context)}</Text>
+                ) : null}
                 <View style={st.gpsRow}>
                   <View style={[st.gpsDot, {
                     backgroundColor: gpsText.tone === "good" ? T.green
-                      : gpsText.tone === "bad" ? "#FF6B6B" : "#E9B949",
+                      : gpsText.tone === "bad" ? T.red : T.orange,
                   }]} />
                   <Text style={st.gpsText} numberOfLines={1}>{gpsText.label}</Text>
                   {route && !expanded ? (
@@ -391,7 +408,7 @@ function SharedTrackScreenBody() {
               </View>
               {expanded
                 ? <ChevronDown size={20} color={T.textMuted} />
-                : <ChevronUp size={20} color={T.textMuted} />}
+                : <ChevronUp size={14} color={T.textMuted} />}
             </TouchableOpacity>
 
             {expanded ? (
@@ -445,7 +462,7 @@ function SharedTrackScreenBody() {
             <TouchableOpacity
               onPress={start}
               disabled={starting || !canStart(gps)}
-              style={[st.start, starting && st.startBusy]}
+              style={[st.start, !expanded && st.floatingStart, starting && st.startBusy]}
               activeOpacity={0.9}
               accessibilityRole="button"
               accessibilityLabel="Start hike"
@@ -460,7 +477,7 @@ function SharedTrackScreenBody() {
             ) : null}
           </>
         )}
-      </View>
+      </View> : null}
 
       <LogHikeModal
         visible={logOpen}
@@ -561,8 +578,32 @@ const st = StyleSheet.create({
   },
   sheet: {
     position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 5,
+    gap: 12,
+  },
+  expandedSheet: {
     backgroundColor: T.card, borderTopLeftRadius: 22, borderTopRightRadius: 22,
-    borderTopWidth: 1, borderColor: T.border, paddingHorizontal: 18, paddingTop: 8, gap: 12,
+    borderTopWidth: 1, borderColor: T.border,
+    paddingHorizontal: 18, paddingTop: 8, paddingBottom: 20,
+  },
+  floatingControls: {
+    paddingHorizontal: 24, gap: 8,
+  },
+  gpsPill: {
+    alignSelf: "flex-start", maxWidth: "100%", minHeight: 44,
+    backgroundColor: T.tabBg, borderRadius: 24,
+    paddingHorizontal: 12, paddingVertical: 8, gap: 8,
+  },
+  compactSummary: { flexShrink: 1 },
+  contextText: {
+    color: T.text, fontSize: 12, fontFamily: "Inter_600SemiBold", marginBottom: 2,
+  },
+  floatingStart: {
+    alignSelf: "center", width: "90%", maxWidth: 420, borderRadius: 999,
+    shadowColor: T.green, shadowOpacity: 0.25, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 5,
+  },
+  resumePill: {
+    backgroundColor: T.tabBg, borderRadius: 24, padding: 14,
   },
   grabber: {
     width: 36, height: 4, borderRadius: 2, alignSelf: "center",
