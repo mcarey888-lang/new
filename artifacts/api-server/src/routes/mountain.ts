@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { aiMountainDiscoveries, db, cachedMountains, executeEngineReadOnlyQuery } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { exactFeaturedMountainId } from "../services/mountain/approvedFeaturedMountainIdentity";
 import {
   CanonicalCatalogueUnavailableError,
   lookupVerifiedCanonicalMountainStrict,
@@ -342,6 +343,26 @@ export function createMountainLookupHandler(
         ...(input.country ? { country: input.country } : {}),
         ...(input.region ? { region: input.region } : {}),
       });
+      // Curated names/regions are presentation labels, not catalogue fields.
+      // Resolve only an explicitly reviewed display identity, then require the
+      // catalogue's normal trust checks and an exact ID match. No fuzzy lookup,
+      // cached coordinates or route facts can enable map navigation.
+      if (canonical.kind === "none") {
+        const featuredId = exactFeaturedMountainId(mountainName, input.country);
+        const candidate = featuredId
+          ? await dependencies.catalogueById!(featuredId)
+          : null;
+        if (candidate && candidate.id === featuredId) {
+          const confirmed = await dependencies.canonicalLookup({
+            name: candidate.name,
+            ...(candidate.country ? { country: candidate.country } : {}),
+            ...(candidate.region ? { region: candidate.region } : {}),
+          });
+          if (confirmed.kind === "match" && confirmed.mountain.id === featuredId) {
+            canonical = confirmed;
+          }
+        }
+      }
     } catch (err) {
       if (err instanceof CanonicalCatalogueUnavailableError) {
         catalogueUnavailable = true;

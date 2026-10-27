@@ -48,6 +48,15 @@ const names = featured.flatMap(mountain =>
 
 const routeTerm = /\b(?:ridge|edge|route|trail|path|way|walk|hike|horseshoe|round|traverse|circuit|loop|approach|track|scramble|via)\b/;
 
+/** Reviewed display aliases only; never infer summit identity from a route title. */
+export function exactFeaturedMountainId(name: string, country?: string): string | null {
+  const subject = normalize(name);
+  const context = normalize(country ?? "");
+  const uk = ["united kingdom", "uk", "great britain"];
+  return names.find(entry => entry.name === subject &&
+    (!context || uk.includes(context) || context === normalize(entry.country)))?.id ?? null;
+}
+
 export function approvedFeaturedMountainId(name: string, location?: string): string | null {
   const subject = normalize(name);
   const context = normalize(location ?? "");

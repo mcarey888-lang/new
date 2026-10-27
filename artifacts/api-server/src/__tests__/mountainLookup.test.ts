@@ -116,6 +116,7 @@ function dependencies(
     canonicalLookup: vi.fn().mockResolvedValue(canonicalResult),
     cacheLookup: vi.fn().mockResolvedValue(null),
     cacheStore: vi.fn().mockResolvedValue(undefined),
+    catalogueById: vi.fn().mockResolvedValue(null),
     aiLookup: vi.fn().mockResolvedValue({
       mountainName: "AI mountain",
       routes: [],
@@ -532,6 +533,53 @@ describe("lookupVerifiedCanonicalSummitsInArea", () => {
 });
 
 describe("POST /api/mountain-lookup handler", () => {
+  it("resolves reviewed Cat Bells display labels to trusted catalogue coordinates without AI", async () => {
+    const id = "696871ce-7baa-4ea2-8cf3-8c55869df893";
+    const mountain = {
+      ...verifiedMountain, id, name: "Cat Bells [Catbells]", country: "England",
+      region: "34B: Lake District C&W", latitude: 54.568316, longitude: -3.1707,
+      routes: [],
+    };
+    const deps = dependencies({ kind: "none" });
+    deps.catalogueById = vi.fn().mockResolvedValue({ ...mountain, status: "imported" });
+    deps.canonicalLookup = vi.fn()
+      .mockResolvedValueOnce({ kind: "none" })
+      .mockResolvedValueOnce({ kind: "match", mountain });
+    const result = await invoke(createMountainLookupHandler(deps), {
+      name: "Cat Bells", country: "United Kingdom", region: "Lake District, Cumbria",
+    });
+    expect(result.payload.source).toBe("canonical");
+    expect(result.payload.trustedFacts).toMatchObject({
+      coordinates: { latitude: 54.568316, longitude: -3.1707 },
+    });
+    expect(deps.catalogueById).toHaveBeenCalledWith(id);
+    expect(deps.cacheLookup).not.toHaveBeenCalled();
+    expect(deps.aiLookup).not.toHaveBeenCalled();
+  });
+
+  it("does not grant curated identity to a contradictory country or route title", async () => {
+    for (const body of [
+      { name: "Cat Bells", country: "France" },
+      { name: "Cat Bells via Hawse End" },
+    ]) {
+      const deps = dependencies({ kind: "none" });
+      await invoke(createMountainLookupHandler(deps), body);
+      expect(deps.catalogueById).not.toHaveBeenCalled();
+    }
+  });
+
+  it("never trusts a curated identity whose confirmed catalogue ID differs", async () => {
+    const deps = dependencies({ kind: "none" });
+    deps.catalogueById = vi.fn().mockResolvedValue({
+      ...verifiedMountain, id: "696871ce-7baa-4ea2-8cf3-8c55869df893", status: "imported",
+    });
+    deps.canonicalLookup = vi.fn()
+      .mockResolvedValueOnce({ kind: "none" })
+      .mockResolvedValueOnce({ kind: "match", mountain: verifiedMountain });
+    const result = await invoke(createMountainLookupHandler(deps), { name: "Cat Bells" });
+    expect(result.payload.source).not.toBe("canonical");
+  });
+
   it("returns only verified catalogue routes for a canonical match", async () => {
     const deps = dependencies({
       kind: "match",
