@@ -61,6 +61,18 @@ Catalogue summit selection establishes identity/location only; route ascent,
 walking distance, access and hazards need their own evidence. Do not silently
 rewrite started expeditions, user activity or approved artwork.
 
+Active expeditions must be discoverable independently of Featured status.
+Region-less expeditions belong in All Regions; never infer a walking region
+from the expedition title or target mountain.
+
+**Why:** The owner expects activating an admin-authored expedition to make it
+available in the app. Editorial promotion and regional filters must not become
+undocumented publication requirements.
+
+**How to apply:** Preserve tier/access checks separately from catalogue discovery.
+Use explicit walking-region metadata for filtering, retain an All Regions path,
+and do not use a static prototype bundle count as the live catalogue total.
+
 Prioritize a small, reviewed UK route collection covering the existing
 expedition stages before acquiring a large generic route catalogue.
 

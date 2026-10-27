@@ -19,7 +19,7 @@ import { ExpeditionDayCount } from "@/components/ExpeditionDayCount";
 import { ManualDnaHeader } from "@/components/ManualDnaHeader";
 import { ExpoMountainArtworkImage as ExpoImage } from "@/components/MountainArtworkImage";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/expo";
 import {
@@ -82,6 +82,7 @@ import { projectExpeditionReadiness } from "@/utils/expeditionReadinessProjectio
 import { validateExpeditionResultContract } from "@/utils/expeditionResultContract";
 import { fetchExpeditionResponse } from "@/utils/expeditionRequest";
 import { activityApiBase as API_BASE } from "@/utils/activityAudience";
+import { fetchActiveExpeditionCatalogue, type ExpeditionCatalogueItem } from "@/utils/expeditionCatalogue";
 
 
 // ── Region data ────────────────────────────────────────────────────────────────
@@ -468,15 +469,11 @@ export default function ExpeditionMountainsScreen() {
   const [sigLoading, setSigLoading] = useState(false);
   const [sigExpanded, setSigExpanded] = useState(false);
 
-  // featured list — shown in the browse section
-  const [featuredList, setFeaturedList] = useState<Array<{
-    challengeId: string; challengeName: string; targetMountainName: string;
-    difficulty: string | null; recommendedDays: number;
-    adventureScore: number | null; totalAscentM: number | null;
-    regions: string | null; featured: boolean;
-    heroImage?: string | null; cardImage?: string | null;
-    thumbnailImage?: string | null; approved?: boolean;
-  }>>([]);
+  // All active expeditions; Featured is a badge, not a visibility requirement.
+  const [featuredList, setFeaturedList] = useState<ExpeditionCatalogueItem[]>([]);
+  const [catalogueLoading, setCatalogueLoading] = useState(true);
+  const [catalogueError, setCatalogueError] = useState<string | null>(null);
+  const [catalogueReload, setCatalogueReload] = useState(0);
   const [selectedFeaturedId, setSelectedFeaturedId] = useState<string | null>(null);
   const browseScrollRef = useRef<any>(null);
   const cardMountain = activeExpedition?.targetMountain?.name;
@@ -529,13 +526,18 @@ export default function ExpeditionMountainsScreen() {
     if (regionParam) setSelectedRegion(regionParam);
   }, [regionParam]);
 
-  // Fetch featured signature challenges on mount
-  React.useEffect(() => {
-    fetch(`${API_BASE}/sx/featured`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setFeaturedList(d.challenges ?? []); })
-      .catch(() => {});
-  }, []);
+  // Refresh on return too, so newly activated admin records are discoverable.
+  useFocusEffect(React.useCallback(() => {
+    let current = true;
+    const controller = new AbortController();
+    setCatalogueLoading(true);
+    setCatalogueError(null);
+    fetchActiveExpeditionCatalogue(API_BASE, controller.signal)
+      .then(items => { if (current) setFeaturedList(items); })
+      .catch(error => { if (current) setCatalogueError(error instanceof Error ? error.message : "Could not load expeditions."); })
+      .finally(() => { if (current) setCatalogueLoading(false); });
+    return () => { current = false; controller.abort(); };
+  }, [catalogueReload]));
 
   const topPad = Platform.OS === "web" ? 56 : insets.top + 16;
   const botPad = Platform.OS === "web" ? 120 : insets.bottom + 100;
@@ -2242,7 +2244,7 @@ export default function ExpeditionMountainsScreen() {
           </Text>
           <View style={s.libraryChips}>
             <SRStatusPill
-              label={`${VIRTUAL_BUNDLES.length} expeditions`}
+              label={catalogueLoading ? "Loading expeditions" : `${featuredList.length} expeditions`}
               tone={EXPLORE.accent}
             />
             <SRStatusPill label="Custom builder" tone={BASECAMP.textMuted} />
@@ -2523,12 +2525,29 @@ export default function ExpeditionMountainsScreen() {
           </Animated.View>
         )}
 
-        {/* ── Popular Expeditions ──────────────────────────────────────────── */}
+        {catalogueLoading && <ActivityIndicator style={{ marginBottom: 16 }} color={EXPLORE.accent} accessibilityLabel="Loading expeditions" />}
+        {catalogueError && (
+          <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <Text style={{ color: BASECAMP.textMuted }}>{catalogueError}</Text>
+            <TouchableOpacity onPress={() => setCatalogueReload(value => value + 1)} accessibilityRole="button">
+              <Text style={s.viewAllText}>Retry loading expeditions</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {!catalogueLoading && !catalogueError && filteredFeatured.length === 0 && (
+          <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <Text style={{ color: BASECAMP.textMuted }}>No active expeditions {selectedRegion === "All Regions" ? "are available yet." : "match this region."}</Text>
+            {selectedRegion !== "All Regions" && <TouchableOpacity onPress={() => setSelectedRegion("All Regions")} accessibilityRole="button">
+              <Text style={s.viewAllText}>View all regions</Text>
+            </TouchableOpacity>}
+          </View>
+        )}
+        {/* ── Active expedition catalogue ─────────────────────────────────── */}
         {filteredFeatured.length > 0 && (
           <Animated.View entering={FadeInDown.delay(120).duration(400)} style={{ marginBottom: 26 }}>
             <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Text style={s.sectionHeading}>Popular Expeditions</Text>
-              <TouchableOpacity activeOpacity={0.75}>
+              <Text style={s.sectionHeading}>Expeditions</Text>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => setSelectedRegion("All Regions")} accessibilityRole="button" accessibilityLabel="View all active expeditions">
                 <Text style={s.viewAllText}>View all</Text>
               </TouchableOpacity>
             </View>
