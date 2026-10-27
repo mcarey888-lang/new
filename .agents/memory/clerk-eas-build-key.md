@@ -9,6 +9,8 @@ Every native production bundle path must inject the same reachable production Cl
 The owner stated on 2026-10-26 that the app has zero real users, only test
 accounts, and is happy with a clean authentication slate. Preserving those test
 accounts is not a requirement when choosing how to resolve the binding issue.
+The owner reconfirmed this on 2026-10-27 and prioritizes a clean, stable setup
+as the app grows over preserving disposable tester accounts.
 
 **Why:** Earlier workaround advice prioritized preserving account identities;
 the owner explicitly removed that constraint before implementation.
@@ -57,10 +59,10 @@ diagnostics and investigate `jwk-kid-mismatch` before changing route code.
 frontend while the published API reported `clerk.summitready.uk` and rejected
 Bearer-authenticated route saves. Merely checking live/test prefixes missed it.
 
-**How to apply:** Privately verify the backend key pair belongs to the intended
-existing-account instance before any replacement. Never change account
-namespaces, relax JWT verification, or assume a workspace secret update has
-changed the running deployment.
+**How to apply:** Privately verify the backend key pair belongs to the chosen
+instance before cutover. An explicitly approved tester-only authentication
+reset may change account namespaces; never do so silently, relax JWT
+verification, or assume a workspace secret update has changed the deployment.
 
 The owner supplied support correspondence confirming that the managed Users &
 Auth integration was re-injecting production credentials for the wrong instance,
@@ -73,11 +75,11 @@ persist when the integration remains their authoritative source. Workspace
 management detection has also reported external despite this managed-binding
 history; that result alone does not prove the production binding is repaired.
 
-**How to apply:** Preserve the intended instance and existing account identities.
-Do not delete the Clerk app or keep retrying managed-secret overrides. An
-explicitly configured, separately named credential path would be a proposed
-workaround requiring owner consent and verification, not a repair to Replit's
-binding or an already proven solution.
+**How to apply:** Do not keep retrying managed-secret overrides. The owner now
+permits a tester-only authentication reset, so preserving those identities must
+not force a permanent workaround. A separately named credential path remains a
+workaround requiring owner consent and verification, not a repair to the binding.
+Use one authoritative configuration for the chosen long-term setup.
 
 Replit's public Clerk Auth documentation explicitly says **Delete Clerk app**
 removes the managed tenant and releases its associated domains. It is not
@@ -88,7 +90,8 @@ overwrites without explaining tenant deletion. The public documentation resolves
 the action's general semantics, but cannot identify which mismatched tenant a
 specific project's deletion control would target.
 
-**How to apply:** Do not delete to preserve the current intended instance.
-Researching an explicit credential path must include backend API clients as well
-as JWT middleware: user/profile operations otherwise still use the wrong tenant.
-Keep this workaround distinct from a supported managed-binding repair.
+**How to apply:** If retaining the current tenant, do not delete it. For an
+owner-approved clean reset, identify which tenant the deletion targets and
+prepare the domain/credential cutover first. Permission to reset tester auth is
+not permission to erase product databases or shared catalogue/artwork. Configure
+backend API clients as well as JWT middleware against the same chosen instance.
