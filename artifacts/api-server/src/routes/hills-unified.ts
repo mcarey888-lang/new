@@ -777,7 +777,7 @@ export async function osmPeaksToHills(
         peak.lng,
         `node:${peak.id}`,
       ),
-      routeName: "Terrain-estimated summit circuit",
+      routeName: englishPlaceName(peak.name),
       routeId: routeIdentityKeyFor(
         peak.source ?? "osm_overpass",
         peak.name,

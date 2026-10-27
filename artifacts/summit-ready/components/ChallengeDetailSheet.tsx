@@ -49,6 +49,13 @@ interface SigStage {
   stageOrder: number;
   routeKey: string | null;
   routeName: string;
+  catalogueMountain?: {
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    elevationM?: number | null;
+  } | null;
   routeIdentityKey?: string | null;
   routeDataStatus?: string | null;
   dataSource?: string | null;
@@ -377,7 +384,9 @@ export function ChallengeDetailSheet({
                       </View>
                       {/* Info */}
                       <View style={{ flex: 1 }}>
-                        <Text style={s.stageName}>{stage.routeName}</Text>
+                        <Text style={s.stageName}>
+                          {stage.catalogueMountain?.name?.trim() || stage.routeName}
+                        </Text>
                         {stage.region && (
                           <Text style={s.stageMeta}>{stage.region}</Text>
                         )}

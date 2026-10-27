@@ -73,6 +73,16 @@ undocumented publication requirements.
 Use explicit walking-region metadata for filtering, retain an All Regions path,
 and do not use a static prototype bundle count as the live catalogue total.
 
+When a stage has a linked catalogue summit, show that summit's name instead of
+a generic terrain-estimate label.
+
+**Why:** The owner wants terrain-estimated expedition stages identified by their
+actual selected summits, not by a synthetic route label.
+
+**How to apply:** Prefer the exact linked `catalogueMountain.name` in stage
+presentation; retain route estimates and provenance separately. Do not infer a
+summit from the challenge title when no catalogue identity is linked.
+
 Prioritize a small, reviewed UK route collection covering the existing
 expedition stages before acquiring a large generic route catalogue.
 

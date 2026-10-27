@@ -390,6 +390,7 @@ describe("virtual expedition summit-first data engine", () => {
     expect(fetchPeaks).not.toHaveBeenCalled();
     expect(response.body.recommendedHills[0]).toMatchObject({
       name: "Canonical Terrain Summit",
+      routeName: "Canonical Terrain Summit",
       summitIdentityKey: "sde:mountain:mountain-1",
       routeDataStatus: "terrain_calculated",
     });
@@ -451,6 +452,7 @@ describe("virtual expedition summit-first data engine", () => {
     expect(response.statusCode).toBe(200);
     expect(response.body.recommendedHills[0]).toMatchObject({
       name: "Route-less Canonical",
+      routeName: "Route-less Canonical",
       summitIdentityKey: "sde:mountain:mountain-1",
       routeIdentityKey: "route:terrain:canonical:one",
       dataSource: "canonical_verified",

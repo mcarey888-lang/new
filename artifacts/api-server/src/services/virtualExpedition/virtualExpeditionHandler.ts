@@ -768,6 +768,7 @@ export function createVirtualExpeditionHandler(
             ...route,
             name: summit.name,
             summitName: summit.name,
+            routeName: summit.name,
             summitId: summit.canonicalSourceKey,
             summitIdentityKey: canonicalMountainId(summit),
             summitProminenceM: summit.prominenceM,

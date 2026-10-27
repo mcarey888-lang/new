@@ -295,6 +295,13 @@ interface SigStage {
   stageOrder: number;
   routeKey: string | null;
   routeName: string;
+  catalogueMountain?: {
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    elevationM?: number | null;
+  } | null;
   region: string | null;
   distanceKm: number | null;
   ascentM: number | null;
@@ -1778,7 +1785,9 @@ export default function ExpeditionMountainsScreen() {
                             </Text>
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={s.sigStageName}>{stage.routeName}</Text>
+                            <Text style={s.sigStageName}>
+                              {stage.catalogueMountain?.name?.trim() || stage.routeName}
+                            </Text>
                             {stage.region ? <Text style={s.sigStageMeta}>{stage.region}</Text> : null}
                             <View style={{ flexDirection: "row", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
                               {stage.distanceKm != null && <Text style={s.sigStatPill}>{stage.distanceKm}km</Text>}
