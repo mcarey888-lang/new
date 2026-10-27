@@ -87,6 +87,9 @@ existing Clerk login. Do not re-provision Replit-managed Clerk during this repai
 **Why:** The managed credential source repeatedly replaced the intended
 production credentials; the owner accepted a clean tester-only auth reset to
 remove that conflict rather than maintain a permanent override.
+The owner confirmed on 2026-10-27 that replacement production credentials
+stayed saved after removing the managed Clerk app. This confirms persistence,
+not successful authentication in the running deployment.
 
 **How to apply:** Keep development and production credentials separate. Verify
 production settings persist after saving before publishing, and align the
