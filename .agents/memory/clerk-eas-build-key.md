@@ -95,3 +95,14 @@ owner-approved clean reset, identify which tenant the deletion targets and
 prepare the domain/credential cutover first. Permission to reset tester auth is
 not permission to erase product databases or shared catalogue/artwork. Configure
 backend API clients as well as JWT middleware against the same chosen instance.
+
+The owner already has Clerk dashboard access and has shown the intended
+production instance. Do not ask them to create another account or assume a new
+application is necessary before establishing whether that existing app is usable.
+
+**Why:** Dashboard access was established in the support correspondence, but
+independent application ownership and the managed deletion target were not.
+
+**How to apply:** Reuse the known context. If additional evidence is necessary,
+ask specifically for the missing application overview, not whether they have
+a Clerk account. Dashboard access alone is not proof of independent ownership.
