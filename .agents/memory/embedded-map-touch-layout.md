@@ -69,3 +69,15 @@ own toolbar was positioned independently of the host navigation inset.
 and any unsaved draft, and independently place map-owned Save controls above
 navigation and attribution. Keep the floating Start control clear of credits
 without hiding the required map attribution.
+
+Free-hike preparation should use the newer shared Track map and its compact
+map-first presentation rather than a separate, obstructive launch screen.
+
+**Why:** The user explicitly requested the newer Track map on the free-hike
+screen; older title and ready panels made the same map engine feel like a
+different, outdated screen.
+
+**How to apply:** Keep naming and nearby-route choices available as optional
+setup, and distinguish pre-start planning from active recording. Do not extend
+free-hike presentation changes into training, canonical-route or expedition
+recording behavior.

@@ -35,6 +35,8 @@ import {
   View,
 } from "react-native";
 import { TrackMap, type TrackMapHandle } from "@/components/track/TrackMap";
+import { FreeHikeLaunchControls } from "@/components/track/FreeHikeLaunchControls";
+import { savePlannerDraft } from "@/utils/plannerDraftHandoff";
 import {
   assess as assessOffRoute, initialMemory as initialOffRouteMemory,
   type OffRouteMemory, type OffRouteReading,
@@ -440,6 +442,13 @@ function HikeTrackingScreenBody() {
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
   const [drawerOpen, setDrawerOpen]       = useState(true);
+  const [freeHikeOptionsOpen, setFreeHikeOptionsOpen] = useState(false);
+  const [freeHikeDrawing, setFreeHikeDrawing] = useState(false);
+  const [freeHikeDraft, setFreeHikeDraft] = useState(false);
+  const [freeHikeSummitOpen, setFreeHikeSummitOpen] = useState(false);
+  const freeHikeReady = status === "idle" && hillMeta.trackingMode === "freehike"
+    && !canonicalRouteIntent && !hillMeta.sessionKey && !hillMeta.expeditionId;
+  const freeHikeMapBusy = freeHikeReady && (freeHikeDrawing || freeHikeDraft || freeHikeSummitOpen);
   /* Expedition recordings get a second face: the mountain this ascent is
      climbing. Map by default — the hike is the thing happening. */
   const [panel, setPanel] = useState<"map" | "progress">("map");
@@ -892,16 +901,44 @@ function HikeTrackingScreenBody() {
   }, [sendReferenceRouteToMap, sendLocateToMap, replayTrackOnMap]);
 
   const sendRecordingInsets = useCallback(() => {
-    recordingMapRef.current?.send({ type: "bottomInset", px: Math.ceil(recordingSheetHeight) });
+    const bottom = freeHikeReady && (!freeHikeOptionsOpen || freeHikeMapBusy)
+      ? insets.bottom + 8 : recordingSheetHeight;
+    recordingMapRef.current?.send({ type: "bottomInset", px: Math.ceil(bottom) });
     // The map viewport itself starts below the measured recording header.
     recordingMapRef.current?.send({ type: "topInset", px: 0 });
-  }, [recordingSheetHeight]);
+  }, [recordingSheetHeight, freeHikeReady, freeHikeOptionsOpen, freeHikeMapBusy, insets.bottom]);
   useEffect(() => {
     if (mapReady) sendRecordingInsets();
   }, [mapReady, mapRevision, sendRecordingInsets]);
   const handleRecordingMapMessage = useCallback((message: Record<string, unknown>) => {
     if (message.type === "needInsets" || message.type === "ready") sendRecordingInsets();
-  }, [sendRecordingInsets]);
+    if (!freeHikeReady) return;
+    if (message.type === "drawingChanged") {
+      setFreeHikeDrawing(message.on === true);
+      if (message.on === true) setFreeHikeOptionsOpen(false);
+    }
+    if (message.type === "routeChanged") {
+      setFreeHikeDraft(Array.isArray(message.anchors) && message.anchors.length > 0);
+    }
+    if (message.type === "summitCardOpened") {
+      setFreeHikeSummitOpen(true);
+      setFreeHikeOptionsOpen(false);
+    }
+    if (message.type === "summitCardClosed") setFreeHikeSummitOpen(false);
+    if (message.type === "saveRequested") {
+      recordingMapRef.current?.send({ type: "saveResult", ok: false });
+      if (!userId) { Alert.alert("Sign in required", "Sign in before saving this route."); return; }
+      void savePlannerDraft(userId, message.route).then(() =>
+        router.push({ pathname: "/route-planner", params: { draftHandoff: "1" } } as never),
+      ).catch(error => Alert.alert("Route not saved", error.message));
+    }
+    if (message.type === "openMountain" && typeof message.name === "string") {
+      router.push({ pathname: "/mountain", params: {
+        name: message.name, catalogueId: String(message.catalogueId ?? ""),
+        region: String(message.region ?? ""), country: String(message.country ?? ""),
+      }} as never);
+    }
+  }, [sendRecordingInsets, freeHikeReady, userId]);
 
   const fetchNearbyRoutes = useCallback(async () => {
     if (canonicalRouteIntent) return;
@@ -1996,7 +2033,7 @@ function HikeTrackingScreenBody() {
             <View style={{ flex: 1, backgroundColor: "#08111f" }} />
           ) : (
             <TrackMap
-              recording
+              recording={!freeHikeReady || freeHikeOptionsOpen}
               mapRef={recordingMapRef}
               onReady={handleRecordingMapReady}
               onMessage={handleRecordingMapMessage}
@@ -2066,11 +2103,17 @@ function HikeTrackingScreenBody() {
       )}
 
       {/* ── Route name card — floats over map, only visible when idle ── */}
-      {isIdle && (
+      {isIdle && (!freeHikeReady || freeHikeOptionsOpen) && !freeHikeMapBusy && (
         <Animated.View
           entering={FadeInDown.delay(50).duration(400)}
           style={[s.nameOverlay, { top: insets.top + 70 }]}
         >
+          {freeHikeReady ? (
+            <TouchableOpacity onPress={() => setFreeHikeOptionsOpen(false)}
+              accessibilityRole="button" accessibilityLabel="Close hike options">
+              <Text style={[s.nameLabel, { color: T.green, paddingBottom: 10 }]}>Back to map</Text>
+            </TouchableOpacity>
+          ) : null}
           <Text style={s.nameLabel}>Activity title</Text>
           <TextInput
             style={[s.nameInput, nameError && s.nameInputError]}
@@ -2168,7 +2211,14 @@ function HikeTrackingScreenBody() {
       )}
 
       {/* ── Bottom sheet ── */}
-      <View style={[s.sheet, { paddingBottom: insets.bottom + 12 }]}
+      {freeHikeReady && !freeHikeOptionsOpen && !freeHikeMapBusy ? (
+        <FreeHikeLaunchControls bottomInset={insets.bottom} gpsReady={gpsReady}
+          offline={isOffline} disabled={!canStart || !personalRoute.ready}
+          onOptions={() => setFreeHikeOptionsOpen(true)} onStart={startTracking} />
+      ) : null}
+
+      <View style={[s.sheet, { paddingBottom: insets.bottom + 12 },
+        freeHikeReady && (!freeHikeOptionsOpen || freeHikeMapBusy) && { display: "none" }]}
         onLayout={event => setRecordingSheetHeight(Math.ceil(event.nativeEvent.layout.height))}>
 
         {/* Drag handle — tapping toggles drawer when tracking */}

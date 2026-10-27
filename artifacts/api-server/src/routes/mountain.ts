@@ -308,6 +308,7 @@ export function createMountainLookupHandler(
       try {
         const exactCanonical = await dependencies.canonicalLookup({
           name: candidate.name,
+          catalogueId: candidate.id,
           ...(candidate.country ? { country: candidate.country } : {}),
           ...(candidate.region ? { region: candidate.region } : {}),
         });

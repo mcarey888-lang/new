@@ -17,6 +17,48 @@ const code = (src: string) =>
 const TRACK = read("app/hike-tracking.tsx");
 const TRACK_CODE = code(TRACK);
 
+describe("free hike uses the map-first Track ready screen", () => {
+  it("limits the new ready layout to idle free hikes, never sessions or stages", () => {
+    expect(TRACK_CODE).toContain('const freeHikeReady = status === "idle" && hillMeta.trackingMode === "freehike"');
+    expect(TRACK_CODE).toContain("&& !canonicalRouteIntent && !hillMeta.sessionKey && !hillMeta.expeditionId");
+  });
+
+  it("uses full shared-map controls before recording, walking controls afterwards", () => {
+    expect(TRACK_CODE).toContain("recording={!freeHikeReady || freeHikeOptionsOpen}");
+    expect(TRACK_CODE).toContain('from "@/components/track/TrackMap"');
+  });
+
+  it("puts the old title panel behind the optional hike-options chip", () => {
+    expect(TRACK_CODE).toContain("isIdle && (!freeHikeReady || freeHikeOptionsOpen) && !freeHikeMapBusy");
+    expect(TRACK_CODE).toContain("onOptions={() => setFreeHikeOptionsOpen(true)} onStart={startTracking}");
+    expect(TRACK_CODE).toContain('accessibilityLabel="Close hike options"');
+  });
+
+  it("keeps the floating Start clear while drawing, viewing a summit or keeping a draft", () => {
+    expect(TRACK_CODE).toContain("freeHikeDrawing || freeHikeDraft || freeHikeSummitOpen");
+    expect(TRACK_CODE).toContain("freeHikeReady && !freeHikeOptionsOpen && !freeHikeMapBusy");
+    expect(TRACK_CODE).toContain('message.type === "drawingChanged"');
+    expect(TRACK_CODE).toContain('message.type === "routeChanged"');
+  });
+
+  it("uses the owner-scoped planner handoff, rather than pretending a draft is saved", () => {
+    expect(TRACK_CODE).toContain('send({ type: "saveResult", ok: false })');
+    expect(TRACK_CODE).toContain("savePlannerDraft(userId, message.route).then");
+    expect(TRACK_CODE).toContain('pathname: "/route-planner", params: { draftHandoff: "1" }');
+    expect(TRACK_CODE).toContain('Alert.alert("Route not saved", error.message)');
+  });
+
+  it("reserves credits space in compact mode and the measured sheet space when expanded", () => {
+    expect(TRACK_CODE).toContain("? insets.bottom + 8 : recordingSheetHeight");
+    const launch = read("components/track/FreeHikeLaunchControls.tsx");
+    expect(launch).toContain("bottom: bottomInset + 48");
+    expect(launch).toContain('accessibilityLabel="Hike options"');
+    expect(launch).toContain('testID="start-hike-tracking"');
+    expect(launch).toContain("disabled={disabled}");
+    expect(launch).not.toContain("disabled={!gpsReady");
+  });
+});
+
 describe("START never waits", () => {
   it("commits the activity and its checkpoint before permissions, GPS or any server call", () => {
     const impl = TRACK_CODE.slice(

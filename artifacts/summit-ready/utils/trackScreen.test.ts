@@ -235,7 +235,8 @@ describe("the recording screen", () => {
   it("answers late inset requests and measures the whole recording sheet", () => {
     expect(REC_CODE).toContain('message.type === "needInsets" || message.type === "ready"');
     expect(REC_CODE).toContain("setRecordingSheetHeight(Math.ceil(event.nativeEvent.layout.height))");
-    expect(REC_CODE).toContain('type: "bottomInset", px: Math.ceil(recordingSheetHeight)');
+    expect(REC_CODE).toContain('type: "bottomInset", px: Math.ceil(bottom)');
+    expect(REC_CODE).toContain("? insets.bottom + 8 : recordingSheetHeight");
   });
 
   it("replays live GPS and reference overlays after map style changes", () => {

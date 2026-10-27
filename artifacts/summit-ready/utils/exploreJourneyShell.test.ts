@@ -38,7 +38,13 @@ describe("Explore", () => {
   it("does not mistake a curated display region for an exact verified region", () => {
     const open = body.slice(body.indexOf("function openMountain"), body.indexOf("function imageUri"));
     expect(open).toContain("name: mountainSubject(trail.name)");
+    expect(open).toContain("catalogueId: trail.catalogueMountainId");
     expect(open).not.toContain("trail.region");
+  });
+
+  it("binds Tryfan North Ridge to the reviewed summit, not a same-name lookup", () => {
+    const trails = readFileSync(join(ROOT, "constants/trailData.ts"), "utf8");
+    expect(trails).toMatch(/name: "Tryfan North Ridge",\s+catalogueMountainId: "76187fe7-2d70-452f-b89e-73526af374a4"/);
   });
 
   it("no longer carries the superseded presentation", () => {

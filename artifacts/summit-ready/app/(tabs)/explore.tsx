@@ -64,6 +64,7 @@ function openMountain(trail: Trail) {
     pathname: "/mountain" as any,
     params: {
       name: mountainSubject(trail.name),
+      ...(trail.catalogueMountainId ? { catalogueId: trail.catalogueMountainId } : {}),
       // Curated display regions are broad labels, not verified catalogue
       // regions. Exact region filtering can hide an otherwise unique match.
     },

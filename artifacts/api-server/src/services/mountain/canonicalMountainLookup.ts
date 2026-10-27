@@ -5,6 +5,8 @@ export const CANONICAL_LOOKUP_READ_BOUNDARY = "executeEngineReadOnlyQuery" as co
 
 export interface CanonicalLookupInput {
   name: string;
+  /** Restricts already-trusted name candidates; never bypasses verification. */
+  catalogueId?: string;
   country?: string;
   region?: string;
 }
@@ -388,6 +390,7 @@ function contextMatches(
   candidate: NameIndexRow,
   input: CanonicalLookupInput,
 ): boolean {
+  if (input.catalogueId && candidate.id !== input.catalogueId) return false;
   if (
     input.country &&
     (!candidate.country ||

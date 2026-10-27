@@ -420,6 +420,25 @@ describe("lookupVerifiedCanonicalMountain", () => {
     expect(query).toHaveBeenCalledTimes(3);
   });
 
+  it("uses an explicit catalogue ID to disambiguate already-trusted same-name summits", async () => {
+    const other = { ...candidate, id: "22222222-2222-2222-2222-222222222222" };
+    const query = queryMockWith([candidate, other], [], [candidate], []);
+    const result = await lookupVerifiedCanonicalMountain({
+      name: candidate.name, catalogueId: candidate.id,
+    }, query);
+    expect(result).toMatchObject({ kind: "match", mountain: { id: candidate.id } });
+    expect(query.mock.calls[2][1]).toEqual([[candidate.id]]);
+  });
+
+  it("does not let an unrelated ID authorize a trusted name candidate", async () => {
+    const query = queryMockWith([candidate], []);
+    const result = await lookupVerifiedCanonicalMountain({
+      name: candidate.name, catalogueId: "22222222-2222-2222-2222-222222222222",
+    }, query);
+    expect(result).toEqual({ kind: "none" });
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
   it("returns every verified exact match as ambiguous without guessing", async () => {
     const secondCandidate = {
       ...candidate,
@@ -533,6 +552,26 @@ describe("lookupVerifiedCanonicalSummitsInArea", () => {
 });
 
 describe("POST /api/mountain-lookup handler", () => {
+  it("retains exact catalogue identity when confirming a mountain with duplicate names", async () => {
+    const mountain = {
+      ...verifiedMountain, id: "76187fe7-2d70-452f-b89e-73526af374a4",
+      name: "Tryfan", country: "Wales", region: "30B: Snowdonia",
+    };
+    const deps = dependencies({ kind: "match", mountain });
+    deps.catalogueById = vi.fn().mockResolvedValue({ ...mountain, status: "imported" });
+    const result = await invoke(createMountainLookupHandler(deps), {
+      name: "Tryfan", catalogueId: mountain.id,
+    });
+    expect(result.status).toBe(200);
+    expect(result.payload.mountainName).toBe("Tryfan");
+    expect(result.payload.source).not.toBe("catalogue");
+    expect(deps.canonicalLookup).toHaveBeenCalledWith({
+      name: "Tryfan", catalogueId: mountain.id, country: "Wales", region: "30B: Snowdonia",
+    });
+    expect(deps.aiLookup).not.toHaveBeenCalled();
+    expect(deps.cacheLookup).not.toHaveBeenCalled();
+  });
+
   it("resolves reviewed Cat Bells display labels to trusted catalogue coordinates without AI", async () => {
     const id = "696871ce-7baa-4ea2-8cf3-8c55869df893";
     const mountain = {

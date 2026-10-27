@@ -17,6 +17,8 @@ export type TrailRegion =
 export interface Trail {
   id: string;
   name: string;
+  /** Reviewed summit identity, separate from this curated route's own ID. */
+  catalogueMountainId?: string;
   location: string;
   region?: TrailRegion;
   distance: number;
@@ -325,6 +327,7 @@ export const CURATED_HILLS: Trail[] = [
   {
     id: "h016",
     name: "Tryfan North Ridge",
+    catalogueMountainId: "76187fe7-2d70-452f-b89e-73526af374a4",
     location: "Ogwen Valley, Snowdonia, Wales",
     region: "Snowdonia",
     distance: 6.2,
