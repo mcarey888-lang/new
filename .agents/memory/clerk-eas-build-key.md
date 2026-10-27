@@ -81,6 +81,17 @@ not force a permanent workaround. A separately named credential path remains a
 workaround requiring owner consent and verification, not a repair to the binding.
 Use one authoritative configuration for the chosen long-term setup.
 
+The owner chose independently managed Clerk as the long-term setup, using their
+existing Clerk login. Do not re-provision Replit-managed Clerk during this repair.
+
+**Why:** The managed credential source repeatedly replaced the intended
+production credentials; the owner accepted a clean tester-only auth reset to
+remove that conflict rather than maintain a permanent override.
+
+**How to apply:** Keep development and production credentials separate. Verify
+production settings persist after saving before publishing, and align the
+backend, EAS profiles and hosted native bundles with the chosen production app.
+
 Replit's public Clerk Auth documentation explicitly says **Delete Clerk app**
 removes the managed tenant and releases its associated domains. It is not
 documented as a non-destructive disconnect.
