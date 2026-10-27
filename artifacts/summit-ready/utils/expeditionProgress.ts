@@ -1,5 +1,6 @@
 import type { NearbyHill, SavedExpedition } from "@/context/AppContext";
 import { isRouteCompleted, routeCompletionKey } from "./stateReliability";
+import { expeditionStageName } from "./signatureExpedition";
 
 export type ExpeditionPresentationAvailability = "ready" | "offline" | "degraded" | "unavailable";
 export type ExpeditionStagePresentationStatus = "completed" | "current" | "locked" | "upcoming";
@@ -100,7 +101,7 @@ export function selectExpeditionPresentation(
       index: stages.length,
       routeIdentityKey: completionKey,
       summitIdentityKey: hill.summitIdentityKey ?? hill.summitId ?? completionKey,
-      name: hill.name,
+      name: expeditionStageName(hill),
       simulatedElevationGainM: simulatedGain,
       status: "upcoming",
     });

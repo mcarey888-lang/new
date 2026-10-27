@@ -1,5 +1,7 @@
 import type { NearbyHill } from "@/context/AppContext";
 
+const TERRAIN_ESTIMATED_SUMMIT_LABEL = "Terrain-estimated summit circuit";
+
 export interface SignatureStageMetrics {
   routeKey?: string | null;
   routeName: string;
@@ -11,6 +13,22 @@ export interface SignatureStageMetrics {
   catalogueMountain?: {
     id: string; name: string; latitude: number; longitude: number; elevationM?: number | null;
   } | null;
+}
+
+export function expeditionStageName(hill: Pick<NearbyHill, "name" | "summitName">): string {
+  return hill.summitName?.trim() || hill.name;
+}
+
+export function expeditionStageRouteName(
+  hill: Pick<NearbyHill, "name" | "summitName" | "routeName">,
+): string | null {
+  const routeName = hill.routeName?.trim();
+  if (
+    !routeName
+    || routeName === TERRAIN_ESTIMATED_SUMMIT_LABEL
+    || routeName === expeditionStageName(hill)
+  ) return null;
+  return routeName;
 }
 
 function fallbackRouteKey(routeName: string): string {
@@ -26,10 +44,17 @@ export function signatureStageToNearbyHill(stage: SignatureStageMetrics): Nearby
   const stableKey = `signature-route:${stage.routeKey?.trim() || fallbackRouteKey(stage.routeName)}`;
   const distanceKm = Math.max(0, stage.distanceKm ?? 0);
   const ascentM = Math.max(0, stage.ascentM ?? 0);
+  const summitName = stage.catalogueMountain?.name?.trim();
+  const name = summitName || stage.routeName;
+  const routeName = expeditionStageRouteName({
+    name,
+    summitName,
+    routeName: stage.routeName,
+  }) ?? undefined;
 
   return {
-    name: stage.routeName,
-    routeName: stage.routeName,
+    name,
+    routeName,
     routeIdentityKey: stableKey,
     routeId: stableKey,
     summitId: stage.catalogueMountain?.id,

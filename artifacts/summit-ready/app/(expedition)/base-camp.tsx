@@ -33,6 +33,8 @@ import { englishPlaceName } from "@/utils/placeNames";
 import { isRouteCompleted } from "@/utils/stateReliability";
 import { mergeActivityKinds } from "@/utils/activityReliability";
 import {
+  expeditionStageName,
+  expeditionStageRouteName,
   signatureStageToNearbyHill,
   signatureChallengeTarget,
 } from "@/utils/signatureExpedition";
@@ -619,7 +621,7 @@ export default function BaseCampScreen() {
   const completedSummitNames = [...new Set(
     suggestedHills
       .filter(hill => isRouteCompleted(completedRoutes, hill))
-      .map(hill => hill.name.trim())
+      .map(hill => expeditionStageName(hill).trim())
       .filter(Boolean),
   )];
   const completedStages = stages.filter(s => isRouteCompleted(completedRoutes, s)).length;
@@ -1225,19 +1227,19 @@ export default function BaseCampScreen() {
               eyebrow={presentation.progress.totalStageCount > 0
                 ? `NEXT STAGE · ${String(presentation.progress.completedStageCount + 1).padStart(2, "0")}`
                 : "NEXT STAGE"}
-              name={englishPlaceName(nextHill.name)}
-              routeName={nextHill.routeName ?? null}
+              name={englishPlaceName(expeditionStageName(nextHill))}
+              routeName={expeditionStageRouteName(nextHill)}
               gainM={Number.isFinite(nextHill.elevation) ? nextHill.elevation : null}
               imageUri={appendApprovedImageRevision(
-                `${API_BASE}/mountain-image?name=${encodeURIComponent(englishPlaceName(nextHill.name))}&width=240&height=240${nextHill.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(nextHill.routeIdentityKey)}` : ""}${nextHill.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(nextHill.summitIdentityKey)}` : ""}${nextHill.lat != null ? `&lat=${nextHill.lat}` : ""}${nextHill.lng != null ? `&lng=${nextHill.lng}` : ""}`,
-                englishPlaceName(nextHill.name),
+                `${API_BASE}/mountain-image?name=${encodeURIComponent(englishPlaceName(expeditionStageName(nextHill)))}&width=240&height=240${nextHill.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(nextHill.routeIdentityKey)}` : ""}${nextHill.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(nextHill.summitIdentityKey)}` : ""}${nextHill.lat != null ? `&lat=${nextHill.lat}` : ""}${nextHill.lng != null ? `&lng=${nextHill.lng}` : ""}`,
+                englishPlaceName(expeditionStageName(nextHill)),
               )}
               complete={false}
               primaryLabel="Start next stage"
               onDetails={() => router.push({
                 pathname: "/hill-detail",
                 params: {
-                  name: nextHill.name,
+                  name: expeditionStageName(nextHill),
                   location: activeExpedition?.location ?? summitGoal.location ?? "",
                   lat: nextHill.lat?.toString() ?? "",
                   lng: nextHill.lng?.toString() ?? "",
@@ -1260,7 +1262,7 @@ export default function BaseCampScreen() {
                 router.push({
                   pathname: "/hike-tracking" as any,
                   params: {
-                    hillName: nextHill.name,
+                    hillName: expeditionStageName(nextHill),
                     routeIdentityKey: nextHill.routeIdentityKey ?? "",
                     summitIdentityKey: nextHill.summitIdentityKey ?? "",
                     objectiveType: nextHill.objectiveType ?? "",
@@ -1323,7 +1325,10 @@ export default function BaseCampScreen() {
               onSelect={stage => {
                 const hill = findExpeditionStage(activeExpedition?.virtualHills ?? [], stage.routeIdentityKey);
                 if (!hill || !activeExpeditionId) return;
-                const destination = hillDetailNavigation(hill, activeExpedition?.location ?? "");
+                const destination = hillDetailNavigation(
+                  { ...hill, name: stage.name },
+                  activeExpedition?.location ?? "",
+                );
                 router.push({
                   ...destination,
                   params: {

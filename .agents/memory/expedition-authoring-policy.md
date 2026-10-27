@@ -80,8 +80,9 @@ a generic terrain-estimate label.
 actual selected summits, not by a synthetic route label.
 
 **How to apply:** Prefer the exact linked `catalogueMountain.name` in stage
-presentation; retain route estimates and provenance separately. Do not infer a
-summit from the challenge title when no catalogue identity is linked.
+presentation and saved `summitName` in already-started local expeditions. Retain
+route estimates, stable completion keys and provenance; do not infer a summit
+from the challenge title when no catalogue identity is linked.
 
 Prioritize a small, reviewed UK route collection covering the existing
 expedition stages before acquiring a large generic route catalogue.

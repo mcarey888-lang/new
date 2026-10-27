@@ -43,6 +43,19 @@ describe("selectExpeditionPresentation", () => {
     expect(state.nextStage?.routeIdentityKey).toBe("route:second");
   });
 
+  it("shows linked summit names for stages saved with a generic legacy title", () => {
+    const state = selectExpeditionPresentation(expedition({
+      virtualHills: [{
+        ...hill("Terrain-estimated summit circuit", 903, "route:scafell"),
+        summitName: "Scafell Pike",
+        routeName: "Terrain-estimated summit circuit",
+      }],
+    }));
+
+    expect(state.stages[0].name).toBe("Scafell Pike");
+    expect(state.stages[0].routeIdentityKey).toBe("route:scafell");
+  });
+
   it("accepts legacy name completion and stable manual summit identity", () => {
     const legacy = selectExpeditionPresentation(expedition({ completedRoutes: ["First"] }));
     expect(legacy.stages[0].status).toBe("completed");

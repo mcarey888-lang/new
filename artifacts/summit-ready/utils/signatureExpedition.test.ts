@@ -13,10 +13,26 @@ describe("signature expedition stage mapping", () => {
       catalogueMountain: { id: "summit-id", name: "Helvellyn", latitude: 54.527,
         longitude: -3.0175, elevationM: 949.8 },
     });
-    expect(hill).toMatchObject({ summitIdentityKey: "sde:mountain:summit-id", summitName: "Helvellyn",
+    expect(hill).toMatchObject({ name: "Helvellyn", routeName: "Helvellyn via Striding Edge",
+      summitIdentityKey: "sde:mountain:summit-id", summitName: "Helvellyn",
       lat: 54.527, lng: -3.0175, elevation: 950, routeDistance: 13,
       summitElevationASL: 949.8, confidence: "curated", dataSource: "signature_challenge_db" });
     expect(hill.routeIdentityKey).toBe("signature-route:example-route");
+  });
+  it("uses the linked summit name for a terrain-estimated stage and hides the synthetic route label", () => {
+    const hill = signatureStageToNearbyHill({
+      routeKey: "scafell-pike",
+      routeName: "Terrain-estimated summit circuit",
+      distanceKm: 6.6,
+      ascentM: 903,
+      catalogueMountain: { id: "scafell-id", name: "Scafell Pike", latitude: 54.454,
+        longitude: -3.212, elevationM: 978 },
+    });
+
+    expect(hill.name).toBe("Scafell Pike");
+    expect(hill.summitName).toBe("Scafell Pike");
+    expect(hill.routeName).toBeUndefined();
+    expect(hill.routeIdentityKey).toBe("signature-route:scafell-pike");
   });
   it("preserves database route metrics in the fields Base Camp reads", () => {
     const hill = signatureStageToNearbyHill({
