@@ -39,3 +39,18 @@ simulated adventures; Pro prepares users for a real mountain.
   navigation, offline maps or device integrations.
 - Development changes do not authorise publishing, submitting builds, changing
   live billing, destructive production migrations or resetting user data.
+
+## Starter verification scope
+
+When selecting the free starter, inspect existing curated content and source
+approval evidence before proposing replacement geography. Missing verification
+metadata does not itself mean the underlying content is wrong.
+
+**Why:** On 2026-10-27 the owner explicitly asked to preserve existing geographic
+data, distinguish accuracy gaps from progression and metadata gaps, and complete
+only checks supported by real evidence.
+
+**How to apply:** Shortlist three existing candidates with their exact remaining
+gaps. Recommend the smallest evidenced follow-up, not a blanket content rewrite.
+Do not silently reactivate the wider paused route-database acquisition initiative
+or approve a full itinerary based only on a source fragment or an approved image.

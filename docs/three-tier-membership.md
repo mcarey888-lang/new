@@ -1,5 +1,13 @@
 # SummitReady three-tier membership — development implementation
 
+**Follow-up audit, 27 October 2026:** see
+[three-tier-completion-audit.md](./three-tier-completion-audit.md) for the three
+specific starter candidates and checked source records, exact existing/proposed
+store identifiers and package assignments, the completed mobile cache bound,
+152 passing automated checks, and remaining native/store/content blockers.
+That audit supersedes the earlier verification counts and incomplete checklist
+below. No live billing, route content or release changes were made.
+
 ## Status and release boundaries
 
 This is a development change, not a release approval. No live price, product,
@@ -110,6 +118,9 @@ previously verified access only until its known end, with a bounded cache lifeti
 Another account cannot inherit that cached access.
 
 The mobile SDK's known entitlement expiry is rechecked while the app is open.
+Cached CustomerInfo also has a 24-hour maximum measured from its original
+requestDate, including entitlements without an explicit end. Reading the SDK
+cache or retrying a failed verification never renews that deadline.
 New paid actions require the relevant local permission and server preflight
 when online. Existing verified local access supports an offline action without
 turning a temporary outage into a destructive downgrade. The protected API

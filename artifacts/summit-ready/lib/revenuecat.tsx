@@ -7,7 +7,7 @@ import { logPurchase, logTrialStarted, logSubscriptionStarted } from "@/lib/anal
 import { onceMembershipAnalytics } from "@/lib/membershipAnalytics";
 import { logAnalyticsEvent } from "@/lib/analytics";
 import { loadPurchases } from "@/lib/revenuecatSdk";
-import { MEMBERSHIP, accessFromEntitlements, activeEntitlementIds, canUseExpedition, tierForPackage, type MembershipTier } from "@workspace/membership";
+import { MEMBERSHIP, accessFromEntitlements, cachedEntitlementIds, canUseExpedition, tierForPackage, type MembershipTier } from "@workspace/membership";
 
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
@@ -141,10 +141,14 @@ function useSubscriptionContext() {
     queryFn: async () => {
       const Purchases = await getPurchasesForUser(userId);
       const info = await Purchases.getCustomerInfo();
+      if (identifiedRevenueCatUserId !== userId) throw new Error("Subscription account changed; retry verification.");
       return info;
     },
     enabled: sdkReady && !!userId,
     staleTime: 60 * 1000,
+    // Retry while open, without resetting CustomerInfo.requestDate on SDK cache
+    // hits. React Query retains the last evidence when a network request fails.
+    refetchInterval: 5 * 60_000,
   });
 
   // Keep subscription state in sync with RevenueCat SDK events.
@@ -155,6 +159,7 @@ function useSubscriptionContext() {
     let active = true;
     let purchases: Awaited<ReturnType<typeof loadPurchases>> | null = null;
     const handler = (info: import("react-native-purchases").CustomerInfo) => {
+      if (!active || identifiedRevenueCatUserId !== userId) return;
       queryClient.setQueryData(customerInfoKey, info);
     };
     void getPurchasesForUser(userId)
@@ -202,7 +207,7 @@ function useSubscriptionContext() {
   const purchaseMutation = useMutation({
     mutationFn: async (packageToPurchase: any) => {
       const Purchases = await getPurchasesForUser(userId);
-      const before = accessFromEntitlements(activeEntitlementIds(customerInfoQuery.data));
+      const before = accessFromEntitlements(cachedEntitlementIds(customerInfoQuery.data));
       const target = tierForPackage(packageToPurchase?.identifier ?? "",
         packageToPurchase?.presentedOfferingContext?.offeringIdentifier ?? packageToPurchase?.offeringIdentifier);
       const upgrading = before.tier === "expeditions" && target === "pro";
@@ -218,7 +223,7 @@ function useSubscriptionContext() {
       return { customerInfo, packageToPurchase };
     },
     onSuccess: ({ customerInfo, packageToPurchase }) => {
-      const before = accessFromEntitlements(activeEntitlementIds(customerInfoQuery.data));
+      const before = accessFromEntitlements(cachedEntitlementIds(customerInfoQuery.data));
       queryClient.setQueryData(customerInfoKey, customerInfo);
       void queryClient.invalidateQueries({ queryKey: ["revenuecat", "intro-eligibility", revenueCatUserKey] });
       const canonicalProduct = (value: string) => value.split(":")[0];
@@ -226,7 +231,7 @@ function useSubscriptionContext() {
         canonicalProduct(e.productIdentifier) === canonicalProduct(packageToPurchase?.product?.identifier ?? ""));
       if (entitlement) {
         const plan = entitlement.productIdentifier;
-        const after = accessFromEntitlements(activeEntitlementIds(customerInfo));
+        const after = accessFromEntitlements(cachedEntitlementIds(customerInfo));
         void onceMembershipAnalytics(userId, "verified_purchase", `${plan}_${entitlement.latestPurchaseDate}`, async () => {
           if (entitlement.periodType === "TRIAL") await logTrialStarted({ plan });
           else {
@@ -259,7 +264,7 @@ function useSubscriptionContext() {
     },
   });
 
-  const access = accessFromEntitlements(activeEntitlementIds(customerInfoQuery.data, accessClock));
+  const access = accessFromEntitlements(cachedEntitlementIds(customerInfoQuery.data, accessClock));
   // Legacy callers mean training access, not "any paid tier".
   const isSubscribed = access.training;
   const packagesForTier = (tier: Exclude<MembershipTier, "explore">) => {

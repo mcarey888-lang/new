@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { accessFromEntitlements, activeEntitlementIds, MEMBERSHIP } from "@workspace/membership";
+import { accessFromEntitlements, cachedEntitlementIds, MEMBERSHIP } from "@workspace/membership";
 import { useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
 import { logAnalyticsEvent, useScreenView } from "@/lib/analytics";
@@ -84,7 +84,7 @@ export default function SubscriptionScreen() {
     setRestoreMsg(null);
     try {
       const info = await restore();
-      const a = accessFromEntitlements(activeEntitlementIds(info as Parameters<typeof activeEntitlementIds>[0]));
+      const a = accessFromEntitlements(cachedEntitlementIds(info as Parameters<typeof cachedEntitlementIds>[0]));
       void logAnalyticsEvent("subscription_restore", { tier: a.tier });
       if (a.tier !== "explore") {
         setRestoreMsg({ type: "success", text: `Restored: ${TIER_LABEL[a.tier]}.` });

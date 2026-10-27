@@ -9,6 +9,8 @@ export const MEMBERSHIP = {
   // Enable only after native store grouping/replacement is configured and verified.
   nativeUpgradesVerified: false,
   coaching: { proposedMonthlyRequests: 30, status: "proposed" as const },
+  // Measured from the store response timestamp, never from a cache read/retry.
+  maxCachedAccessMs: 24 * 60 * 60_000,
 } as const;
 
 export interface MembershipAccess {
@@ -38,6 +40,25 @@ export function activeEntitlementIds(
   return Object.entries(info?.entitlements?.active ?? {}).filter(([, e]) =>
     e.isActive !== false && (!e.expirationDate || new Date(e.expirationDate).getTime() > now)
   ).map(([id]) => id);
+}
+
+type CachedCustomerInfo = Parameters<typeof activeEntitlementIds>[0] & {
+  requestDate?: string;
+};
+
+/**
+ * SDK CustomerInfo may itself be cached. A successful SDK cache read must not
+ * restart its offline allowance. Missing/invalid evidence never grants access.
+ * Known entitlement expiry can shorten, but never extend, this 24-hour limit.
+ */
+export function cachedEntitlementIds(
+  info: CachedCustomerInfo | null | undefined,
+  now = Date.now(),
+): string[] {
+  const requestedAt = Date.parse(info?.requestDate ?? "");
+  if (!Number.isFinite(requestedAt) || requestedAt > now + 5 * 60_000 ||
+      now >= requestedAt + MEMBERSHIP.maxCachedAccessMs) return [];
+  return activeEntitlementIds(info, now);
 }
 
 export function tierForPackage(

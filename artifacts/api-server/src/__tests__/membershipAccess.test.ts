@@ -30,7 +30,7 @@ beforeEach(() => {
     return Response.json({ items: [{ id: "ent_pro", lookup_key: "premium" }], next_page: null });
   }));
 });
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("server-verified membership", () => {
   it("uses connector credentials privately and maps legacy entitlement to full Pro", async () => {
@@ -73,5 +73,31 @@ describe("server-verified membership", () => {
   it("retained access ends at the verified expiry", async () => {
     const { usableCachedAccess } = await import("../services/membershipAccess");
     expect(usableCachedAccess({ access: { tier: "pro", training: true, fullExpeditions: true, legacy: false }, validUntil: 100, refreshAt: 1 }, 101)).toBe(null);
+  });
+  it("does not extend the 24-hour cache deadline when verification retries fail", async () => {
+    const start = Date.now();
+    vi.useFakeTimers();
+    vi.setSystemTime(start);
+    expiry = start + 3 * 24 * 3_600_000;
+    const { verifiedMembership } = await import("../services/membershipAccess");
+    await verifiedMembership("owner");
+    fail = true;
+    vi.setSystemTime(start + 23 * 3_600_000);
+    expect((await verifiedMembership("owner", true)).training).toBe(true);
+    vi.setSystemTime(start + 24 * 3_600_000);
+    await expect(verifiedMembership("owner", true)).rejects.toThrow();
+  });
+  it("stops offline access at an earlier known store expiry", async () => {
+    const start = Date.now();
+    vi.useFakeTimers();
+    vi.setSystemTime(start);
+    expiry = start + 60_000;
+    const { verifiedMembership } = await import("../services/membershipAccess");
+    await verifiedMembership("owner");
+    fail = true;
+    vi.setSystemTime(start + 59_999);
+    expect((await verifiedMembership("owner", true)).training).toBe(true);
+    vi.setSystemTime(start + 60_000);
+    await expect(verifiedMembership("owner", true)).rejects.toThrow();
   });
 });

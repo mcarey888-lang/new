@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { accessFromEntitlements, activeEntitlementIds } from "@workspace/membership";
+import { accessFromEntitlements, cachedEntitlementIds } from "@workspace/membership";
 import { useSubscription } from "@/lib/revenuecat";
 import { MEMBERSHIP } from "@workspace/membership";
 import { T } from "@/constants/theme";
@@ -187,7 +187,7 @@ export default function PaywallScreen() {
   }
 
   function verifies(info: unknown) {
-    const a = accessFromEntitlements(activeEntitlementIds(info as Parameters<typeof activeEntitlementIds>[0]));
+    const a = accessFromEntitlements(cachedEntitlementIds(info as Parameters<typeof cachedEntitlementIds>[0]));
     return tier === "pro" ? a.training : a.fullExpeditions;
   }
 
