@@ -43,7 +43,7 @@ export type PreviewEntry = {
 export type PreviewResult = { valid: boolean; entries: PreviewEntry[]; errors: string[] };
 
 export function useExpeditionList() {
-  return useQuery({ queryKey: ["expeditions"], queryFn: () => call<{ expeditions: ExpeditionSummary[] }>("") });
+  return useQuery({ queryKey: ["expeditions"], queryFn: () => call<{ expeditions: ExpeditionSummary[] }>(""), retry: false });
 }
 export function useExpedition(id: string | null) {
   return useQuery({

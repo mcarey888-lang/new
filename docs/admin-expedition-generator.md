@@ -18,6 +18,25 @@ Open **Artwork Admin → Expeditions → Generate expedition**.
 
 ## Trust and persistence
 
+### Manual mountain selection
+
+Choose **Choose my mountains**, enter the target and local walking area, and
+use **Find mountains**. The same safety-filtered pool as the app is returned
+with no preselected routes. Choose one route per summit; choosing an alternative
+route replaces that summit's previous route. Selection and removal update the
+ascent, distance, remaining amounts and symmetric match percentages immediately
+using the app's shared calculation, without another provider request.
+
+Use **Build draft** when the selection is ready, then review and save through
+the existing editor. Every selected route needs a known distance. Routes with
+missing identity cannot be selected. Changes to search inputs clear the pool
+and selection to prevent stale choices being submitted. The draft has at most
+30 stages; walking allowance remains independent of this limit.
+
+**Use key** now verifies by refetching the protected expedition list. A saved
+browser key is not proof of authentication. The key is never returned by the
+server, logged or added to query keys.
+
 - Generation uses the same target-resolution, local discovery and matching
   implementation as the app. It is not a second route-generation engine.
 - Target fallback profiling can use AI. Local route selection remains the app's

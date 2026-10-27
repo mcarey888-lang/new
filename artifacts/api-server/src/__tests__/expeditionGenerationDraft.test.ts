@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { expeditionGenerationDraft } from "../services/expeditionGenerationDraft";
 import { expeditionInput } from "../services/expeditionAuthoring";
+import { GenerateAdminExpeditionResponse } from "@workspace/api-zod";
 
 const mountainId = "cea28ba5-4a81-4762-add7-f36f85b8d071";
 function result() {
@@ -29,6 +30,8 @@ describe("admin draft adapter", () => {
     const { draft, warnings } = expeditionGenerationDraft(result());
     expect(draft).toMatchObject({ status: "draft", reviewed: false, updatedAt: "", recommendedDays: 2 });
     expect(draft.stages[0]).toMatchObject({ routeName: "Fairfield Horseshoe", distanceKm: 18, ascentM: 1100, mountainId });
+    expect(draft.stages[0].catalogueMountain).toBeNull();
+    expect(GenerateAdminExpeditionResponse.safeParse({ draft, warnings }).success).toBe(true);
     expect(draft.stages[1]).toMatchObject({ routeName: "Corridor Route", distanceKm: 15, ascentM: 1000 });
     expect(draft.stages[1]).not.toHaveProperty("mountainId");
     expect(warnings.join(" ")).toContain("estimates");

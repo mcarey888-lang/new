@@ -19,6 +19,16 @@ matcher. Results are editable drafts; saving, owner review and artwork approval
 remain deliberate separate actions. This does not resume paid route acquisition
 or turn generated estimates into verified route facts.
 
+Admin authoring must also support choosing the local mountains manually and
+seeing how closely the selection matches the target, not only automatic creation.
+
+**Why:** The owner specifically asked for the same mountain-choice and live
+target-match workflow they use in the mobile app.
+
+**How to apply:** Preserve the app's identity, one-route-per-summit and match-score
+semantics. Compare route ascent and distance, not summit altitude; selection
+changes should not trigger paid generation automatically.
+
 **Why:** The older curated library was imported separately from the summit
 catalogue; the owner requested reusable database-backed additions and bulk imports.
 

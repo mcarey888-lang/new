@@ -260,6 +260,10 @@ export const generateAdminExpeditionBodyRadiusMax = 200;
 
 export const generateAdminExpeditionBodyDaysOverrideMax = 9007199254740991;
 
+export const generateAdminExpeditionBodySelectedRouteIdentityKeysItemMax = 240;
+
+export const generateAdminExpeditionBodySelectedRouteIdentityKeysMax = 30;
+
 export const GenerateAdminExpeditionBody = zod.object({
   targetMountain: zod
     .string()
@@ -302,38 +306,88 @@ export const GenerateAdminExpeditionBody = zod.object({
       "Available walking days or stages, not consecutive calendar days.",
     ),
   mode: zod.enum(["automatic", "manual", "manual_builder"]).optional(),
+  selectedRouteIdentityKeys: zod
+    .array(
+      zod
+        .string()
+        .min(1)
+        .max(generateAdminExpeditionBodySelectedRouteIdentityKeysItemMax),
+    )
+    .max(generateAdminExpeditionBodySelectedRouteIdentityKeysMax)
+    .optional(),
   resolveOnly: zod.boolean().optional(),
 });
 
 export const GenerateAdminExpeditionResponse = zod.object({
-  draft: zod.object({
-    challengeId: zod.string(),
-    challengeName: zod.string(),
-    targetMountainName: zod.string(),
-    status: zod.enum(["draft", "active", "hidden"]),
-    updatedAt: zod.string(),
-    stages: zod.array(
-      zod.object({
-        catalogueMountain: zod
-          .union([
-            zod.object({
-              id: zod.string().uuid(),
-              name: zod.string(),
-              country: zod.string().nullish(),
-              region: zod.string().nullish(),
-              latitude: zod.number(),
-              longitude: zod.number(),
-              elevationM: zod.number().nullish(),
-              status: zod.string(),
-            }),
-            zod.null(),
-          ])
-          .optional(),
-      }),
-    ),
-    limitations: zod.array(zod.string()),
-  }),
+  draft: zod.union([
+    zod.object({
+      challengeId: zod.string(),
+      challengeName: zod.string(),
+      targetMountainName: zod.string(),
+      status: zod.enum(["draft", "active", "hidden"]),
+      updatedAt: zod.string(),
+      stages: zod.array(
+        zod.object({
+          catalogueMountain: zod
+            .union([
+              zod.object({
+                id: zod.string().uuid(),
+                name: zod.string(),
+                country: zod.string().nullish(),
+                region: zod.string().nullish(),
+                latitude: zod.number(),
+                longitude: zod.number(),
+                elevationM: zod.number().nullish(),
+                status: zod.string(),
+              }),
+              zod.null(),
+            ])
+            .optional(),
+        }),
+      ),
+      limitations: zod.array(zod.string()),
+    }),
+    zod.null(),
+  ]),
   warnings: zod.array(zod.string()),
+  manualBuilder: zod
+    .object({
+      selectedRouteIdentityKeys: zod.array(zod.string()),
+      eligibleSummitPool: zod.array(
+        zod.object({
+          summitName: zod.string(),
+          summitIdentityKey: zod.string(),
+          summitElevationASL: zod.number().nullish(),
+          routes: zod.array(
+            zod.object({
+              routeName: zod.string().nullable(),
+              routeIdentityKey: zod.string().nullable(),
+              summitIdentityKey: zod.string(),
+              routeGainM: zod.number(),
+              routeDistanceKm: zod.number().nullish(),
+              estimatedAverageGradientPercent: zod.number().nullish(),
+              difficulty: zod.string().nullish(),
+              technicalCharacter: zod.string().nullish(),
+              provenance: zod
+                .object({
+                  dataSource: zod.string().optional(),
+                  routeDataStatus: zod.string().optional(),
+                  confidence: zod.string().optional(),
+                })
+                .optional(),
+            }),
+          ),
+        }),
+      ),
+      targetDna: zod.object({
+        elevationGainM: zod.number(),
+        distanceKm: zod.number(),
+        averageGradientPercent: zod.number().nullish(),
+        technicalCharacter: zod.string().nullish(),
+      }),
+      liveDna: zod.record(zod.string(), zod.unknown()).optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -1668,6 +1722,10 @@ export const searchVirtualExpeditionBodyRadiusMax = 200;
 
 export const searchVirtualExpeditionBodyDaysOverrideMax = 9007199254740991;
 
+export const searchVirtualExpeditionBodySelectedRouteIdentityKeysItemMax = 240;
+
+export const searchVirtualExpeditionBodySelectedRouteIdentityKeysMax = 30;
+
 export const SearchVirtualExpeditionBody = zod.object({
   targetMountain: zod
     .string()
@@ -1710,6 +1768,15 @@ export const SearchVirtualExpeditionBody = zod.object({
       "Available walking days or stages, not consecutive calendar days.",
     ),
   mode: zod.enum(["automatic", "manual", "manual_builder"]).optional(),
+  selectedRouteIdentityKeys: zod
+    .array(
+      zod
+        .string()
+        .min(1)
+        .max(searchVirtualExpeditionBodySelectedRouteIdentityKeysItemMax),
+    )
+    .max(searchVirtualExpeditionBodySelectedRouteIdentityKeysMax)
+    .optional(),
   resolveOnly: zod.boolean().optional(),
 });
 

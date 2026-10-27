@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -330,19 +331,36 @@ function ImportPanel({ onImported }: { onImported: () => void }) {
 }
 
 function AdminKeyBar() {
+  const qc = useQueryClient();
   const [key, setKey] = useState(() => sessionStorage.getItem("summitready-admin-key") ?? "");
-  const [saved, setSaved] = useState(false);
-  const apply = () => {
+  const [state, setState] = useState<"idle" | "verifying" | "verified" | "unauthorized" | "error">("idle");
+  const [msg, setMsg] = useState("");
+  const attempt = useRef(0);
+  const apply = async () => {
     if (key.trim()) sessionStorage.setItem("summitready-admin-key", key.trim());
     else sessionStorage.removeItem("summitready-admin-key");
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    const mine = ++attempt.current;
+    setState("verifying"); setMsg("");
+    await qc.cancelQueries({ queryKey: ["expedition"] });
+    await qc.cancelQueries({ queryKey: ["expeditions"] });
+    await qc.invalidateQueries({ queryKey: ["expedition"], refetchType: "none" });
+    await qc.invalidateQueries({ queryKey: ["expeditions"], refetchType: "none" });
+    await qc.refetchQueries({ queryKey: ["expeditions"], exact: true });
+    if (attempt.current !== mine) return;
+    const st = qc.getQueryState(["expeditions"]);
+    if (st?.status === "success" && !st.error) { setState("verified"); return; }
+    const m = st?.error instanceof Error ? st.error.message : "";
+    if (/401|403|unauthori[sz]ed|forbidden|admin key/i.test(m) || !key.trim()) setState("unauthorized");
+    else { setState("error"); setMsg(m || "Could not verify the key."); }
   };
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-3 text-sm lg:col-span-2">
       <span className="text-muted-foreground">Admin key (this browser session only)</span>
-      <input type="password" autoComplete="off" className={`${field} max-w-xs`} value={key} onChange={(e) => setKey(e.target.value)} />
-      <Button type="button" size="sm" variant="secondary" onClick={apply}>{saved ? "Saved" : "Use key"}</Button>
+      <input type="password" autoComplete="off" disabled={state === "verifying"} data-testid="input-admin-key" className={`${field} max-w-xs`} value={key} onChange={(e) => { setKey(e.target.value); setState("idle"); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void apply(); } }} />
+      <Button type="button" size="sm" variant="secondary" data-testid="button-use-key" disabled={state === "verifying"} onClick={() => void apply()}>{state === "verifying" ? "Verifying..." : "Use key"}</Button>
+      <span data-testid="status-admin-key" aria-live="polite" className={state === "verified" ? "text-emerald-600" : state === "unauthorized" || state === "error" ? "text-destructive" : "text-muted-foreground"}>
+        {state === "verified" ? "Verified" : state === "unauthorized" ? "Unauthorized" : state === "error" ? msg : ""}
+      </span>
     </div>
   );
 }
@@ -405,7 +423,7 @@ export default function Expeditions() {
           {mode === "import" && <ImportPanel onImported={() => list.refetch()} />}
           {mode === "new" && <Editor key={`new-${editorKey}`} source={null} isNew onDirty={setDirty} onDone={(id) => { setDirty(false); if (id) { setMode("edit"); setSelected(id); setEditorKey((k) => k + 1); } }} />}
           {mode === "generate" && <GeneratePanel onPending={setGenPending} onGenerated={(p) => { setGenerated(p); setMode("generated"); setSelected(null); setDirty(true); setEditorKey((k) => k + 1); }} />}
-          {mode === "generated" && generated && <>
+          {mode === "generated" && generated?.draft && <>
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
               <span>Not saved yet. Figures are estimates, not verified navigation. Empty distance or ascent fields must be filled before Create draft.</span>
               <Button size="sm" variant="ghost" onClick={() => go("generate")}>Back to generator</Button>

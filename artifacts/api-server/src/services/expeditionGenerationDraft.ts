@@ -64,7 +64,9 @@ export function expeditionGenerationDraft(raw: unknown) {
     return {
       routeName: (hill.routeName || hill.name).slice(0, 200),
       ...(hill.routeIdentityKey && hill.routeIdentityKey.length <= 200 ? { routeKey: hill.routeIdentityKey } : {}),
-      ...(mountainId ? { mountainId, catalogueMountain: { id: mountainId, name: hill.name } } : {}),
+      // Keep the exact identity; only the catalogue lookup/import may supply
+      // a full trusted catalogue record (coordinates/status are not inferred).
+      ...(mountainId ? { mountainId, catalogueMountain: null } : {}),
       region: hill.region?.slice(0, 200), distanceKm, ascentM,
       difficulty: hill.grade?.slice(0, 80),
       whySelected: `${why ?? ""} ${source}${hill.routeIdentityKey ? ` Route identity: ${hill.routeIdentityKey}.` : ""}`.trim().slice(0, 2000),
@@ -89,4 +91,23 @@ export function expeditionGenerationDraft(raw: unknown) {
     },
     warnings: distinctWarnings,
   };
+}
+
+/** Manual discovery is a selection preview, not an empty saved expedition. */
+export function expeditionGenerationPreview(result: Record<string, unknown>) {
+  const manualBuilder = result.manualBuilder;
+  if (manualBuilder && Array.isArray(result.recommendedHills) && result.recommendedHills.length === 0) {
+    const provenance = z.object({ warnings: z.array(z.string()).optional() }).passthrough()
+      .safeParse(result.provenance);
+    return {
+      draft: null,
+      warnings: [
+        "Choose your mountains to compare their route ascent and distance with the target. Nothing saved.",
+        "Figures may be estimates. Summit identity does not verify navigation, access or source permissions.",
+        ...(provenance.success ? provenance.data.warnings ?? [] : []),
+      ],
+      manualBuilder,
+    };
+  }
+  return { ...expeditionGenerationDraft(result), ...(manualBuilder ? { manualBuilder } : {}) };
 }

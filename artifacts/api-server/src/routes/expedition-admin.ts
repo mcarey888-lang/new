@@ -9,7 +9,7 @@ import { expeditionInput, expeditionTotals, previewExpeditions,
   type CatalogueMountain, type ExpeditionInput } from "../services/expeditionAuthoring.js";
 import { GenerateAdminExpeditionBody, GenerateAdminExpeditionResponse } from "@workspace/api-zod";
 import { createDataEngineVirtualExpeditionHandler } from "./virtual-expedition.js";
-import { expeditionGenerationDraft } from "../services/expeditionGenerationDraft.js";
+import { expeditionGenerationPreview } from "../services/expeditionGenerationDraft.js";
 
 export const expeditionAdminRouter = Router();
 expeditionAdminRouter.use("/admin/expeditions", requireAdminKey, json({ limit: "2mb" }), (_req, res, next) => {
@@ -23,7 +23,7 @@ const catalogueColumns = `m.id::text AS id, m.name, m.country, m.region,
   m.elevation_m::float8 AS "elevationM", m.status`;
 
 const generateDraft = createDataEngineVirtualExpeditionHandler(result => {
-  const preview = expeditionGenerationDraft(result);
+  const preview = expeditionGenerationPreview(result);
   // Orval's Zod output strips additionalProperties from record-shaped DTOs.
   // Validate required fields without discarding editable stage/provenance fields.
   GenerateAdminExpeditionResponse.parse(preview);
@@ -47,8 +47,10 @@ expeditionAdminRouter.post("/admin/expeditions/generate", async (req, res) => {
   try {
     // Same target resolution, geographic discovery and matching as the app.
     // This endpoint returns an unsaved authoring draft, never a catalogue write.
-    req.body = { ...parsed.data, mode: "automatic", builderMode: "automatic",
-      manualBuilder: false, resolveOnly: false, profileOnly: false };
+    const manual = parsed.data.mode === "manual" || parsed.data.mode === "manual_builder";
+    req.body = { ...parsed.data, mode: manual ? "manual" : "automatic",
+      builderMode: manual ? "manual" : "automatic",
+      manualBuilder: manual, resolveOnly: false, profileOnly: false };
     await generateDraft(req, res);
   } finally {
     generationInProgress = false;

@@ -53,7 +53,7 @@ describe("admin generation boundary (mocked providers, no paid calls or database
     const response = await request({
       targetMountain: "Mont Blanc", userLocation: "Ambleside", targetCountry: "France",
       targetRouteIdentityKey: "verified:chosen", difficultyPreference: "Hard", daysOverride: 3,
-      mode: "manual", profileOnly: true, resolveOnly: true, manualBuilder: true,
+      mode: "automatic", profileOnly: true, resolveOnly: true, manualBuilder: true,
     });
     expect(response.status).toBe(200);
     expect(engine.run.mock.calls[0][0]).toMatchObject({
@@ -65,6 +65,52 @@ describe("admin generation boundary (mocked providers, no paid calls or database
       status: "draft", reviewed: false, updatedAt: "", summary: "Test only",
       stages: [{ routeName: "Test Peak", distanceKm: 9, ascentM: 600 }],
     });
+  });
+  it("validates previews carrying exact catalogue IDs without manufacturing catalogue records", async () => {
+    const data = sample();
+    Object.assign(data.recommendedHills[0], { summitIdentityKey: "sde:mountain:7ca79ad2-9b3d-4c09-b79c-d6ddfa4ee122" });
+    engine.run.mockResolvedValue({ body: data });
+    const response = await request({ targetMountain: "Mont Blanc", userLocation: "Ambleside" });
+    expect(response.status).toBe(200);
+    const result = await response.json() as { draft: { stages: unknown[] } };
+    expect(result.draft.stages[0]).toMatchObject({
+      mountainId: "7ca79ad2-9b3d-4c09-b79c-d6ddfa4ee122", catalogueMountain: null,
+    });
+  });
+  it("passes explicit manual discovery and preserves the eligible pool without creating an empty draft", async () => {
+    const manualBuilder = {
+      eligibleSummitPool: [{
+        summitName: "Test Peak", summitIdentityKey: "summit:test",
+        routes: [
+          { routeName: "Test Route", routeIdentityKey: "route:test", summitIdentityKey: "summit:test", routeGainM: 600, routeDistanceKm: 9 },
+          { routeName: null, routeIdentityKey: null, summitIdentityKey: "summit:test", routeGainM: 550, routeDistanceKm: null },
+        ],
+      }],
+      selectedRouteIdentityKeys: [],
+      targetDna: { elevationGainM: 1800, distanceKm: 25 },
+      liveDna: { overallScore: 0 },
+    };
+    engine.run.mockResolvedValue({ body: { ...sample(), recommendedHills: [], manualBuilder } });
+    const response = await request({ targetMountain: "Mont Blanc", userLocation: "Ambleside", mode: "manual", selectedRouteIdentityKeys: [] });
+    expect(response.status).toBe(200);
+    expect(engine.run.mock.calls[0][0]).toMatchObject({ mode: "manual", manualBuilder: true, selectedRouteIdentityKeys: [], resolveOnly: false });
+    expect(await response.json()).toMatchObject({ draft: null, manualBuilder });
+  });
+  it("returns the selected draft and matching data without auto-saving a manual choice", async () => {
+    const manualBuilder = { eligibleSummitPool: [], selectedRouteIdentityKeys: ["route:test"], targetDna: { elevationGainM: 600, distanceKm: 9 } };
+    engine.run.mockResolvedValue({ body: { ...sample(), manualBuilder } });
+    const response = await request({ targetMountain: "Mont Blanc", userLocation: "Ambleside", mode: "manual_builder", selectedRouteIdentityKeys: ["route:test"] });
+    expect(response.status).toBe(200);
+    expect(engine.run.mock.calls[0][0]).toMatchObject({ mode: "manual", selectedRouteIdentityKeys: ["route:test"] });
+    expect(await response.json()).toMatchObject({ draft: { status: "draft", reviewed: false, stages: [{ routeKey: "route:test" }] }, manualBuilder });
+  });
+  it("rejects too many manual stages before provider work", async () => {
+    const response = await request({
+      targetMountain: "Mont Blanc", userLocation: "Ambleside", mode: "manual",
+      selectedRouteIdentityKeys: Array.from({ length: 31 }, (_, i) => `route:${i}`),
+    });
+    expect(response.status).toBe(400);
+    expect(engine.run).not.toHaveBeenCalled();
   });
   it("passes through target disambiguation without generating or choosing a draft", async () => {
     const body = { error: "Choose a route", code: "TARGET_ROUTE_SELECTION_REQUIRED", routes: [{ identityKey: "exact", name: "Exact route" }] };

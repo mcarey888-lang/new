@@ -48,6 +48,8 @@ export interface VirtualExpeditionSearchInput {
    */
   daysOverride?: number | null;
   mode?: VirtualExpeditionSearchInputMode;
+  /** @maxItems 30 */
+  selectedRouteIdentityKeys?: string[];
   resolveOnly?: boolean;
   [key: string]: unknown;
 }

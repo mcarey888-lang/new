@@ -1151,8 +1151,56 @@ components:
       type: object
       required: [draft, warnings]
       properties:
-        draft: { $ref: "#/components/schemas/AdminExpeditionRecord" }
+        draft:
+          oneOf:
+            - { $ref: "#/components/schemas/AdminExpeditionRecord" }
+            - { type: "null" }
         warnings: { type: array, items: { type: string } }
+        manualBuilder: { $ref: "#/components/schemas/AdminExpeditionManualBuilder" }
+    AdminExpeditionManualBuilder:
+      type: object
+      required: [eligibleSummitPool, selectedRouteIdentityKeys, targetDna]
+      properties:
+        selectedRouteIdentityKeys: { type: array, items: { type: string } }
+        eligibleSummitPool:
+          type: array
+          items:
+            type: object
+            required: [summitName, summitIdentityKey, routes]
+            properties:
+              summitName: { type: string }
+              summitIdentityKey: { type: string }
+              summitElevationASL: { type: ["number", "null"] }
+              routes:
+                type: array
+                items:
+                  type: object
+                  required: [routeName, routeIdentityKey, summitIdentityKey, routeGainM]
+                  properties:
+                    routeName: { type: ["string", "null"] }
+                    routeIdentityKey: { type: ["string", "null"] }
+                    summitIdentityKey: { type: string }
+                    routeGainM: { type: number }
+                    routeDistanceKm: { type: ["number", "null"] }
+                    estimatedAverageGradientPercent: { type: ["number", "null"] }
+                    difficulty: { type: ["string", "null"] }
+                    technicalCharacter: { type: ["string", "null"] }
+                    provenance:
+                      type: object
+                      additionalProperties: true
+                      properties:
+                        dataSource: { type: string }
+                        routeDataStatus: { type: string }
+                        confidence: { type: string }
+        targetDna:
+          type: object
+          required: [elevationGainM, distanceKm]
+          properties:
+            elevationGainM: { type: number }
+            distanceKm: { type: number }
+            averageGradientPercent: { type: ["number", "null"] }
+            technicalCharacter: { type: ["string", "null"] }
+        liveDna: { type: object, additionalProperties: true }
     AdminExpeditionStageInput:
       type: object
       additionalProperties: false
@@ -1412,6 +1460,10 @@ components:
           maximum: 9007199254740991
           description: Available walking days or stages, not consecutive calendar days.
         mode: { type: string, enum: [automatic, manual, manual_builder] }
+        selectedRouteIdentityKeys:
+          type: array
+          maxItems: 30
+          items: { type: string, minLength: 1, maxLength: 240 }
         resolveOnly: { type: boolean }
     MountainDiscoveryItem:
       type: object

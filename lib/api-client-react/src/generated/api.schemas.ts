@@ -247,9 +247,62 @@ export interface AdminExpeditionRecord {
   [key: string]: unknown;
 }
 
+export type AdminExpeditionManualBuilderEligibleSummitPoolItemRoutesItemProvenance =
+  {
+    dataSource?: string;
+    routeDataStatus?: string;
+    confidence?: string;
+    [key: string]: unknown;
+  };
+
+export type AdminExpeditionManualBuilderEligibleSummitPoolItemRoutesItem = {
+  /** @nullable */
+  routeName: string | null;
+  /** @nullable */
+  routeIdentityKey: string | null;
+  summitIdentityKey: string;
+  routeGainM: number;
+  /** @nullable */
+  routeDistanceKm?: number | null;
+  /** @nullable */
+  estimatedAverageGradientPercent?: number | null;
+  /** @nullable */
+  difficulty?: string | null;
+  /** @nullable */
+  technicalCharacter?: string | null;
+  provenance?: AdminExpeditionManualBuilderEligibleSummitPoolItemRoutesItemProvenance;
+};
+
+export type AdminExpeditionManualBuilderEligibleSummitPoolItem = {
+  summitName: string;
+  summitIdentityKey: string;
+  /** @nullable */
+  summitElevationASL?: number | null;
+  routes: AdminExpeditionManualBuilderEligibleSummitPoolItemRoutesItem[];
+};
+
+export type AdminExpeditionManualBuilderTargetDna = {
+  elevationGainM: number;
+  distanceKm: number;
+  /** @nullable */
+  averageGradientPercent?: number | null;
+  /** @nullable */
+  technicalCharacter?: string | null;
+};
+
+export type AdminExpeditionManualBuilderLiveDna = { [key: string]: unknown };
+
+export interface AdminExpeditionManualBuilder {
+  selectedRouteIdentityKeys: string[];
+  eligibleSummitPool: AdminExpeditionManualBuilderEligibleSummitPoolItem[];
+  targetDna: AdminExpeditionManualBuilderTargetDna;
+  liveDna?: AdminExpeditionManualBuilderLiveDna;
+}
+
 export interface AdminExpeditionGenerationPreview {
-  draft: AdminExpeditionRecord;
+  draft: AdminExpeditionRecord | null;
   warnings: string[];
+  manualBuilder?: AdminExpeditionManualBuilder;
 }
 
 export interface ExpeditionImportBatch {
@@ -578,6 +631,8 @@ export interface VirtualExpeditionSearchInput {
    */
   daysOverride?: number | null;
   mode?: VirtualExpeditionSearchInputMode;
+  /** @maxItems 30 */
+  selectedRouteIdentityKeys?: string[];
   resolveOnly?: boolean;
   [key: string]: unknown;
 }

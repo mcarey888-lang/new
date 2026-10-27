@@ -5,9 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminExpeditionManualBuilder } from "./adminExpeditionManualBuilder";
 import type { AdminExpeditionRecord } from "./adminExpeditionRecord";
 
 export interface AdminExpeditionGenerationPreview {
-  draft: AdminExpeditionRecord;
+  draft: AdminExpeditionRecord | null;
   warnings: string[];
+  manualBuilder?: AdminExpeditionManualBuilder;
 }
