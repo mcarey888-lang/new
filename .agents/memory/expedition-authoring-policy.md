@@ -29,6 +29,16 @@ target-match workflow they use in the mobile app.
 semantics. Compare route ascent and distance, not summit altitude; selection
 changes should not trigger paid generation automatically.
 
+Expedition authoring should allow the owner to deliberately reuse approved
+artwork from the Signatures library, rather than requiring a fresh generation.
+
+**Why:** The owner explicitly requested assigning existing Signatures artwork
+to the expeditions they create.
+
+**How to apply:** Keep reuse an explicit owner choice, with image previews and
+the source artwork's identity retained. Do not silently substitute another
+expedition's artwork, regenerate it, or activate a draft just to assign an image.
+
 **Why:** The older curated library was imported separately from the summit
 catalogue; the owner requested reusable database-backed additions and bulk imports.
 
