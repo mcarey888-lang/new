@@ -26,3 +26,15 @@ An App Store Connect upload number does not establish the number of a different,
 **Why:** A low-numbered Apple upload appeared to require a rebuild, but a correctly numbered production artifact with the same mobile code was already complete and could be submitted directly. The origin of the lower-numbered upload was not established.
 
 **How to apply:** Reuse a compatible finished artifact when its confirmed version/build exceeds the known store uploads. Report submission queuing separately from Apple processing, and do not claim the separate upload path's counter has been repaired without verifying it.
+
+The Expo MCP Android submission adapter can fail with a conflict between
+`googleServiceAccountKeyId` and `googleServiceAccountKeyJson`, even after the
+Android build has completed successfully.
+
+**Why:** The submission request selected two mutually exclusive credential
+representations. This is an upload-path failure, not a native build failure.
+
+**How to apply:** Preserve the finished bundle and do not rebuild it to fix
+submission. Use a submission path that selects only one credential source, or
+upload the existing bundle through Play Console. Never commit a service-account
+key to work around cloud submission.
