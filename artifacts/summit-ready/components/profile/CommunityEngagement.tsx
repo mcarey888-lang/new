@@ -4,20 +4,9 @@ import { randomUUID } from "expo-crypto";
 import { ActivityIndicator, Alert, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
 
-/** Light "paper" palette for feed cards sitting on the dark app shell. */
-export const FEED_CARD = {
-  surface: "#FBFCFB",
-  sunken: "#F1F4F3",
-  border: "rgba(10,22,20,0.10)",
-  divider: "rgba(10,22,20,0.08)",
-  text: "#111A19",
-  muted: "#55625F",
-  dim: "#7C8885",
-  accent: "#0B8A5E",
-  accentSoft: "rgba(11,138,94,0.10)",
-  like: "#D3365A",
-  danger: "#B4233F",
-} as const;
+import { PROFILE_FEED } from "@/constants/profileFeed";
+
+export const FEED_CARD = PROFILE_FEED;
 
 export type CommunityComment = {
   id: string;

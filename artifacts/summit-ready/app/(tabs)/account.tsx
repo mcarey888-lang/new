@@ -27,6 +27,7 @@ import { useChallenges } from "@/context/ChallengesContext";
 import { getChallenge, DIFF_COLOR as CHALLENGE_DIFF_COLOR } from "@/constants/challenges";
 import { logoutRevenueCat, useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
+import { PROFILE_FEED } from "@/constants/profileFeed";
 import { publicDisplayName } from "@/utils/publicDisplayName";
 import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import {
@@ -469,7 +470,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         ref={scrollRef}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={[styles.scroll, { paddingBottom: botPad }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: botPad }, tab === "feed" && !showSettings && styles.feedPaper]}
         showsVerticalScrollIndicator={false}
       >
         {!showSettings ? (
@@ -547,7 +548,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
             </View>
           ) : (
             <View style={[styles.communityUnavailable, styles.feedContent]}>
-              <Text style={styles.communityNote}>Sign in to see stories, photos and achievements shared by SummitReady members. Your activity and journal photos remain private.</Text>
+              <Text style={[styles.communityNote, { color: PROFILE_FEED.muted }]}>Sign in to see stories, photos and achievements shared by SummitReady members. Your activity and journal photos remain private.</Text>
               <DemoCommunityPreview />
             </View>
           )
@@ -1645,6 +1646,7 @@ const styles = StyleSheet.create({
   },
 
   scroll: { paddingHorizontal: 18, gap: 20 },
+  feedPaper: { backgroundColor: PROFILE_FEED.background, flexGrow: 1 },
   header: { marginBottom: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },

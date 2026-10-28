@@ -5,7 +5,22 @@ import React, { useEffect, useState } from "react";
 import { randomUUID } from "expo-crypto";
 import {useAuth} from "@clerk/expo";
 import { Alert, Image, type ImageSourcePropType, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
+import { BASECAMP as DARK_BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
+import { PROFILE_FEED } from "@/constants/profileFeed";
+
+// Scope the light treatment to this feed, including composer and empty states.
+const BASECAMP = {
+  ...DARK_BASECAMP,
+  text: PROFILE_FEED.text,
+  textMuted: PROFILE_FEED.muted,
+  textDim: PROFILE_FEED.dim,
+  accent: PROFILE_FEED.accent,
+  accentInk: PROFILE_FEED.surface,
+  panelSub: PROFILE_FEED.surface,
+  panelBorder: PROFILE_FEED.border,
+  hairline: PROFILE_FEED.divider,
+  ink: PROFILE_FEED.surface,
+};
 import { DemoCommunityPreview } from "@/components/profile/DemoCommunityPreview";
 import { CommunityEngagement, FEED_CARD, type CommunityComment } from "@/components/profile/CommunityEngagement";
 

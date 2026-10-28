@@ -359,12 +359,13 @@ export function SRSegmented<TValue extends string>({
    columns truncate a word like "Achievements" to "Achie…", and a tab whose
    label you cannot read is not a tab. */
 export function SRUnderlineTabs<TValue extends string>({
-  options, value, onChange, style,
+  options, value, onChange, style, colors,
 }: {
   options: { value: TValue; label: string }[];
   value: TValue;
   onChange: (v: TValue) => void;
   style?: ViewStyle;
+  colors?: { text: string; selected: string };
 }) {
   const scroll = options.length > 4;
 
@@ -380,8 +381,8 @@ export function SRUnderlineTabs<TValue extends string>({
         accessibilityState={{ selected: on }}
         accessibilityLabel={o.label}
       >
-        <Text style={[styles.tabText, on && styles.tabTextOn]} numberOfLines={1}>{o.label}</Text>
-        <View style={[styles.tabRule, on && { backgroundColor: BASECAMP.accent }]} />
+        <Text style={[styles.tabText, on && styles.tabTextOn, colors && { color: on ? colors.selected : colors.text }]} numberOfLines={1}>{o.label}</Text>
+        <View style={[styles.tabRule, on && { backgroundColor: colors?.selected ?? BASECAMP.accent }]} />
       </TouchableOpacity>
     );
   });

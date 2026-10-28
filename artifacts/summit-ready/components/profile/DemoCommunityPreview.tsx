@@ -38,7 +38,7 @@ export function DemoCommunityPreview() {
   return (
     <View style={styles.root} testID="community-demo-preview">
       <View style={styles.heading}>
-        <Users size={17} color={BASECAMP.accent} />
+        <Users size={17} color={FEED_CARD.accent} />
         <Text style={styles.headingText}>Sample stories · fictional</Text>
       </View>
       <Text style={styles.disclaimer}>Preview only · Fictional members and achievements. These are not real posts or your progress.</Text>
@@ -79,8 +79,8 @@ export function DemoCommunityPreview() {
 const styles = StyleSheet.create({
   root: { marginTop: SP.md, marginBottom: SP.lg },
   heading: { flexDirection: "row", alignItems: "center", gap: 8 },
-  headingText: { ...TYPE.bodyBold, color: BASECAMP.text },
-  disclaimer: { ...TYPE.caption, color: BASECAMP.textMuted, lineHeight: 18, marginTop: 8 },
+  headingText: { ...TYPE.bodyBold, color: FEED_CARD.text },
+  disclaimer: { ...TYPE.caption, color: FEED_CARD.muted, lineHeight: 18, marginTop: 8 },
   post: { marginTop: SP.md, padding: 16, borderRadius: 16, backgroundColor: FEED_CARD.surface, borderWidth: 1, borderColor: FEED_CARD.border },
   authorRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: FEED_CARD.accentSoft, alignItems: "center", justifyContent: "center" },
