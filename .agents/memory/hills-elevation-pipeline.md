@@ -5,6 +5,16 @@ description: UK training hill discovery must be source-grounded; preserve global
 
 UK training searches must establish a mapped peak before offering its location or climb data. Do not pad a short result list with AI hills, and do not accept a nearby legacy cache row as proof that a named hill exists.
 
+Local training coverage must include obscure hills, not only recognised or
+high summits. A nonempty catalogue result does not prove adequate coverage.
+
+**Why:** The owner explained that many users live away from known peaks and
+need smaller local hills to be available.
+
+**How to apply:** Assess source completeness and shortlist ordering separately.
+Do not hide lower local summits merely because a radius also contains higher
+ones. Availability-only catalogue fallback is not a completed coverage solution.
+
 UK area discovery should prefer the verified summit catalogue over public
 Overpass, with independent mapped discovery retained for catalogue gaps.
 Catalogue verification establishes summit identity, not a verified walking
