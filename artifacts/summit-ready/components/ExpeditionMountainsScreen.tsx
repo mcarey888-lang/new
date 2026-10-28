@@ -2763,7 +2763,7 @@ export default function ExpeditionMountainsScreen() {
               summitElevation:    0,
               totalElevationGain: stageTotals.ascentM,
               totalDistance:      stageTotals.distanceKm,
-              estimatedDays:      Math.min(2, Math.max(1, challenge.recommendedDays)) as 1 | 2,
+              estimatedDays:      challenge.selfPaced ? 0 : Math.min(2, Math.max(1, challenge.recommendedDays)),
               difficulty:         (challenge.difficulty as TargetMountain["difficulty"]) ?? "Hard",
               altitudeExposure:   "None" as const,
             },

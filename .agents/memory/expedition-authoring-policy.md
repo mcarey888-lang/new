@@ -111,17 +111,19 @@ multi-summit circuit needs explicit review rather than a single guessed summit.
 Keep historical stage completion identities and saved progress intact, and
 keep unverified route facts clearly separate from verified summit details.
 
-New externally curated summit-stage proposals should match the target's
-cumulative ascent and uphill distance, excluding descent, using as few sensible
-distinct stages as possible and prioritising larger local mountains/hills.
+New externally curated summit-stage proposals primarily match the target's
+cumulative ascent, using as few sensible distinct stages as possible and
+prioritising larger local mountains/hills. Distance means the one-way summit
+approach, including pre-summit undulations but excluding post-summit return.
 
-**Why:** The owner explicitly requested this matching policy for the replacement
-collection. Summit altitude is not climb gain; legacy full-route distance is
-not uphill-only distance.
+**Why:** The owner clarified that these are approximate fun challenges: exact
+uphill segmentation is not a prerequisite. Summit altitude is not climb gain;
+legacy full-route distance is not one-way approach distance.
 
-**How to apply:** Require an identified approach/start and sourced comparable
-target/stage metrics. Keep missing uphill figures null and distinguish
-one-way approach distance from strictly uphill distance where an approach
-undulates. Produce review-only candidates rather than forcing these values
-into the existing full-route-distance import fields. This new curation policy
-does not rewrite saved targets, historical manual totals or actual GPS records.
+**How to apply:** Use the owner-approved approximate figures and identified
+approach/start without restarting research. Half the distance of a same-route
+out-and-back is acceptable; never halve ascent or circular walks. Keep missing
+exact-uphill and full-outing figures null, not zero. Label Approx. ascent and
+Approach distance, explain additional return walking, and separate local,
+international-reference and actual activity totals. Never force approach
+figures into full-route fields or rewrite saved plans, manual totals or GPS.

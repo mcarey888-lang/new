@@ -8,6 +8,16 @@ export interface SignatureStageMetrics {
   region?: string | null;
   distanceKm: number | null;
   ascentM: number | null;
+  approachDistanceKm?: number | null;
+  distanceBasis?: "one_way_approach";
+  completionPolicy?: "selected_stages";
+  approachStart?: string;
+  safetyWarning?: string | null;
+  evidenceNote?: string | null;
+  reference?: {
+    target: string; route: string; ascentM: number; approachDistanceKm: number;
+    comparison: string; sources: string[];
+  };
   estimatedHours?: number | null;
   difficulty?: string | null;
   catalogueMountain?: {
@@ -63,11 +73,19 @@ export function signatureStageToNearbyHill(stage: SignatureStageMetrics): Nearby
     lat: stage.catalogueMountain?.latitude,
     lng: stage.catalogueMountain?.longitude,
     summitElevationASL: stage.catalogueMountain?.elevationM ?? undefined,
+    approachDistanceKm: stage.approachDistanceKm ?? undefined,
+    distanceBasis: stage.distanceBasis,
+    completionPolicy: stage.completionPolicy,
+    approachStart: stage.approachStart,
+    safetyWarning: stage.safetyWarning ?? undefined,
+    evidenceNote: stage.evidenceNote ?? undefined,
+    internationalReference: stage.reference,
     dataSource: "signature_challenge_db",
-    routeDataStatus: distanceKm > 0 && ascentM > 0 ? "curated_complete" : "unavailable",
+    routeDataStatus: stage.distanceBasis === "one_way_approach"
+      ? "approximate_approach" : distanceKm > 0 && ascentM > 0 ? "curated_complete" : "unavailable",
     confidence: "curated",
     elevation: ascentM,
-    distance: distanceKm,
+    distance: stage.approachDistanceKm ?? distanceKm,
     routeDistance: distanceKm > 0 ? distanceKm : undefined,
     repeats: 1,
     totalElevation: ascentM,
@@ -84,7 +102,7 @@ export function signatureStageTotals(stages: SignatureStageMetrics[]) {
   return stages.reduce(
     (totals, stage) => ({
       ascentM: totals.ascentM + Math.max(0, stage.ascentM ?? 0),
-      distanceKm: totals.distanceKm + Math.max(0, stage.distanceKm ?? 0),
+      distanceKm: totals.distanceKm + Math.max(0, stage.approachDistanceKm ?? stage.distanceKm ?? 0),
     }),
     { ascentM: 0, distanceKm: 0 },
   );
@@ -95,7 +113,9 @@ export function signatureStageTotals(stages: SignatureStageMetrics[]) {
 export function signatureChallengeTarget(stages: SignatureStageMetrics[]) {
   if (!stages.length || stages.some(stage =>
     stage.ascentM == null || !Number.isFinite(stage.ascentM) || stage.ascentM <= 0 ||
-    stage.distanceKm == null || !Number.isFinite(stage.distanceKm) || stage.distanceKm <= 0
+    (stage.approachDistanceKm ?? stage.distanceKm) == null ||
+    !Number.isFinite(stage.approachDistanceKm ?? stage.distanceKm) ||
+    (stage.approachDistanceKm ?? stage.distanceKm)! <= 0
   )) return null;
   return signatureStageTotals(stages);
 }

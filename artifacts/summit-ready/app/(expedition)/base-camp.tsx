@@ -984,7 +984,7 @@ export default function BaseCampScreen() {
                   <View style={s.expCardBody}>
                     <Text style={s.expCardTitle} numberOfLines={2}>{stripSuffix(ch.challengeName)}</Text>
                     <Text style={s.expCardMeta}>
-                      {ch.recommendedDays} {ch.recommendedDays === 1 ? "Day" : "Days"}
+                      {ch.recommendedDays > 0 ? `${ch.recommendedDays} ${ch.recommendedDays === 1 ? "Day" : "Days"}` : "Self-paced"}
                       {ch.difficulty ? ` • ${ch.difficulty}` : ""}
                     </Text>
                   </View>
@@ -1056,7 +1056,7 @@ export default function BaseCampScreen() {
                 summitElevation:    0,
                 totalElevationGain: stageTotals.ascentM,
                 totalDistance:      stageTotals.distanceKm,
-                estimatedDays:      (Math.min(2, Math.max(1, ch.recommendedDays)) as 1 | 2),
+                estimatedDays:      ch.selfPaced ? 0 : Math.min(2, Math.max(1, ch.recommendedDays)),
                 difficulty:         (ch.difficulty as SummitGoal["difficulty"]) ?? "Hard",
                 altitudeExposure:   "None" as const,
               },
@@ -1201,6 +1201,23 @@ export default function BaseCampScreen() {
             {!!concept && <Text style={s.expConcept} numberOfLines={3}>{concept}</Text>}
           </View>
         </SRHeroFrame>
+
+        {activeExpedition?.virtualHills[0]?.completionPolicy === "selected_stages" && (
+          <View style={{ margin: BASECAMP.gutter, padding: 14, backgroundColor: T.card, borderRadius: 10, gap: 8 }}>
+            <Text style={{ color: T.text, fontWeight: "700" }}>Self-paced · {activeExpedition.virtualHills.length} stages · any order</Text>
+            <Text style={{ color: T.text, lineHeight: 19 }}>
+              Local planning totals: Approx. ascent {activeExpedition.virtualHills.reduce((sum, hill) => sum + hill.elevation, 0).toLocaleString()} m · Approach distance {Number(activeExpedition.virtualHills.reduce((sum, hill) => sum + (hill.approachDistanceKm ?? 0), 0).toFixed(1))} km.
+            </Text>
+            <Text style={{ color: T.textMuted, lineHeight: 19 }}>
+              International reference: Approx. ascent {activeExpedition.virtualHills[0].internationalReference?.ascentM.toLocaleString()} m · Approach distance {activeExpedition.virtualHills[0].internationalReference?.approachDistanceKm} km.{"\n"}
+              {activeExpedition.virtualHills[0].internationalReference?.comparison}
+            </Text>
+            <Text style={{ color: T.textMuted, lineHeight: 19 }}>
+              Actual linked activity: {Math.round(linkedExpeditionElevation).toLocaleString()} m ascent · {Number(linkedExpeditionDistance.toFixed(1))} km recorded/reported. Separate from simulated progress and planning estimates.
+            </Text>
+            <Text style={{ color: T.textMuted, lineHeight: 19 }}>Approach distances exclude the post-summit return; return walking is additional. Complete the selected stages under the existing verification rules; there is no extra international-ascent threshold.</Text>
+          </View>
+        )}
 
         {/* ── Mountain Progress — centrepiece of Expedition Mode ───────────── */}
         <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 2 }}>

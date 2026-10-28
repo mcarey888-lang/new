@@ -114,8 +114,13 @@ export function selectExpeditionPresentation(
   );
   const currentStageIndex = stages.findIndex((_stage, index) => !completedByIndex[index]);
   const firstIncomplete = currentStageIndex < 0 ? null : currentStageIndex;
-  const percent = target > 0 ? Math.min(1, current / target) : 0;
   const allStagesComplete = stages.length > 0 && completedStageCount === stages.length;
+  // Only explicitly versioned stage-based challenges use stage completion
+  // authority. Legacy saved plans retain their original threshold semantics.
+  const stageBased = rawStages.length > 0 && rawStages.every(hill => hill?.completionPolicy === "selected_stages");
+  const percent = stageBased
+    ? (stages.length > 0 ? completedStageCount / stages.length : 0)
+    : target > 0 ? Math.min(1, current / target) : 0;
   const isComplete = allStagesComplete && percent >= 1;
 
   const presentedStages = stages.map((stage, index) => ({

@@ -19,6 +19,8 @@ import {
   challengeLimitations,
 } from "@workspace/db";
 import { eq, and, ilike, or, sql } from "drizzle-orm";
+import { revisedSummitChallenge } from "../services/summitChallengeRevisions";
+import { sourceArtworkId } from "../data/summitChallengeBatch";
 
 export const signatureChallengesRouter = Router();
 
@@ -129,15 +131,16 @@ signatureChallengesRouter.get("/sx/challenges", async (req, res) => {
       conditions.push(eq(signatureChallenges.mountainSlug, mountain));
     }
 
-    const rows = (await db
+    const rows = (await Promise.all((await db
       .select()
       .from(signatureChallenges)
       .where(and(...conditions))
-    ).sort(byFame);
+    ).map(revisedSummitChallenge))).sort(byFame);
 
     if (withStages === "true") {
       const enriched = await Promise.all(
         rows.map(async (c) => {
+          if ("stages" in c) return c;
           const { stages, limitations } = await getStagesAndLimitations(c.challengeId);
           return { ...c, stages, limitations };
         })
@@ -155,7 +158,7 @@ signatureChallengesRouter.get("/sx/challenges", async (req, res) => {
 // ── GET /api/sx/featured ─────────────────────────────────────────────────────
 signatureChallengesRouter.get("/sx/featured", async (_req, res) => {
   try {
-    const rows = (await db
+    const rows = (await Promise.all((await db
       .select()
       .from(signatureChallenges)
       .where(
@@ -164,7 +167,7 @@ signatureChallengesRouter.get("/sx/featured", async (_req, res) => {
           eq(signatureChallenges.featured, true)
         )
       )
-    ).sort(byFame);
+    ).map(revisedSummitChallenge))).sort(byFame);
 
     return res.json({ challenges: rows, total: rows.length });
   } catch (err) {
@@ -180,7 +183,7 @@ signatureChallengesRouter.get("/sx/challenges/for-mountain/:slug", async (req, r
   try {
     const { slug } = req.params;
 
-    const rows = await db
+    const sourceRows = await db
       .select()
       .from(signatureChallenges)
       .where(
@@ -190,6 +193,7 @@ signatureChallengesRouter.get("/sx/challenges/for-mountain/:slug", async (req, r
         )
       )
       .orderBy(signatureChallenges.adventureScore);
+    const rows = await Promise.all(sourceRows.map(revisedSummitChallenge));
 
     if (rows.length === 0) {
       return res.json({ challenges: [], total: 0 });
@@ -198,6 +202,7 @@ signatureChallengesRouter.get("/sx/challenges/for-mountain/:slug", async (req, r
     // Enrich with stages + limitations
     const enriched = await Promise.all(
       rows.map(async (c) => {
+        if ("stages" in c) return c;
         const { stages, limitations } = await getStagesAndLimitations(c.challengeId);
         return { ...c, stages, limitations };
       })
@@ -218,14 +223,17 @@ signatureChallengesRouter.get("/sx/challenges/:challengeId", async (req, res) =>
     const rows = await db
       .select()
       .from(signatureChallenges)
-      .where(and(eq(signatureChallenges.challengeId, challengeId), eq(signatureChallenges.status, "active")))
+      .where(and(eq(signatureChallenges.challengeId, sourceArtworkId(challengeId)), eq(signatureChallenges.status, "active")))
       .limit(1);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Challenge not found" });
     }
 
-    const challenge = rows[0];
+    // Old IDs deliberately retain their old data for already-saved plans.
+    const challenge = sourceArtworkId(challengeId) === challengeId
+      ? rows[0] : await revisedSummitChallenge(rows[0]);
+    if ("stages" in challenge) return res.json({ challenge });
     const { stages, limitations } = await getStagesAndLimitations(challengeId);
 
     return res.json({ challenge: { ...challenge, stages, limitations } });

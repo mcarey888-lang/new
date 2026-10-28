@@ -13,6 +13,8 @@ export function manualStageDistance(
 /** Presentation-only repair for the exact legacy manual-log doubling bug.
  * Never infer GPS distance from a planned route or rewrite stored evidence. */
 export function completedStageSessionDistance(session: Session, stages: NearbyHill[]): number {
+  // New approach estimates must never repair or replace reported activity totals.
+  if (stages.some(stage => stage.distanceBasis === "one_way_approach")) return session.distance;
   if (session.activityId || session.sourceHikeId || session.type !== "hill" ||
       !session.completed || !session.expeditionId || !session.hillName ||
       !Number.isInteger(session.reps) || session.reps! < 1 ||

@@ -47,6 +47,13 @@ function diffColor(d: string | null) {
 }
 
 interface SigStage {
+  approachDistanceKm?: number | null;
+  distanceBasis?: "one_way_approach";
+  completionPolicy?: "selected_stages";
+  approachStart?: string;
+  safetyWarning?: string | null;
+  evidenceNote?: string | null;
+  reference?: { target: string; route: string; ascentM: number; approachDistanceKm: number; comparison: string; sources: string[] };
   stageOrder: number;
   routeKey: string | null;
   routeName: string;
@@ -71,6 +78,9 @@ interface SigStage {
 }
 
 export interface SigChallenge {
+  selfPaced?: boolean;
+  completionPolicy?: "selected_stages";
+  reference?: SigStage["reference"];
   challengeId: string;
   challengeName: string;
   targetMountainName: string;
@@ -284,13 +294,13 @@ export function ChallengeDetailSheet({
                     <Text style={s.statVal}>
                       {localTarget.ascentM.toLocaleString()}m
                     </Text>
-                    <Text style={s.statLbl}>UK ascent</Text>
+                    <Text style={s.statLbl}>{challenge.selfPaced ? "Approx. ascent" : "UK ascent"}</Text>
                   </View>
                 )}
                 {localTarget && (
                   <View style={s.statCell}>
                     <Text style={s.statVal}>{localTarget.distanceKm}km</Text>
-                    <Text style={s.statLbl}>UK distance</Text>
+                    <Text style={s.statLbl}>{challenge.selfPaced ? "Approach distance" : "UK distance"}</Text>
                   </View>
                 )}
                 {challenge.adventureScore != null && (
@@ -307,7 +317,9 @@ export function ChallengeDetailSheet({
                 )}
               </View>
               <Text style={{ marginHorizontal: 16, marginBottom: 10, fontSize: 12, lineHeight: 18, color: T.textMuted }}>
-                Fixed UK challenge: planned ascent across the listed local stages, based on curated estimates rather than a recorded GPS track. This is not the ascent of {challenge.targetMountainName}.
+                {challenge.selfPaced
+                  ? "Self-paced · choose stages in any order. Approach distance is one-way to each summit, including pre-summit undulations. Return walking is additional. Your actual GPS/manual activity totals are recorded separately."
+                  : `Fixed UK challenge: planned ascent across the listed local stages, based on curated estimates rather than a recorded GPS track. This is not the ascent of ${challenge.targetMountainName}.`}
               </Text>
 
               {/* Region */}
@@ -323,7 +335,9 @@ export function ChallengeDetailSheet({
                 <View style={s.card}>
                   <Text style={s.cardLabel}>ABOUT THIS EXPEDITION</Text>
                   <Text style={s.summaryText}>
-                    {`${challenge.stages.map(stage => stage.routeName).join(" and ")} form this fixed ${challenge.recommendedDays}-day UK challenge. The ${localTarget.ascentM.toLocaleString()} m target is the planned ascent across these stages, not a measurement of the ${challenge.targetMountainName} route.`}
+                    {challenge.selfPaced
+                      ? `Complete these ${challenge.stages.length} selected UK summit stages at your own pace. There is no additional international-ascent threshold. Local planning totals: approx. ${localTarget.ascentM.toLocaleString()} m ascent and ${Number(localTarget.distanceKm.toFixed(1))} km approach distance.`
+                      : `${challenge.stages.map(stage => stage.routeName).join(" and ")} form this fixed ${challenge.recommendedDays}-day UK challenge. The ${localTarget.ascentM.toLocaleString()} m target is the planned ascent across these stages, not a measurement of the ${challenge.targetMountainName} route.`}
                     {!summaryClaimsDifferentTarget && challenge.summary ? `\n\n${challenge.summary}` : ""}
                   </Text>
                   {challenge.routeDnaFocus && (
@@ -336,6 +350,13 @@ export function ChallengeDetailSheet({
               )}
               <View style={s.card}>
                 <Text style={s.cardLabel}>MOUNTAIN ROUTE INSPIRATION</Text>
+                {challenge.reference && (
+                  <Text style={s.summaryText}>
+                    International reference: approx. {challenge.reference.ascentM.toLocaleString()} m ascent · {challenge.reference.approachDistanceKm} km approach distance.{"\n"}
+                    {challenge.reference.comparison}{"\n"}
+                    Local walks do not reproduce alpine difficulty, altitude or glaciation. No navigable track is supplied; a summit credit endpoint is not a safe descent plan.
+                  </Text>
+                )}
                 <Text style={s.summaryText}>
                   {challenge.targetMountainName}{challenge.targetRoute ? ` · ${challenge.targetRoute}` : ""}
                 </Text>
@@ -393,7 +414,7 @@ export function ChallengeDetailSheet({
                   onPress={() => setStagesExpanded(v => !v)}
                   activeOpacity={0.75}
                 >
-                  <Text style={s.cardLabel}>ROUTE PLAN · {challenge.stages.length} {challenge.stages.length === 1 ? "DAY" : "DAYS"}</Text>
+                  <Text style={s.cardLabel}>{challenge.selfPaced ? "SELF-PACED STAGES" : "ROUTE PLAN"} · {challenge.stages.length} {challenge.selfPaced ? "STAGES" : challenge.stages.length === 1 ? "DAY" : "DAYS"}</Text>
                   {stagesExpanded
                     ? <ChevronUp size={14} color={T.textDim} />
                     : <ChevronDown size={14} color={T.textDim} />}
@@ -405,7 +426,7 @@ export function ChallengeDetailSheet({
                       {/* Day bubble */}
                       <View style={s.dayBubble}>
                         <Text style={s.dayBubbleText} numberOfLines={1}>
-                          {dayLabel(stage.stageOrder, challenge.stages.length)}
+                          {challenge.selfPaced ? `${stage.stageOrder}` : dayLabel(stage.stageOrder, challenge.stages.length)}
                         </Text>
                       </View>
                       {/* Info */}
@@ -418,16 +439,16 @@ export function ChallengeDetailSheet({
                         )}
                         {/* Micro stats */}
                         <View style={{ flexDirection: "row", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                          {stage.distanceKm != null && (
+                          {(stage.approachDistanceKm ?? stage.distanceKm) != null && (
                             <View style={s.microStat}>
                               <MapPin size={9} color={T.textDim} />
-                              <Text style={s.microStatText}>{stage.distanceKm}km</Text>
+                              <Text style={s.microStatText}>{stage.approachDistanceKm ?? stage.distanceKm} km{challenge.selfPaced ? " · Approach distance" : ""}</Text>
                             </View>
                           )}
                           {stage.ascentM != null && (
                             <View style={s.microStat}>
                               <TrendingUp size={9} color={T.textDim} />
-                              <Text style={s.microStatText}>{stage.ascentM}m</Text>
+                              <Text style={s.microStatText}>{stage.ascentM} m{challenge.selfPaced ? " · Approx. ascent" : ""}</Text>
                             </View>
                           )}
                           {stage.estimatedHours != null && (
@@ -453,6 +474,7 @@ export function ChallengeDetailSheet({
                           </View>
                         )}
                         {/* Why selected */}
+                        {stage.safetyWarning && <Text style={[s.summaryText, { color: T.orange, marginTop: 8 }]}>{stage.safetyWarning}</Text>}
                         {stage.whySelected && (
                           <Text style={s.whyText}>{stage.whySelected}</Text>
                         )}

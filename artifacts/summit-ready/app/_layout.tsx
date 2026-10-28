@@ -205,6 +205,7 @@ function RootLayoutNav() {
       <Stack.Screen name="challenge-complete" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="mountain-demo" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="onboarding-demo" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="expedition-batch-preview" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="mobile/onboarding-demo" options={{ headerShown: false, presentation: "card" }} />
     </Stack>
   );
@@ -239,7 +240,9 @@ function RootApp() {
     canonicalWebPath === "/onboarding-demo" ||
     canonicalWebPath.startsWith("/onboarding-demo/");
 
-  if (isIsolatedOnboardingDemo) {
+  // Public catalogue review only: no auth, membership or activity capabilities.
+  const isBatchReview = canonicalWebPath === "/expedition-batch-preview";
+  if (isIsolatedOnboardingDemo || isBatchReview) {
     return (
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>

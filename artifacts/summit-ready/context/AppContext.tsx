@@ -306,6 +306,16 @@ export interface TrainingWeek {
 
 export interface NearbyHill {
   name: string;
+  /** Owner-reviewed one-way planning estimate; never actual or full outing distance. */
+  approachDistanceKm?: number;
+  distanceBasis?: "one_way_approach";
+  completionPolicy?: "selected_stages";
+  approachStart?: string;
+  evidenceNote?: string;
+  internationalReference?: {
+    target: string; route: string; ascentM: number; approachDistanceKm: number;
+    comparison: string; sources: string[];
+  };
   /** Stable geographic route identity; absent on legacy AsyncStorage records. */
   routeIdentityKey?: string;
   summitId?: string;

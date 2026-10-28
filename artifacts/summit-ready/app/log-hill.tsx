@@ -31,6 +31,7 @@ import { useSubscription } from "@/lib/revenuecat";
 import { MembershipGate } from "@/components/MembershipGate";
 import { logHillSessionCompleted } from "@/lib/analytics";
 import { manualStageDistance } from "@/utils/manualStageDistance";
+import { applyExpeditionStageContribution } from "@/utils/expeditionContribution";
 import {
   addUniqueCompletedRoute,
   creditExpeditionHike,
@@ -125,12 +126,16 @@ function LogHillContent() {
   const [logTarget, setLogTarget] = useState<NearbyHill | null>(null);
   const [reps, setReps] = useState(1);
   const [logging, setLogging] = useState(false);
+  const [actualDistance, setActualDistance] = useState("");
+  const [actualAscent, setActualAscent] = useState("");
   const [loggedHill, setLoggedHill] = useState<string | null>(null);
   const [pendingChallenge, setPendingChallenge] = useState<{
     hillName: string; elevationGain: number; distance: number; date: string;
   } | null>(null);
 
   function openLogModal(hill: NearbyHill) {
+    setActualDistance("");
+    setActualAscent("");
     setLogTarget(hill);
     setReps(hill.repeats > 0 ? hill.repeats : 1);
   }
@@ -142,13 +147,17 @@ function LogHillContent() {
     try {
       const now = new Date();
       const dateStr = now.toISOString().split("T")[0];
-      const elevGain = logTarget.elevation * reps;
+      const stageBased = logTarget.completionPolicy === "selected_stages";
+      const elevGain = stageBased ? Number(actualAscent) : logTarget.elevation * reps;
+      if (stageBased && (!actualDistance.trim() || !actualAscent.trim()
+        || !Number.isFinite(Number(actualDistance)) || Number(actualDistance) <= 0
+        || !Number.isFinite(elevGain) || elevGain < 0)) return;
       const expeditionRoute = activeExpedition?.virtualHills.find(route =>
         expeditionRouteIdentityMatches(route, logTarget)
       );
       const expeditionId = params.expeditionId || (expeditionRoute ? activeExpedition?.id : undefined);
       const creditedRoute = expeditionRoute ?? logTarget;
-      const dist = expeditionId
+      const dist = stageBased ? Number(actualDistance) : expeditionId
         ? manualStageDistance(creditedRoute, reps)
         : Math.round(logTarget.distance * reps * 2 * 10) / 10;
       const sessionId = await addSession({
@@ -158,7 +167,7 @@ function LogHillContent() {
         elevationGain: elevGain,
         duration: 0,
         effort: 3,
-        notes: `${logTarget.name} — ${reps} rep${reps !== 1 ? "s" : ""}`,
+        notes: stageBased ? `${logTarget.name} — manually reported actual outing; separate from approach estimate` : `${logTarget.name} — ${reps} rep${reps !== 1 ? "s" : ""}`,
         completed: true,
         weekNumber: 0,
         hillName: logTarget.name,
@@ -169,7 +178,14 @@ function LogHillContent() {
         objectiveType: creditedRoute.objectiveType,
       });
       if (expeditionId && activeExpedition?.id === expeditionId) {
-        await patchExpedition(expeditionId, {
+        const stageContribution = stageBased ? applyExpeditionStageContribution(activeExpedition, {
+          activityId: sessionId, routeIdentityKey: creditedRoute.routeIdentityKey,
+          summitIdentityKey: creditedRoute.summitIdentityKey,
+        }) : null;
+        await patchExpedition(expeditionId, stageContribution ? {
+          completedRoutes: stageContribution.completedRoutes,
+          virtualHikeProgress: stageContribution.virtualHikeProgress,
+        } : {
           completedRoutes: addUniqueCompletedRoute(
             activeExpedition.completedRoutes ?? [],
             routeCompletionKey(creditedRoute),
@@ -729,7 +745,14 @@ function LogHillContent() {
               <>
                 <Text style={styles.modalTitle}>Log session</Text>
                 <Text style={styles.modalHillName}>{logTarget.emoji} {logTarget.name}</Text>
-                <View style={styles.repSection}>
+                {logTarget.completionPolicy === "selected_stages" ? (
+                  <View style={{ gap: 10, marginVertical: 16 }}>
+                    <Text style={styles.summaryLbl}>Enter your actual outing, including any return walking. Planning estimates are not activity totals.</Text>
+                    <TextInput accessibilityLabel="Actual outing distance in kilometres" placeholder="Actual outing distance (km)" placeholderTextColor={T.textMuted} keyboardType="decimal-pad" value={actualDistance} onChangeText={setActualDistance} style={styles.searchInput} />
+                    <TextInput accessibilityLabel="Actual outing ascent in metres" placeholder="Actual outing ascent (m)" placeholderTextColor={T.textMuted} keyboardType="decimal-pad" value={actualAscent} onChangeText={setActualAscent} style={styles.searchInput} />
+                    <Text style={styles.summaryLbl}>Both figures are required. Distance must be positive; ascent may be zero. Your stage is credited once, independently of these actual totals.</Text>
+                  </View>
+                ) : <View style={styles.repSection}>
                   <Text style={styles.repLabel}>Reps completed</Text>
                   <View style={styles.repStepper}>
                     <TouchableOpacity onPress={() => setReps(r => Math.max(1, r - 1))} disabled={reps <= 1} style={[styles.modalStepBtn, reps <= 1 && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -743,8 +766,8 @@ function LogHillContent() {
                       <Plus size={16} color={T.white} />
                     </TouchableOpacity>
                   </View>
-                </View>
-                <View style={styles.summaryRow}>
+                </View>}
+                {logTarget.completionPolicy !== "selected_stages" && <View style={styles.summaryRow}>
                   <View style={styles.summaryItem}>
                     <TrendingUp size={14} color={T.orange} />
                     <Text style={styles.summaryVal}>{logTarget.elevation * reps}m</Text>
@@ -758,8 +781,8 @@ function LogHillContent() {
                       : Math.round(logTarget.distance * reps * 2 * 10) / 10}km</Text>
                     <Text style={styles.summaryLbl}>distance</Text>
                   </View>
-                </View>
-                <TouchableOpacity style={[styles.confirmBtn, logging && { opacity: 0.7 }]} activeOpacity={0.85} onPress={handleLogSession} disabled={logging}>
+                </View>}
+                <TouchableOpacity style={[styles.confirmBtn, logging && { opacity: 0.7 }]} activeOpacity={0.85} onPress={handleLogSession} disabled={logging || (logTarget.completionPolicy === "selected_stages" && (!actualDistance.trim() || !actualAscent.trim() || !Number.isFinite(Number(actualDistance)) || Number(actualDistance) <= 0 || !Number.isFinite(Number(actualAscent)) || Number(actualAscent) < 0))}>
                   <LinearGradient colors={["#1E8C4E", "#14703D"]} style={StyleSheet.absoluteFill} />
                   <CheckCircle size={16} color="#fff" />
                   <Text style={styles.confirmBtnText}>{logging ? "Logging…" : "Log session"}</Text>

@@ -33,6 +33,7 @@ import {
 import { buildExpeditionPrompt } from "../services/artwork/promptBuilder.js";
 import { db, signatureChallenges, challengeStages } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { sourceArtworkId } from "../data/summitChallengeBatch";
 import {
   approveMountainHero,
   findMountainHeroCandidates,
@@ -443,7 +444,8 @@ artworkRouter.get("/status", async (_req, res) => {
 // Current artwork URLs are mutable and must revalidate; app requests additionally
 // require current approval and bind bytes to the approved database version.
 artworkRouter.get("/image/:challengeId/:crop", async (req, res) => {
-  const { challengeId, crop } = req.params;
+  const { crop } = req.params;
+  const challengeId = sourceArtworkId(req.params.challengeId);
   if (!VALID_CROPS.includes(crop as CropType)) {
     res.status(400).json({ error: `Invalid crop type. Must be one of: ${VALID_CROPS.join(", ")}` });
     return;

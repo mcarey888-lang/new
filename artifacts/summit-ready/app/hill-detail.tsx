@@ -113,6 +113,9 @@ export default function HillDetailScreen() {
       objectiveType?: string;
       stageCompletionKey?: string;
     }>();
+  const savedStage = activeExpedition?.virtualHills.find(hill =>
+    !!routeIdentityKey && hill.routeIdentityKey === routeIdentityKey);
+  const approachStage = savedStage?.distanceBasis === "one_way_approach" ? savedStage : null;
 
   const isExpeditionMode = expeditionMode === "true";
   const [stageSaving, setStageSaving] = useState(false);
@@ -280,6 +283,26 @@ export default function HillDetailScreen() {
   useEffect(() => {
     if (!name) return;
     setImageError(false);
+    if (approachStage) {
+      // Owner-reviewed approach facts need no new generated route research.
+      // Summit coordinates are not parking coordinates or a descent track.
+      setDetail({
+        description: "Owner-reviewed approximate summit approach. Plan and assess the full outing separately.",
+        startPoint: {
+          name: approachStage.approachStart ?? "Named start; coordinates not verified",
+          lat: null, lng: null,
+          directions: "Start location is named for planning only. Check access and parking locally.",
+          parkingNotes: "Parking coordinates and availability have not been verified.",
+        },
+        routes: [],
+        summitLat: approachStage.lat ?? null,
+        summitLng: approachStage.lng ?? null,
+        provenance: { mapCoordinates: "verified", startPoint: "unverified" },
+      });
+      setDetailError(false);
+      setDetailLoading(false);
+      return;
+    }
 
     async function fetchDetail() {
       try {
@@ -312,7 +335,7 @@ export default function HillDetailScreen() {
     }
 
     fetchDetail();
-  }, [name, location, lat, lng, elevation, routeDistance, estimatedTime, routeType, grade, surface, routeIdentityKey, summitIdentityKey]);
+  }, [name, location, lat, lng, elevation, routeDistance, estimatedTime, routeType, grade, surface, routeIdentityKey, summitIdentityKey, approachStage]);
 
   useEffect(() => {
     if (!routeIdentityKey?.startsWith("sde:route:") || !summitIdentityKey?.startsWith("sde:mountain:")) {
@@ -554,14 +577,14 @@ export default function HillDetailScreen() {
               {elevation ? (
                 <View style={styles.elevBadge}>
                   <TrendingUp size={11} color={EXPLORE.accent} />
-                  <Text style={styles.elevText}>{`${elevationEstimated === "true" ? "~" : ""}${elevation} m ${elevationEstimated === "true" ? "estimated climb" : "per climb"}`}</Text>
+                  <Text style={styles.elevText}>{approachStage ? `${elevation} m · Approx. ascent` : `${elevationEstimated === "true" ? "~" : ""}${elevation} m ${elevationEstimated === "true" ? "estimated climb" : "per climb"}`}</Text>
                 </View>
               ) : null}
               {distance ? (
                 <View style={styles.elevBadge}>
                   <MapPin size={11} color={EXPLORE.verified} />
                   <Text style={styles.elevText}>
-                    {`${Number.isFinite(Number(distance)) ? Number(distance).toFixed(1) : distance} km away`}
+                    {approachStage ? `${approachStage.approachDistanceKm} km · Approach distance` : `${Number.isFinite(Number(distance)) ? Number(distance).toFixed(1) : distance} km away`}
                   </Text>
                 </View>
               ) : null}
@@ -713,6 +736,14 @@ export default function HillDetailScreen() {
               <Animated.View entering={FadeInDown.delay(80).duration(400)}>
                 <View style={styles.section}>
               <Text style={styles.sectionTitle}>About this summit</Text>
+              {approachStage && (
+                <View style={{ paddingVertical: 12, gap: 8 }}>
+                  <Text style={{ color: T.text, lineHeight: 20 }}>{approachStage.routeName}{"\n"}Start: {approachStage.approachStart}</Text>
+                  <Text style={{ color: T.textMuted, lineHeight: 20 }}>Approximate one-way approach, including pre-summit undulations. Return walking is additional. No navigable track is supplied. The summit credit endpoint does not define a safe descent.</Text>
+                  {!!approachStage.safetyWarning && <Text style={{ color: T.orange, lineHeight: 20 }}>{approachStage.safetyWarning}</Text>}
+                  {!!approachStage.evidenceNote && <Text style={{ color: T.textMuted, lineHeight: 20 }}>{approachStage.evidenceNote}</Text>}
+                </View>
+              )}
                   <Text style={styles.descriptionText}>{detail.description}</Text>
                 </View>
               </Animated.View>

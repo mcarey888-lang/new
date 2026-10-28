@@ -5,16 +5,23 @@ description: Durable rules for final-stage contribution, cinematic routing, and 
 
 Final-stage activity saves must return through Basecamp so the protected summit
 transition and cinematic remain the only normal path to Expedition completion.
-Completion requires both stable completed-stage identities and canonical 100%
-simulated progress. Cinematic replay is visual only and never awards completion.
+Legacy completion requires both stable completed-stage identities and canonical
+100% simulated progress. The owner-approved revised summit-stage collection
+instead completes when every selected stage is complete under existing
+verification rules, with no additional international-ascent threshold.
+Cinematic replay is visual only and never awards completion.
 
 **Why:** Architectural review found that route-only completion and a direct jump
 from tracking to the completion screen could bypass the summit experience or
 award completion while canonical simulated progress was below 100%.
 
-**How to apply:** Any future tracking, recovery, deep-link, replay, or completion
-change must preserve the Basecamp handoff, use the shared Expedition presentation
-state, and keep completion idempotent and scoped to the active expedition.
+**How to apply:** Preserve legacy semantics for old saved plans. Explicitly
+stage-based revisions derive completion from completed stage identities, not
+measured GPS ascent matching an approximate international reference. Any future
+tracking, recovery, deep-link, replay, or completion change must preserve the
+Basecamp handoff, shared presentation state, and idempotent active-expedition
+completion. **Why:** The owner explicitly approved approximate fun challenges
+whose selected local stages need not exactly match the international ascent.
 
 Every successful manual expedition-stage log must return directly to Expedition Basecamp
 to show updated progress, not reveal the Training hill picker or interrupt with
