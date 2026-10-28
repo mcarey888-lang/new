@@ -900,3 +900,17 @@ mtime_ms = 1793211435088
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/798a691c-cfc1-4333-b312-be1b616b9953/9f7131b0-63fc-4c67-a1c5-d945e9fe3d4c"
 storage_version_token = "1793211495702176"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "9gzx7w4Yzw3s2_0yQ3Q-3"
+uri = "file://generated-artifacts/expedition-curation-pack/SummitReady-Expedition-Curation-Pack.zip"
+type = "unspecified"
+title = "SummitReady Expedition Curation Pack"
+description = "All four files in one verified ZIP: ChatGPT instructions, approved expedition data, verified summit catalogue and artwork reference PDF. Approximately 4.8 MB."
+logical_id = "2e7bcfd0-fe80-4d05-a97b-8c5771ce5b1e"
+content_hash = "sha256:e17b526fe923a4bad164692b80d8c90d0ec0298e034c2a665db778aefac37e5f"
+size = 4805207
+mtime_ms = 1793213842616
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/2e7bcfd0-fe80-4d05-a97b-8c5771ce5b1e/582b230f-9221-4865-8f0c-f9413877b123"
+storage_version_token = "1793213849168300"
+content_type = "application/octet-stream"
