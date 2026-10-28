@@ -97,3 +97,16 @@ downloads is not permission to redistribute them in SummitReady. In particular,
 personal-use downloads need separate permission; keep ODbL attribution and
 applicable share-alike obligations explicit for OSM-derived route data. A failed
 source request is unavailable evidence, never proof that a route does not exist.
+
+For existing expeditions whose named routes are not yet supported by verified
+route data, prefer reviewed stages anchored to actual catalogue summits rather
+than presenting the route name as if a navigable route exists.
+
+**Why:** The owner wants legacy expeditions reconciled to the summit database
+before route data is available. Legacy challenge names and walking estimates
+alone are not evidence of a summit location, route geometry or starting point.
+
+**How to apply:** Bind only reviewed, unambiguous summit identities; a
+multi-summit circuit needs explicit review rather than a single guessed summit.
+Keep historical stage completion identities and saved progress intact, and
+keep unverified route facts clearly separate from verified summit details.
