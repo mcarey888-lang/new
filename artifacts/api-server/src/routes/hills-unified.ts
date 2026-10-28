@@ -4,6 +4,7 @@ import { db, cachedHills } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { lookupNamedMappedPeaks } from "../services/namedMappedPeak.js";
+import { canonicalTrainingHills } from "../services/mountain/canonicalTrainingHills";
 
 const router: IRouter = Router();
 
@@ -709,6 +710,7 @@ export async function osmPeaksToHills(
   radiusKm: number,
   minElevation: number,
   nearestFirst = false,
+  requireElevationData = false,
 ): Promise<Hill[]> {
   if (!peaks.length) return [];
 
@@ -740,6 +742,10 @@ export async function osmPeaksToHills(
   }
 
   const elevations = allPoints.length > 0 ? await fetchTopoElevations(allPoints) : [];
+  if (requireElevationData && !elevations.some(e => e !== null) &&
+      !inRange.some(p => knownGainForHill(p))) {
+    throw new Error("Training ascent terrain data is temporarily unavailable");
+  }
 
   const hills: Hill[] = [];
   for (let i = 0; i < inRange.length; i++) {
@@ -756,18 +762,16 @@ export async function osmPeaksToHills(
     const baseSamples = elevations
       .slice(offset + 1, offset + 1 + SAMPLE_COUNT)
       .filter((e): e is number => e !== null);
-    if (baseSamples.length < 2) continue;
+    const known = knownGainForHill({ name: peak.name, lat: peak.lat, lng: peak.lng });
+    if (baseSamples.length < 2 && !known) continue;
 
-    const baseElev = Math.min(...baseSamples);
-    let gain = Math.round(summitElev - baseElev);
+    const baseElev = baseSamples.length >= 2 ? Math.min(...baseSamples) : null;
+    let gain = known ?? Math.round(summitElev - baseElev!);
 
     // Skip flat ground or implausible values
     if (gain < 30 || gain > 6_000) continue;
 
     // Known-gains table overrides computed gain for well-researched hills
-    const known = knownGainForHill({ name: peak.name, lat: peak.lat, lng: peak.lng });
-    if (known) gain = known;
-
     if (gain < minElevation) continue;
 
     const distance = Math.round(peak.distKm * 10) / 10;
@@ -1085,6 +1089,24 @@ router.post("/hills-unified", async (req, res) => {
     if (!userCoords) {
       res.status(502).json({ error: "Couldn't locate the search area. Enter a valid town or postcode; no hills were guessed." });
       return;
+    }
+    if (isUKHillSearch(userCoords)) {
+      // A catalogue outage may use independent mapped OSM discovery, but
+      // catalogue-backed results never inherit legacy cache or AI identity.
+      let canonical: Hill[] | null = null;
+      try {
+        canonical = await canonicalTrainingHills(
+          userCoords.lat, userCoords.lng, r, minElev, osmPeaksToHills,
+        );
+      } catch (err) {
+        req.log.error({ err }, "Canonical training hill discovery unavailable");
+      }
+      if (canonical !== null) {
+        const hills = canonical.filter(h => h.distance <= r).sort((a, b) => a.distance - b.distance);
+        if (hills.length) areaCache.set(cacheKey, { hills, ts: Date.now() });
+        res.json({ hills, source: "canonical_verified" });
+        return;
+      }
     }
     const osmPeaks = userCoords
       ? await fetchOSMPeaks(userCoords.lat, userCoords.lng, r, isUKHillSearch(userCoords))

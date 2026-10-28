@@ -5,6 +5,19 @@ description: UK training hill discovery must be source-grounded; preserve global
 
 UK training searches must establish a mapped peak before offering its location or climb data. Do not pad a short result list with AI hills, and do not accept a nearby legacy cache row as proof that a named hill exists.
 
+UK area discovery should prefer the verified summit catalogue over public
+Overpass, with independent mapped discovery retained for catalogue gaps.
+Catalogue verification establishes summit identity, not a verified walking
+route or surveyed ascent; terrain estimates retain that separate status.
+
+**Why:** Training setup was blocked by public peak-provider outages despite
+the same hills being available in the existing protected summit catalogue.
+
+**How to apply:** Reuse the read-only canonical discovery boundary. Preserve
+canonical IDs and distinguish summit height from per-climb ascent. Do not
+replace unavailable terrain measurements with summit height, prominence,
+invented route facts or an AI guess.
+
 **Why:** A user received Brook's Hill with an unsupported 668 m climb and Alpine terrain; name-based map lookup led to a street. Public peak-provider failures were being treated as empty results, making AI substitution particularly misleading.
 
 **How to apply:** Prefer nearby mapped candidates for training. Distinguish a genuinely empty search from a provider failure, and show a retryable error for the latter. Legacy assignments need fresh source-backed details before their climb figures are reused. Terrain sampling is an estimate, not a surveyed walking route; label it accordingly.

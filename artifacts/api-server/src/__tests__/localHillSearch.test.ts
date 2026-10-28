@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { ai, select } = vi.hoisted(() => ({ ai: vi.fn(), select: vi.fn() }));
+const { ai, select, canonical } = vi.hoisted(() => ({ ai: vi.fn(), select: vi.fn(), canonical: vi.fn() }));
 vi.mock("@workspace/integrations-openai-ai-server", () => ({
   openai: { chat: { completions: { create: ai } } },
 }));
@@ -10,6 +10,9 @@ vi.mock("@workspace/db", () => ({
     select,
     insert: () => ({ values: () => ({ onConflictDoUpdate: async () => {} }) }),
   },
+}));
+vi.mock("../services/mountain/canonicalTrainingHills", () => ({
+  canonicalTrainingHills: canonical,
 }));
 
 import router, { fetchOSMPeaks, normalizedHillSearchName, osmPeaksToHills } from "../routes/hills-unified.js";
@@ -33,6 +36,7 @@ async function search(body: Record<string, unknown>) {
 beforeEach(() => {
   ai.mockReset();
   select.mockReset();
+  canonical.mockReset().mockResolvedValue(null);
   peaks = [peak];
   geocodeAvailable = true;
   peaksAvailable = true;
@@ -58,6 +62,39 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("mapped local training hill searches", () => {
+  it("returns catalogue-backed hills without calling Overpass or AI", async () => {
+    canonical.mockResolvedValue([{
+      name: "Real Catalogue Fell", elevation: 170, distance: 2,
+      dataSource: "canonical_verified", routeDataStatus: "terrain_calculated",
+      summitElevationASL: 450, summitIdentityKey: "canonical:reviewed-id",
+    }]);
+    const res = await search({ location: "BB4 4BH", radius: 24.8 });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toMatchObject({
+      source: "canonical_verified",
+      hills: [{ name: "Real Catalogue Fell", elevation: 170, summitElevationASL: 450 }],
+    });
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("overpass"))).toBe(false);
+    expect(ai).not.toHaveBeenCalled();
+  });
+
+  it("retains independent mapped discovery during a catalogue outage", async () => {
+    canonical.mockRejectedValue(new Error("catalogue unavailable"));
+    const res = await search({ location: "BB4 4BH", radius: 24.7 });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.source).toBe("overpass");
+    expect(res.body.hills).toHaveLength(1);
+    expect(ai).not.toHaveBeenCalled();
+  });
+
+  it("does not silently return no hills when required terrain data is unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("terrain unavailable")));
+    await expect(osmPeaksToHills(
+      [{ id: 1, name: "Real Fell", lat: 53.7, lng: -2.33, ele: 400 }],
+      53.7, -2.33, 25, 0, true, true,
+    )).rejects.toThrow("terrain data is temporarily unavailable");
+  });
+
   it.each(["http", "timeout", "incomplete"])("uses a second mapped mirror after a primary %s failure", async failure => {
     const fetchMock = vi.fn()
       .mockImplementationOnce(async () => {
