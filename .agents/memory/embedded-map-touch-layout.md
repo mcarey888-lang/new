@@ -16,6 +16,16 @@ standalone map page. Account for header measurement, large text and rotation.
 Do not hide or rewrite working map controls to work around host hit testing, and
 do not change recording, GPS, saving or pause/resume behavior for a layout fix.
 
+Drawing controls must respect the same host-header clearance as search and
+layers. During route drawing, parking pins are exact route-point targets;
+outside drawing they retain their information and directions behavior.
+
+**Why:** The owner could not choose a car park as the start of a summit route,
+and the drawing toolbar was covered by the Training/Expeditions switcher.
+
+**How to apply:** Keep map drawing intent ahead of parking popups, without
+promoting mapped parking to verified access or changing its confidence.
+
 The Track landing sheet must sit above the full absolute-positioned primary
 navigation footprint, including its native safe area. Include both sheet and
 navigation height when lifting the map attribution.

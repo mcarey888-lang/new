@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parkingDirectionsScript } from "../routes/parking-directions-script";
 import { buildRouteMapHtml } from "../routes/route-map-web";
 
-function harness(native = false, agent = "Android") {
+function harness(native = false, agent = "Android", drawing = false) {
   type Element = {
     children: Element[]; textContent?: string; href?: string; target?: string; rel?: string;
     onclick?: (e: unknown) => void;
@@ -15,6 +15,7 @@ function harness(native = false, agent = "Android") {
   let body: Element | undefined;
   let removed = 0;
   const posts: Record<string, unknown>[] = [];
+  const points: { lat: number; lng: number }[] = [];
   const queries: unknown[][] = [];
   const feature = {
     geometry: { coordinates: [-3.28, 54.46] },
@@ -30,11 +31,12 @@ function harness(native = false, agent = "Android") {
     addTo() { return this; }
     remove() { removed++; }
   }
-  const api = new Function("map", "document", "navigator", "window", "maplibregl", "post",
-    `${parkingDirectionsScript()}; return { parkingAt, showParkingPopup, closeParkingPopup, parkingWebUrl };`,
+  const api = new Function("map", "document", "navigator", "window", "maplibregl", "post", "drawing", "addPoint",
+    `${parkingDirectionsScript()}; return { parkingAt, handleParkingTap, showParkingPopup, closeParkingPopup, parkingWebUrl };`,
   )(map, { createElement: create }, { userAgent: agent },
-    native ? { ReactNativeWebView: {} } : {}, { Popup }, (msg: Record<string, unknown>) => posts.push(msg));
-  return { api, feature, posts, queries, body: () => body!, removed: () => removed };
+    native ? { ReactNativeWebView: {} } : {}, { Popup }, (msg: Record<string, unknown>) => posts.push(msg),
+    drawing, (point: { lat: number; lng: number }) => points.push(point));
+  return { api, feature, posts, points, queries, body: () => body!, removed: () => removed };
 }
 
 describe("parking marker directions", () => {
@@ -113,9 +115,29 @@ describe("parking marker directions", () => {
     expect(h.api.parkingWebUrl("default", 54, -3, "Car park", "Firefox Linux")).toContain("google.com/maps/dir");
   });
 
-  it("consumes parking taps before adding route points or emitting a tap", () => {
+  it("uses exact parking coordinates as a planning point without opening directions", () => {
+    const h = harness(false, "Android", true);
+    h.api.handleParkingTap(h.feature);
+    expect(h.points).toEqual([{ lat: 54.46, lng: -3.28 }]);
+    expect(h.posts).toEqual([{ type: "tap", lat: 54.46, lng: -3.28 }]);
+    expect(h.body()).toBeUndefined();
+  });
+
+  it("keeps directions available outside drawing and rejects invalid planning coordinates", () => {
+    const browse = harness();
+    browse.api.handleParkingTap(browse.feature);
+    expect(browse.body()).toBeDefined();
+    expect(browse.points).toEqual([]);
+    const planning = harness(false, "Android", true);
+    planning.feature.geometry.coordinates = [-3, 100];
+    planning.api.handleParkingTap(planning.feature);
+    expect(planning.points).toEqual([]);
+    expect(planning.posts).toEqual([]);
+  });
+
+  it("handles parking taps once before the generic map-point handler", () => {
     const html = buildRouteMapHtml(undefined);
-    const guard = html.indexOf("if (parking) { showParkingPopup(parking); return; }");
+    const guard = html.indexOf("if (parking) { handleParkingTap(parking); return; }");
     expect(guard).toBeGreaterThan(-1);
     expect(html.indexOf('post({ type: "tap"', guard)).toBeGreaterThan(guard);
     expect(html.indexOf("if (drawing) addPoint(e.lngLat)", guard)).toBeGreaterThan(guard);

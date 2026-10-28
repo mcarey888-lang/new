@@ -473,7 +473,7 @@ map.on(${JSON.stringify(reviewEditor ? "style.load" : "load")}, function () {
        place it started. */
     if (suppressClick) { suppressClick = false; return; }
     var parking = typeof parkingAt === "function" ? parkingAt(e) : null;
-    if (parking) { showParkingPopup(parking); return; }
+    if (parking) { handleParkingTap(parking); return; }
     post({ type: "tap", lat: e.lngLat.lat, lng: e.lngLat.lng });
     if (drawing) addPoint(e.lngLat);
   });

@@ -72,7 +72,9 @@ function setBottomInset(px) {
 function setTopInset(px) {
   hostTopInset = Math.max(0, Math.min(400, Number(px) || 0));
   if (typeof liftSearchBox === "function") liftSearchBox(hostTopInset);
+  if (typeof placeDrawBar === "function") placeDrawBar();
   if (typeof placeLayersSheet === "function") placeLayersSheet();
+  if (typeof placeMapNavigation === "function") placeMapNavigation();
 }
 
 /**

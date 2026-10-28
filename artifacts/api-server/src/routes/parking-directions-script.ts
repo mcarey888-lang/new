@@ -1,4 +1,4 @@
-/** Parking interactions for the shared map. Never changes a route or parking confidence. */
+/** Parking interactions for the shared map. Planning taps never change parking confidence. */
 export function parkingDirectionsScript(): string {
   return `
 var parkingPopup = null;
@@ -12,6 +12,20 @@ function parkingAt(event) {
     layers: ["parking-dot"]
   });
   return hits && hits[0] || null;
+}
+function handleParkingTap(feature) {
+  if (typeof drawing === "undefined" || !drawing) {
+    showParkingPopup(feature);
+    return;
+  }
+  var coordinates = feature.geometry && feature.geometry.coordinates;
+  if (!coordinates || !Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1]) ||
+      Math.abs(coordinates[0]) > 180 || Math.abs(coordinates[1]) > 90) return;
+  closeParkingPopup();
+  // Use the pin itself, not the nearby finger position in its generous hit area.
+  var point = { lng: coordinates[0], lat: coordinates[1] };
+  post({ type: "tap", lat: point.lat, lng: point.lng });
+  addPoint(point);
 }
 function parkingWebUrl(provider, lat, lng, label, agent) {
   var destination = lat + "," + lng;

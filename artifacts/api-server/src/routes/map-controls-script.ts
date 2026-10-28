@@ -190,6 +190,11 @@ function buildLayersSheet() {
   window.addEventListener("resize", placeMapNavigation);
 }
 
+function placeDrawBar() {
+  if (!drawBar) return;
+  drawBar.style.top = (typeof hostTopInset === "number" ? hostTopInset : 0) + 12 + "px";
+}
+
 function placeLayersSheet() {
   if (!layersSheet) return;
   // The host's Training/Expeditions switch is outside the WebView/iframe;
@@ -208,7 +213,7 @@ function layersOpen() { return !!layersSheet && layersSheet.style.display === "b
 function placeMapNavigation() {
   var nav = document.querySelector(".maplibregl-ctrl-top-left");
   if (!nav) return;
-  var bottom = 0;
+  var bottom = typeof hostTopInset === "number" ? hostTopInset : 0;
   if (typeof searchBox !== "undefined" && searchBox && searchBox.style.display !== "none") {
     bottom = searchBox.getBoundingClientRect().bottom;
   }
@@ -381,6 +386,7 @@ function syncControls() {
     drawBtn.setAttribute("aria-pressed", drawing ? "true" : "false");
   }
   if (drawBar) drawBar.style.display = drawing ? "block" : "none";
+  placeDrawBar();
   placeLayersSheet();
   syncSearchVisibility();
   placeMapNavigation();

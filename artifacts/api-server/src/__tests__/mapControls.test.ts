@@ -8,6 +8,19 @@ const script = (gpx = true) => mapControlsScript(gpx);
 const page = () => buildRouteMapHtml("K", "full", "/api/map-tiles", true, "/api/path-snap", "/api/route-profile", "/api/route-gpx", "/api/summits");
 
 describe("layers menu clears the host mode switch", () => {
+  it("positions drawing controls below the host switch and responds to inset updates", () => {
+    const context = { hostTopInset: 84, result: {} as Record<string, string> };
+    runInNewContext(script() + `
+      drawBar = { style: {} };
+      placeDrawBar();
+      result.first = drawBar.style.top;
+      hostTopInset = 110;
+      placeDrawBar();
+      result.second = drawBar.style.top;
+    `, context);
+    expect(context.result).toEqual({ first: "96px", second: "122px" });
+    expect(recordingScript()).toContain('typeof placeDrawBar === "function"');
+  });
   function placement(inset?: number, drawingBottom?: number) {
     const context = {
       ...(inset === undefined ? {} : { hostTopInset: inset }),
