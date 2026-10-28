@@ -44,7 +44,7 @@ export function applyExpeditionStageContribution(
         elevationGained: previous.elevationGained + (shouldAdvance ? Math.max(0, stage?.totalElevation ?? stage?.elevation ?? 0) : 0),
         distanceCovered: previous.distanceCovered + (shouldAdvance ? Math.max(0, stage?.routeDistance ?? stage?.distance ?? 0) : 0),
         hikesLogged: previous.hikesLogged + (shouldAdvance ? 1 : 0),
-        creditedHikeIds: [...credited.slice(-99), input.activityId],
+        creditedHikeIds: [...credited, input.activityId],
       };
 
   return {

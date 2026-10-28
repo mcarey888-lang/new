@@ -862,12 +862,6 @@ export default function ChallengeDetailScreen() {
                   <View style={[s.badge, { backgroundColor: diffColor + "22" }]}>
                     <Text style={[s.badgeText, { color: diffColor }]}>{c.difficulty}</Text>
                   </View>
-                  {c.isPremium && (
-                    <View style={[s.badge, { backgroundColor: T.purpleDim }]}>
-                      <Zap size={9} color={T.purple} />
-                      <Text style={[s.badgeText, { color: T.purple }]}>Pro</Text>
-                    </View>
-                  )}
                   {isCompleted && (
                     <View style={[s.badge, { backgroundColor: T.greenDim }]}>
                       <CheckCircle size={9} color={T.green} />

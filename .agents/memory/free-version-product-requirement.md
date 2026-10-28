@@ -29,7 +29,10 @@ simulated adventures; Pro prepares users for a real mountain.
 - Preserve existing full-access subscribers as full Pro, including restoration.
   Expiry retains activities, progress, plans and clearly historical readiness;
   it never interrupts saving a recording. Ordinary hiking on any mountain is
-  not participation in a paid simulated expedition.
+  not participation in a paid simulated expedition. Recording only must also
+  stay separate from training progression: explicit linking is required to
+  count a hike toward a training session or expedition stage, and a previously
+  credited hike must not count again even after a long recording history.
 - UK targets are Expeditions £4.99/month or £34.99/year, Pro £9.99/month or
   £69.99/year. The owner will configure store prices. Display actual localised
   store prices, not target-price fallbacks. Pro's desired 14-day trial requires

@@ -13,9 +13,9 @@ interface PremiumGateProps {
 }
 
 export function PremiumGate({ feature, description, children }: PremiumGateProps) {
-  const { isSubscribed, isLoading } = useSubscription();
+  const { isSubscribed } = useSubscription();
 
-  if (isLoading || isSubscribed) {
+  if (isSubscribed) {
     return <>{children}</>;
   }
 

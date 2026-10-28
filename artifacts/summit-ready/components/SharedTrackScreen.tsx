@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LogHikeModal } from "@/components/LogHikeModal";
 import { TrackMap, type TrackMapHandle } from "@/components/track/TrackMap";
 import { useApp } from "@/context/AppContext";
+import { useSubscription } from "@/lib/revenuecat";
+import { canUseExpedition } from "@workspace/membership";
 import { useGpsStatus } from "@/hooks/useGpsStatus";
 import { useSummitTicks } from "@/hooks/useSummitTicks";
 import { useScreenView } from "@/lib/analytics";
@@ -67,6 +69,7 @@ export function SharedTrackScreen() {
 
 function SharedTrackScreenBody() {
   useScreenView("track");
+  const { access } = useSubscription();
   const insets = useSafeAreaInsets();
   const navigationHeight = primaryTabBarHeight(Platform.OS, insets.bottom);
   const { userId, getToken } = useAuth();
@@ -277,6 +280,10 @@ function SharedTrackScreenBody() {
     startedRef.current = true;
     setStarting(true);
     try {
+    if (context.kind === "training" && !access.training)
+      throw new Error("Pro is needed to add this hike to training. Choose Recording only to save an ordinary hike instead.");
+    if (context.kind === "expedition" && !canUseExpedition(access, activeExpedition?.challengeId))
+      throw new Error("Expeditions access is needed to add this hike to an expedition. Choose Recording only to save it without expedition progress.");
     if (route) {
       if (!userId) throw new Error("Sign in to follow your saved route.");
       await savePersonalRouteHandoff(personalRouteHandoff(userId, route));
@@ -297,7 +304,7 @@ function SharedTrackScreenBody() {
       setStarting(false);
       setRoutesOpen(true);
     }
-  }, [context, shellMode, activeExpeditionId, route, userId]);
+  }, [context, shellMode, activeExpeditionId, activeExpedition, access, route, userId]);
 
   const resume = useCallback(() => {
     if (startedRef.current || !activeHike) return;
@@ -308,20 +315,20 @@ function SharedTrackScreenBody() {
 
   const choices = useMemo(() => {
     const list: Array<{ key: string; context: TrackContext }> = [{ key: "free", context: FREE_HIKE }];
-    if (shellMode === "training" && nextSession && currentWeek) {
+    if (access.training && shellMode === "training" && nextSession && currentWeek) {
       list.push({
         key: "training",
         context: trainingContextFor(nextSession.session, currentWeek.weekNumber, nextSession.index),
       });
     }
-    if (shellMode === "expedition" && nextStage && activeExpeditionId) {
+    if (canUseExpedition(access, activeExpedition?.challengeId) && shellMode === "expedition" && nextStage && activeExpeditionId) {
       list.push({
         key: "expedition",
         context: { kind: "expedition", expeditionId: activeExpeditionId, stage: nextStage },
       });
     }
     return list;
-  }, [shellMode, nextSession, currentWeek, nextStage, activeExpeditionId]);
+  }, [access, shellMode, nextSession, currentWeek, nextStage, activeExpeditionId, activeExpedition?.challengeId]);
 
   const cameFromElsewhere = params.from === "push";
 
@@ -417,7 +424,7 @@ function SharedTrackScreenBody() {
                   <Text style={st.rowDetail} numberOfLines={2}>{contextDetail(context)}</Text>
                 ) : null}
 
-                {choices.length > 1 ? (
+                {choices.length > 1 || context.kind !== "free" ? (
                   <TouchableOpacity
                     onPress={() => setPickerOpen(true)}
                     style={st.changeRow}
@@ -495,10 +502,10 @@ function SharedTrackScreenBody() {
                 style={st.choice}
                 onPress={() => { setContext(choice.context); setPickerOpen(false); }}
                 accessibilityRole="button"
-                accessibilityLabel={contextLabel(choice.context)}
+                accessibilityLabel={choice.key === "free" ? "Recording only" : choice.key === "expedition" ? "Add to this expedition" : contextLabel(choice.context)}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={st.choiceName}>{contextLabel(choice.context)}</Text>
+                  <Text style={st.choiceName}>{choice.key === "free" ? "Recording only" : choice.key === "expedition" ? "Add to this expedition" : contextLabel(choice.context)}</Text>
                   {contextDetail(choice.context) ? (
                     <Text style={st.choiceDetail}>{contextDetail(choice.context)}</Text>
                   ) : null}

@@ -36,8 +36,9 @@ export function MembershipGate({ children, allowExpedition = false }: { children
     <ScrollView style={{ flex: 1, backgroundColor: T.bg }} contentContainerStyle={{ padding: 28, paddingTop: 80, gap: 20 }}>
       <Text style={{ color: T.white, fontSize: 28, fontWeight: "700" }}>{expeditionView ? "Your expedition is saved" : "Train for your mountain"}</Text>
       <Text style={{ color: T.textMuted, lineHeight: 23 }}>
-        SummitReady Pro includes personalised training, adaptive plans and mountain-specific preparedness estimates, plus the full expedition collection.
-        Readiness is not certification of safety, technical competence or acclimatisation.
+        {expeditionView
+          ? "Expeditions membership includes the full expedition collection, local-hill stages and expedition progress. Personalised training and readiness require Pro. Your existing progress is retained."
+          : "SummitReady Pro includes personalised training, adaptive plans and mountain-specific preparedness estimates, plus the full expedition collection. Readiness is not certification of safety, technical competence or acclimatisation."}
       </Text>
       {isError && <TouchableOpacity onPress={() => { void refetchCustomerInfo(); }}><Text style={{ color: T.textMuted }}>We couldn’t refresh membership. Retry</Text></TouchableOpacity>}
       <TouchableOpacity onPress={() => router.push({ pathname: "/paywall", params: expeditionView

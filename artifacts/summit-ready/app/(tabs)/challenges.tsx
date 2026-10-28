@@ -43,8 +43,7 @@ const pb = StyleSheet.create({
 
 function ChallengeCard({ c, onPress }: { c: ChallengeTemplate; onPress: () => void }) {
   const { getProgress, getActiveChallenge } = useChallenges();
-  const { isSubscribed } = useSubscription();
-  const locked = c.isPremium && !isSubscribed;
+  const locked = false; // Ordinary hiking achievements are free at every tier.
   const ac = getActiveChallenge(c.id);
   const progress = getProgress(c.id);
   const pct = ac ? Math.round((progress / c.targetValue) * 100) : 0;
@@ -63,12 +62,6 @@ function ChallengeCard({ c, onPress }: { c: ChallengeTemplate; onPress: () => vo
             <View style={[cc.badge, { backgroundColor: diffColor + "15" }]}>
               <Text style={[cc.badgeText, { color: diffColor }]}>{c.difficulty}</Text>
             </View>
-            {c.isPremium && (
-              <View style={[cc.badge, { backgroundColor: T.purpleDim }]}>
-                <Zap size={10} color={T.purple} />
-                <Text style={[cc.badgeText, { color: T.purple }]}>Pro</Text>
-              </View>
-            )}
             {ac?.completed && (
               <View style={[cc.badge, { backgroundColor: T.greenDim }]}>
                 <CheckCircle size={10} color={T.green} />

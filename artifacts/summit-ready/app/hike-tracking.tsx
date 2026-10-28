@@ -13,6 +13,7 @@ import {
   WifiOff,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useSubscription } from "@/lib/revenuecat";
 import * as Location from "expo-location";
 import * as Crypto from "expo-crypto";
 import * as TaskManager from "expo-task-manager";
@@ -312,6 +313,7 @@ function HikeTrackingScreenBody() {
   };
   const { appMode, shellMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions,
           summitGoal, patchExpedition, activeExpeditionId, expeditions, exploreHikes } = useApp();
+  const { access } = useSubscription();
   const { lastConsequence: stage8LastConsequence } = useStage8();
   const elevationBankQuery = useGetElevationBank({
     query: {
@@ -440,7 +442,7 @@ function HikeTrackingScreenBody() {
   const [checkpointError, setCheckpointError] = useState<string | null>(null);
   const discardInFlightRef               = useRef(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
-  const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
+  const [addToPlan, setAddToPlan]         = useState(false);
   const [drawerOpen, setDrawerOpen]       = useState(true);
   const [freeHikeOptionsOpen, setFreeHikeOptionsOpen] = useState(false);
   const [freeHikeDrawing, setFreeHikeDrawing] = useState(false);
@@ -1689,6 +1691,7 @@ function HikeTrackingScreenBody() {
         rawGPSFixes: rawGPSFixes.current,
         recordingEvents: recordingEvents.current,
         activityId: routeId,
+        countsTowardTraining: false,
         expeditionId: hillMeta.expeditionId ?? undefined,
         canonicalRouteId: canonicalRouteContext?.routeId,
         canonicalRouteVersion: canonicalRouteContext?.routeVersion,
@@ -1701,7 +1704,7 @@ function HikeTrackingScreenBody() {
 
       // Close the GPS gap: if this hike was launched from a plan session,
       // automatically tick it as complete so the user doesn't have to go back manually.
-      if (hillMeta.sessionKey) {
+      if (access.training && hillMeta.sessionKey) {
         const location = resolveTrainingSessionLocation(trainingPlan, hillMeta.sessionKey);
         if (location && !completedPlanSessions[hillMeta.sessionKey]) {
           await togglePlanSession(location.weekNumber, location.sessionIndex);
@@ -1709,7 +1712,7 @@ function HikeTrackingScreenBody() {
       }
 
       // 2 ── Optionally log to the plan session log
-      if (addToPlan && trainingPlan && trainingPlan.length > 0) {
+      if (access.training && addToPlan && trainingPlan && trainingPlan.length > 0) {
         const currentWeek = trainingPlan.findIndex(w => !w.sessions?.every((ps: PlanSession) => ps.label === "")) ?? 0;
         await addSession({
           date: new Date().toISOString(),
@@ -1779,7 +1782,7 @@ function HikeTrackingScreenBody() {
               elevationGained: prevProg.elevationGained + elevGain,
               distanceCovered: prevProg.distanceCovered + distKm,
               hikesLogged: prevProg.hikesLogged + 1,
-              creditedHikeIds: [...creditedHikeIds.slice(-99), routeId],
+              creditedHikeIds: [...creditedHikeIds, routeId],
             },
           });
         }
@@ -1800,7 +1803,7 @@ function HikeTrackingScreenBody() {
       setSaving(false);
       Alert.alert("Hike save needs attention", "Your recording has been kept. Something prevented saving or syncing from finishing. Please try Save again; it will not duplicate your hike.");
     }
-  }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
+  }, [access.training, addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
        addSession, logExploreHike, activeExpeditionId, trackedExpedition, hillMeta, expeditions, patchExpedition, getToken, userId, selectedCanonical, isOffline, canonicalRouteContext, activityAudience]);
 
   const stage8Credit = elevationBankQuery.data?.status === "available"
@@ -1860,7 +1863,7 @@ function HikeTrackingScreenBody() {
             fmtM={fmtM}
             fmtKm={fmtKm}
             formatTime={formatTime}
-            trainingPlan={trainingPlan}
+            trainingPlan={access.training ? trainingPlan : []}
             addToPlan={addToPlan}
             setAddToPlan={setAddToPlan}
             saving={saving}

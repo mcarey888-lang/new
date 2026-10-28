@@ -140,7 +140,7 @@ export function creditExpeditionHike(
     elevationGained: current.elevationGained + Math.max(0, elevationGain),
     distanceCovered: current.distanceCovered + Math.max(0, distance),
     hikesLogged: current.hikesLogged + 1,
-    creditedHikeIds: [...creditedHikeIds.slice(-99), activityId],
+    creditedHikeIds: [...creditedHikeIds, activityId],
   };
 }
 

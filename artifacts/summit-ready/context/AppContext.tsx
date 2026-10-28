@@ -708,7 +708,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const membershipRef = useRef(membership.access);
   membershipRef.current = membership.access;
   const calculateReadiness = (...args: Parameters<typeof calculateReadinessRaw>) => {
-    if (!membershipRef.current.training) return 0;
+    if (!membershipRef.current.training) return readinessScore;
     const score = calculateReadinessRaw(...args);
     if (userId) void AsyncStorage.setItem(`membership_readiness_history_${userId}`,
       JSON.stringify({ score, at: new Date().toISOString() })).catch(() => {});
@@ -1654,6 +1654,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const clearScoreStagnation = useCallback(() => setScoreStagnation(null), []);
 
   const addSession = useCallback(async (session: Omit<Session, "id">) => {
+    if (session.expeditionId) {
+      const target = expeditions.find(item => item.id === session.expeditionId);
+      assertMembership(membershipRef.current, "expedition", target?.challengeId);
+    } else {
+      assertMembership(membershipRef.current, "training");
+    }
     const existing = session.activityId
       ? sessionsRef.current.find(item => item.activityId === session.activityId)
       : undefined;
@@ -1684,7 +1690,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       void logMembershipOnce(userId, "first_pro_training_session_completed");
     checkAndNotifyAchievements(updated, score, submittedPlanSessions, unlockedAchievements, exploreHikes);
     return id;
-  }, [summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, readinessScore, submittedPlanSessions, unlockedAchievements, exploreHikes, checkAndNotifyAchievements]);
+  }, [summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, readinessScore, submittedPlanSessions, unlockedAchievements, exploreHikes, checkAndNotifyAchievements, expeditions]);
 
   const updateSession = useCallback(async (id: string, updates: Partial<Session>) => {
     const updated = sessionsRef.current.map(s => s.id === id ? { ...s, ...updates } : s);
@@ -1897,7 +1903,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     const id = hike.activityId ?? hike.manualEntryId ?? Date.now().toString() + Math.random().toString(36).slice(2, 8);
     if ((await deletedRecordingIds(_uid)).has(id)) throw new Error("This recording was deleted. An older backup cannot restore it.");
-    const newHike: ExploreHike = { ...hike, id, sharingRevision:hike.sharingRevision??(hike.sharingIntentConfirmed?new Date().toISOString():undefined),
+    const newHike: ExploreHike = { ...hike, countsTowardTraining: hike.countsTowardTraining === true, id, sharingRevision:hike.sharingRevision??(hike.sharingIntentConfirmed?new Date().toISOString():undefined),
       backupRevision: new Date().toISOString(), syncState: userId ? "queued" : "local_only" };
     const result = upsertByActivityId(exploreHikesRef.current, newHike);
     if (!result.inserted) return result.id;

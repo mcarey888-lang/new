@@ -7,6 +7,7 @@ import { logPurchase, logTrialStarted, logSubscriptionStarted } from "@/lib/anal
 import { onceMembershipAnalytics } from "@/lib/membershipAnalytics";
 import { logAnalyticsEvent } from "@/lib/analytics";
 import { loadPurchases } from "@/lib/revenuecatSdk";
+import { verifiedTrialDays } from "@/utils/membershipTrial";
 import { MEMBERSHIP, accessFromEntitlements, cachedEntitlementIds, canUseExpedition, tierForPackage, type MembershipTier } from "@workspace/membership";
 
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
@@ -275,22 +276,7 @@ function useSubscriptionContext() {
     return { monthly: offering?.monthly ?? null, annual: offering?.annual ?? null };
   };
   const trialDaysForPackage = (pkg: any): number | null => {
-    if (tierForPackage(pkg?.identifier ?? "", pkg?.presentedOfferingContext?.offeringIdentifier ?? pkg?.offeringIdentifier) !== "pro") return null;
-    const product = pkg?.product;
-    if (Platform.OS === "ios" && trialEligibility.data?.[product?.identifier] === true) {
-      const intro = product?.introPrice;
-      if (intro?.price !== 0 || intro?.cycles !== 1) return null;
-      const days = intro.periodUnit === "DAY" ? intro.periodNumberOfUnits
-        : intro.periodUnit === "WEEK" ? intro.periodNumberOfUnits * 7 : null;
-      return days === 14 ? 14 : null;
-    }
-    // Play returns eligible subscription options; defaultOption is the option
-    // RevenueCat will purchase, not an arbitrary advertised offer.
-    if (Platform.OS === "android") {
-      const phase = product?.defaultOption?.freePhase;
-      return phase?.billingPeriod?.iso8601 === "P2W" || phase?.billingPeriod?.iso8601 === "P14D" ? 14 : null;
-    }
-    return null;
+    return verifiedTrialDays(Platform.OS, pkg, trialEligibility.data?.[pkg?.product?.identifier] === true);
   };
   const sdkPending = !!userId && !sdkReady && !sdkError;
 

@@ -28,6 +28,7 @@ import { useChallenges } from "@/context/ChallengesContext";
 import { AddToChallengeSheet } from "@/components/AddToChallengeSheet";
 import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
+import { MembershipGate } from "@/components/MembershipGate";
 import { logHillSessionCompleted } from "@/lib/analytics";
 import { manualStageDistance } from "@/utils/manualStageDistance";
 import {
@@ -77,6 +78,10 @@ function sortHills(hills: NearbyHill[], by: SortKey): NearbyHill[] {
 }
 
 export default function LogHillScreen() {
+  return <MembershipGate allowExpedition><LogHillContent /></MembershipGate>;
+}
+
+function LogHillContent() {
   const insets = useSafeAreaInsets();
   const {
     summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,

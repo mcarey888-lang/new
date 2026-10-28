@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { useApp } from "@/context/AppContext";
 import { getChallenge } from "@/constants/challenges";
 import { canMigrateFlatData } from "@/utils/userHydration";
+import { useSubscription } from "@/lib/revenuecat";
 
 export interface ChallengeActivity {
   id: string;
@@ -57,6 +58,7 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
   const CHALLENGES_KEY = _uid ? `summitready_challenges_${_uid}` : _FLAT_CHALLENGES_KEY;
   const [activeChallenges, setActiveChallenges] = useState<ActiveChallenge[]>([]);
   const { addSession, logExploreHike, appMode } = useApp();
+  const { access } = useSubscription();
   const hydrationGeneration = useRef(0);
 
   // Always-current ref — callbacks read this to avoid stale closures
@@ -174,7 +176,7 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
 
     const challengeNote = `[Challenge: ${template?.title ?? activityData.challengeId}] ${activityData.notes}`.trim();
 
-    if (activityData.elevationGain > 0 || activityData.distance > 0) {
+    if (access.training && (activityData.elevationGain > 0 || activityData.distance > 0)) {
       await addSession({
         date: activityData.date,
         type: activityData.elevationGain > 200 ? "hill" : "cardio",
@@ -198,7 +200,7 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
       notes: challengeNote,
       activityId: id,
     });
-  }, [addSession, logExploreHike, persist]);
+  }, [access.training, addSession, logExploreHike, persist]);
 
   const logActivityOnly = useCallback(async (
     activityData: Omit<ChallengeActivity, "id" | "createdAt">

@@ -28,6 +28,7 @@ import { useApp, type CompletedGoal } from "@/context/AppContext";
 import { useChallenges } from "@/context/ChallengesContext";
 import { getChallenge, DIFF_COLOR as CHALLENGE_DIFF_COLOR } from "@/constants/challenges";
 import { logoutRevenueCat, useSubscription } from "@/lib/revenuecat";
+import { MEMBERSHIP, accessFromEntitlements, cachedEntitlementIds } from "@workspace/membership";
 import { T } from "@/constants/theme";
 import { PROFILE_FEED } from "@/constants/profileFeed";
 import { publicDisplayName } from "@/utils/publicDisplayName";
@@ -307,7 +308,9 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   const readyForPeaks = REFERENCE_PEAKS
     .filter(p => p.elevation <= maxTrainedElevation && !trainedNames.has(p.name.toLowerCase()))
     .slice(0, 8);
-  const { customerInfo, isSubscribed, isError: subscriptionError, restore, isRestoring, refetchCustomerInfo } = useSubscription();
+  const { customerInfo, access, isSubscribed, isError: subscriptionError, restore, isRestoring, refetchCustomerInfo } = useSubscription();
+  const isPaid = access.tier !== "explore";
+  const planLabel = access.tier === "pro" ? "SummitReady Pro" : access.tier === "expeditions" ? "SummitReady Expeditions" : "Explore Free";
 
   const [restoreMsg, setRestoreMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -345,7 +348,10 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
     return () => { cancelled = true; };
   }, [journalStorageKey]);
 
-  const entitlement = customerInfo?.entitlements?.active?.["premium"];
+  const activeEntitlements = customerInfo?.entitlements?.active;
+  const entitlement = access.tier === "pro"
+    ? activeEntitlements?.[MEMBERSHIP.entitlements.pro] ?? activeEntitlements?.[MEMBERSHIP.entitlements.legacy]
+    : access.tier === "expeditions" ? activeEntitlements?.[MEMBERSHIP.entitlements.expeditions] : undefined;
   const expiresDate = entitlement?.expirationDate
     ? new Date(entitlement.expirationDate).toLocaleDateString("en-GB", {
         day: "numeric", month: "long", year: "numeric",
@@ -466,8 +472,11 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   async function handleRestore() {
     setRestoreMsg(null);
     try {
-      await restore();
-      setRestoreMsg({ type: "success", text: "Purchases restored successfully." });
+      const info = await restore();
+      const restored = accessFromEntitlements(cachedEntitlementIds(info));
+      setRestoreMsg(restored.tier !== "explore"
+        ? { type: "success", text: `${restored.tier === "pro" ? "Pro" : "Expeditions"} access restored successfully.` }
+        : { type: "error", text: "No active subscription was confirmed. Your free features and saved history are still available." });
     } catch {
       setRestoreMsg({ type: "error", text: "No purchases found to restore." });
     }
@@ -842,30 +851,30 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
               <Text style={styles.syncErrorText}>Couldn't verify subscription status — showing last known state.</Text>
             </View>
           )}
-          <View style={[styles.subCard, isSubscribed && { borderColor: T.green + "50" }]}>
+          <View style={[styles.subCard, isPaid && { borderColor: T.green + "50" }]}>
             <LinearGradient
-              colors={isSubscribed ? [T.greenDim, "transparent"] : ["transparent", "transparent"]}
+              colors={isPaid ? [T.greenDim, "transparent"] : ["transparent", "transparent"]}
               style={StyleSheet.absoluteFill}
             />
             <View style={styles.subRow}>
-              <View style={[styles.subIconBox, { backgroundColor: isSubscribed ? T.greenDim : T.surface }]}>
-                {isSubscribed ? <Zap size={18} color={T.green} /> : <Circle size={18} color={T.textMuted} />}
+              <View style={[styles.subIconBox, { backgroundColor: isPaid ? T.greenDim : T.surface }]}>
+                {isPaid ? <Zap size={18} color={T.green} /> : <Circle size={18} color={T.textMuted} />}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.subPlanName, isSubscribed && { color: T.green }]}>
-                  {isSubscribed ? "SummitReady Pro" : "Free Plan"}
+                <Text style={[styles.subPlanName, isPaid && { color: T.green }]}>
+                  {planLabel}
                 </Text>
-                {isSubscribed && expiresDate ? (
+                {isPaid && expiresDate ? (
                   <Text style={styles.subDetail}>
                     {willRenew ? `Renews ${expiresDate}` : `Expires ${expiresDate} · Won't renew`}
                   </Text>
                 ) : (
-                  <Text style={styles.subDetail}>Limited features</Text>
+                  <Text style={styles.subDetail}>{isPaid ? "Full expedition collection" : "Unlimited hike recording · No subscription required"}</Text>
                 )}
               </View>
-              <View style={[styles.subStatusBadge, { backgroundColor: isSubscribed ? T.green + "20" : T.surface }]}>
-                <Text style={[styles.subStatusText, { color: isSubscribed ? T.green : T.textMuted }]}>
-                  {isSubscribed ? "Active" : "Free"}
+              <View style={[styles.subStatusBadge, { backgroundColor: isPaid ? T.green + "20" : T.surface }]}>
+                <Text style={[styles.subStatusText, { color: isPaid ? T.green : T.textMuted }]}>
+                  {isPaid ? "Active" : "Free"}
                 </Text>
               </View>
             </View>
