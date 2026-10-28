@@ -7,6 +7,20 @@ afterEach(() => vi.useRealTimers());
 const payload = { targetMountain: "Everest", userLocation: "lake district", daysOverride: 3 };
 
 describe("bounded expedition requests", () => {
+  it("attaches the current Clerk bearer token to expedition generation", async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ routes: [] })));
+    await fetchExpeditionResponse("/api/virtual-expedition", payload, new AbortController().signal, 1000, fetcher, async () => "current-token");
+    expect(fetcher).toHaveBeenCalledWith("/api/virtual-expedition", expect.objectContaining({
+      headers: { "Content-Type": "application/json", Authorization: "Bearer current-token" },
+    }));
+  });
+
+  it("does not send an expedition request without a current sign-in token", async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    await expect(fetchExpeditionResponse("/api/virtual-expedition", payload, new AbortController().signal, 1000, fetcher, async () => null))
+      .rejects.toThrow("sign-in has expired");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
   it("preserves the full payload and decoded result", async () => {
     const fetcher = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ targetProfile: { name: "Everest" }, recommendedHills: [] })));
     const result = await fetchExpeditionResponse("/api/virtual-expedition", payload, new AbortController().signal, 1000, fetcher);

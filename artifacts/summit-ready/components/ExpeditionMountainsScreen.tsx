@@ -387,7 +387,7 @@ export default function ExpeditionMountainsScreen() {
   } = useApp();
   const { access, canAccessExpedition } = useSubscription();
   const isSubscribed = access.fullExpeditions;
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth();
   const readinessInput = useMemo(
     () => access.training && userId && summitGoal
       ? createReadinessInput(
@@ -644,7 +644,10 @@ export default function ExpeditionMountainsScreen() {
           mode,
           ...(selectedRouteIdentityKeys.length ? { selectedRouteIdentityKeys } : {}),
           resolveOnly,
-      }, controller.signal);
+      }, controller.signal, 90_000, fetch, async () => {
+        if (!userId) return null;
+        return getToken({ skipCache: true });
+      });
       if (expeditionRequestRef.current !== controller || controller.signal.aborted) return;
       const body = res.body as unknown as ExpeditionResult & {
         error?: string;
@@ -674,7 +677,11 @@ export default function ExpeditionMountainsScreen() {
         setRouteChooserOpen(true);
         return;
       }
-      if (!res.ok) throw new Error(body.error ?? `Server error ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 401) throw new Error("Your sign-in has expired. Please sign in again before building an expedition.");
+        if (res.status === 403) throw new Error("This expedition needs an active membership. If you have already paid, use Restore purchases and check that access is confirmed before trying again.");
+        throw new Error(body.error ?? `Server error ${res.status}`);
+      }
       validateExpeditionResultContract(body, { resolveOnly, mode });
       setRouteChooserOpen(false);
       setRouteChoices([]);

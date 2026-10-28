@@ -5,6 +5,7 @@ export async function fetchExpeditionResponse(
   signal: AbortSignal,
   timeoutMs = 90_000,
   fetcher: typeof fetch = fetch,
+  getToken?: () => Promise<string | null>,
 ): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -25,8 +26,13 @@ export async function fetchExpeditionResponse(
     return await Promise.race([
       interruption,
       (async () => {
+        const token = getToken ? await getToken() : null;
+        if (getToken && !token) {
+          throw new Error("Your sign-in has expired. Please sign in again before building an expedition.");
+        }
+        if (controller.signal.aborted) throw new Error("Expedition search cancelled.");
         const response = await fetcher(url, {
-          method: "POST", headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify(payload), signal: controller.signal,
         });
         let body: unknown;
