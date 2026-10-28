@@ -7,7 +7,6 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { SRUnderlineTabs } from "@/components/ui";
 import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
-import { PROFILE_FEED } from "@/constants/profileFeed";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import type { RankRequirementResult } from "@/utils/rankDomain";
 import { useAuth } from "@clerk/expo";
@@ -63,7 +62,7 @@ export function PrimaryProfilePresentation({
   onOpenSettings,
   topInset,
 }: Props) {
-  const styles = selectedTab === "feed" ? feedStyles : darkStyles;
+  const styles = darkStyles;
   const [approvedCoverUri, setApprovedCoverUri] = useState<string | null>(null);
   const { userId, getToken } = useAuth();
   const coverTokenRef=useRef(getToken);coverTokenRef.current=getToken;
@@ -221,7 +220,6 @@ export function PrimaryProfilePresentation({
         value={selectedTab}
         onChange={onTabChange}
         style={styles.tabs}
-        colors={selectedTab === "feed" ? { text: PROFILE_FEED.muted, selected: PROFILE_FEED.accent } : undefined}
       />
       {selectedTab==="saved" ? <CommunityRecordingLibrary saved /> : null}
     </>
@@ -365,27 +363,4 @@ const darkStyles = StyleSheet.create({
     color: BASECAMP.textDim,
   },
   tabs: { marginHorizontal: -18, marginBottom: SP.sm },
-});
-
-const feedStyles = StyleSheet.create({
-  ...darkStyles,
-  hero: { ...darkStyles.hero, backgroundColor: BASECAMP.ink },
-  identity: { ...darkStyles.identity, paddingHorizontal: 0, paddingBottom: 0 },
-  identityRow: {
-    ...darkStyles.identityRow,
-    marginHorizontal: BASECAMP.gutter,
-    paddingBottom: SP.md,
-  },
-  metrics: {
-    ...darkStyles.metrics,
-    marginTop: 0,
-    paddingHorizontal: BASECAMP.gutter,
-    paddingBottom: 2,
-    backgroundColor: PROFILE_FEED.background,
-    borderTopColor: PROFILE_FEED.divider,
-  },
-  metricDivider: { ...darkStyles.metricDivider, borderLeftColor: PROFILE_FEED.divider },
-  metricValue: { ...darkStyles.metricValue, color: PROFILE_FEED.text },
-  metricLabel: { ...darkStyles.metricLabel, color: PROFILE_FEED.muted },
-  tabs: { ...darkStyles.tabs, backgroundColor: PROFILE_FEED.background, borderBottomColor: PROFILE_FEED.divider },
 });

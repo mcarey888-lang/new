@@ -470,7 +470,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         ref={scrollRef}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={[styles.scroll, { paddingBottom: botPad }, tab === "feed" && !showSettings && styles.feedPaper]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: botPad }, tab === "feed" && !showSettings && styles.feedScroll]}
         showsVerticalScrollIndicator={false}
       >
         {!showSettings ? (
@@ -543,11 +543,11 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
 
         {tab === "feed" && !showSettings && (
           community ? (
-            <View style={styles.feedContent} onLayout={event => { communityY.current = event.nativeEvent.layout.y; }}>
+            <View style={[styles.feedPaper, { paddingBottom: botPad }]} onLayout={event => { communityY.current = event.nativeEvent.layout.y; }}>
               <CommunityHub {...community} draftBadge={badgeDraft} />
             </View>
           ) : (
-            <View style={[styles.communityUnavailable, styles.feedContent]}>
+            <View style={[styles.feedPaper, { paddingBottom: botPad }]}>
               <Text style={[styles.communityNote, { color: PROFILE_FEED.muted }]}>Sign in to see stories, photos and achievements shared by SummitReady members. Your activity and journal photos remain private.</Text>
               <DemoCommunityPreview />
             </View>
@@ -1646,7 +1646,19 @@ const styles = StyleSheet.create({
   },
 
   scroll: { paddingHorizontal: 18, gap: 20 },
-  feedPaper: { backgroundColor: PROFILE_FEED.background, flexGrow: 1 },
+  feedScroll: { flexGrow: 1, paddingBottom: 0 },
+  feedPaper: {
+    // Meet the tabs' divider: compensate for the scroll gap and tab margin.
+    marginTop: -(20 + SP.sm),
+    marginHorizontal: -18,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    flexGrow: 1,
+    backgroundColor: PROFILE_FEED.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: "hidden",
+  },
   header: { marginBottom: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },

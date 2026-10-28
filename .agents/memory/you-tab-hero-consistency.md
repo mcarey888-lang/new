@@ -17,15 +17,16 @@ Keep Feed content immediately below the tabs compact: the “Share a moment” b
 
 Do not restore the inline “Edit profile” and “Discover member routes” links
 between the shared hero and the tabs. The Feed uses an off-white background
-starting below the profile name and “Your mountain story” line; retain the
-dark cover and identity area above it, with white, dark-text post cards.
+starting at the divider beneath the Feed/Saved hikes/Profile tab menu, above
+“Share a moment.” Give that light area gently rounded top corners. Keep the
+cover, identity, metrics and main local tabs dark, with white post cards below.
 
 **Why:** The owner explicitly removed those links to reduce wasted space and
-requested the light feed treatment shown in their reference. They then moved
-the light-background boundary below the identity, rather than directly below
-the cover image. Editing remains available through existing controls.
+requested a light feed treatment, then corrected its start position to the
+divider between the main Feed menu and the sharing composer. Earlier trials
+starting under the image or identity were not the desired boundary.
 
 **How to apply:** Keep the tabs close to the metrics on every You section.
-The Feed's metrics, local tabs and posts sit on the off-white area; other You
-sections keep their existing treatment. Maintain light real and fictional cards,
+Only the composer, audience switcher and posts sit on the off-white area;
+other You sections keep their existing treatment. Maintain light fictional cards,
 but keep sample reactions noninteractive and separate from real member counts.
