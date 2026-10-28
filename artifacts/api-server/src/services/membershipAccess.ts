@@ -55,14 +55,27 @@ export async function verifiedMembership(userId: string, refresh = false): Promi
     }
     const environment = process.env.NODE_ENV === "production" ? "production" : "sandbox";
     const prefix = `projects/${encodeURIComponent(project)}/customers/${encodeURIComponent(userId)}`;
-    const [result, subscriptions] = await Promise.all([
+    const [result, subscriptions, playTests] = await Promise.all([
       readRevenueCat(`${prefix}/active_entitlements?limit=100`),
       readRevenueCat(`${prefix}/subscriptions?environment=${environment}&limit=100`),
+      environment === "production"
+        ? readRevenueCat(`${prefix}/subscriptions?environment=sandbox&limit=100`)
+        : Promise.resolve({ items: [] }),
     ]);
     if (!Array.isArray(result.items) || result.next_page) throw new Error("Incomplete RevenueCat access response");
     if (!Array.isArray(subscriptions.items) || subscriptions.next_page) throw new Error("Incomplete RevenueCat subscription response");
-    const environmentEntitlements = new Set(subscriptions.items
-      .filter((s: any) => s.environment === environment && s.gives_access === true)
+    if (!Array.isArray(playTests.items) || playTests.next_page) throw new Error("Incomplete RevenueCat test subscription response");
+    // Play license testers use real store receipts marked sandbox. Trust only
+    // server-verified Play subscriptions, never client flags or the Test Store.
+    const verifiedPlayTests = playTests.items.filter((s: any) =>
+      s.environment === "sandbox" && s.store === "play_store" &&
+      s.gives_access === true && s.pending_payment !== true &&
+      typeof s.current_period_ends_at === "number" && s.current_period_ends_at > now);
+    const eligibleSubscriptions = [
+      ...subscriptions.items.filter((s: any) => s.environment === environment && s.gives_access === true),
+      ...verifiedPlayTests,
+    ];
+    const environmentEntitlements = new Set(eligibleSubscriptions
       .flatMap((s: any) => (s.entitlements?.items ?? []).map((e: any) => e.id)));
     const active = result.items.filter((e: any) => environmentEntitlements.has(e.entitlement_id) && (e.expires_at === null || (
       typeof e.expires_at === "number" && e.expires_at > now
@@ -72,7 +85,8 @@ export async function verifiedMembership(userId: string, refresh = false): Promi
     const ends = active.map((e: any) => e.expires_at as number | null).filter((t: number | null): t is number => t !== null);
     // Network errors may retain already verified access only through its known end.
     // A successful response without entitlement always replaces earlier access.
-    const validUntil = active.length ? Math.min(now + MEMBERSHIP.maxCachedAccessMs, ...ends) : now + 30_000;
+    const testEnds = verifiedPlayTests.map((s: any) => s.current_period_ends_at as number);
+    const validUntil = active.length ? Math.min(now + MEMBERSHIP.maxCachedAccessMs, ...ends, ...testEnds) : now + 30_000;
     cache.set(userId, { access, validUntil, refreshAt: Math.min(now + 30_000, validUntil) });
     if (cache.size > 10_000) cache.delete(cache.keys().next().value!);
     return access;

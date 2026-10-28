@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 let givesAccess = true;
 let fail = false;
 let environment = "sandbox";
+let store = "app_store";
+let pendingPayment = false;
+let subscriptionExpiry = Date.now() + 3_600_000;
 let expiry = Date.now() + 3_600_000;
 
 beforeEach(() => {
@@ -10,6 +13,9 @@ beforeEach(() => {
   givesAccess = true;
   fail = false;
   environment = "sandbox";
+  store = "app_store";
+  pendingPayment = false;
+  subscriptionExpiry = Date.now() + 3_600_000;
   expiry = Date.now() + 3_600_000;
   vi.stubEnv("NODE_ENV", "development");
   vi.stubEnv("REVENUECAT_PROJECT_ID", "project_fixture");
@@ -21,9 +27,11 @@ beforeEach(() => {
     if (url.includes("connector.example.test")) return Response.json({
       items: [{ settings: { access_token: "fixture_not_a_credential" } }],
     });
-    if (url.includes("/subscriptions?")) return Response.json({ items: [{
-      environment, gives_access: givesAccess, entitlements: { items: [{ id: "ent_pro" }], next_page: null },
-    }], next_page: null });
+    if (url.includes("/subscriptions?")) return Response.json({ items:
+      new URL(url).searchParams.get("environment") === environment ? [{
+        environment, store, pending_payment: pendingPayment, current_period_ends_at: subscriptionExpiry,
+        gives_access: givesAccess, entitlements: { items: [{ id: "ent_pro" }], next_page: null },
+      }] : [], next_page: null });
     if (url.includes("/active_entitlements")) return Response.json({
       items: [{ entitlement_id: "ent_pro", expires_at: expiry }], next_page: null,
     });
@@ -37,10 +45,55 @@ describe("server-verified membership", () => {
     const { verifiedMembership } = await import("../services/membershipAccess");
     expect(await verifiedMembership("owner")).toMatchObject({ tier: "pro", legacy: true });
   });
-  it("does not grant sandbox subscriptions in production", async () => {
+  it("does not grant unrelated sandbox stores in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
     const { verifiedMembership } = await import("../services/membershipAccess");
     expect((await verifiedMembership("owner")).tier).toBe("explore");
+  });
+  it("recognises server-verified Google Play license-test purchases in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    store = "play_store";
+    const { verifiedMembership } = await import("../services/membershipAccess");
+    expect((await verifiedMembership("owner")).training).toBe(true);
+  });
+  it("keeps ordinary production subscriptions working", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    environment = "production";
+    const { verifiedMembership } = await import("../services/membershipAccess");
+    expect((await verifiedMembership("owner")).training).toBe(true);
+  });
+  it("rejects already expired Play test subscriptions even with a later aggregate entitlement", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    store = "play_store";
+    subscriptionExpiry = Date.now() - 1;
+    const { verifiedMembership } = await import("../services/membershipAccess");
+    expect((await verifiedMembership("owner")).tier).toBe("explore");
+  });
+  it.each(["test_store", "promotional", "unknown"])("never grants %s sandbox access in production", async (value) => {
+    vi.stubEnv("NODE_ENV", "production");
+    store = value;
+    const { verifiedMembership } = await import("../services/membershipAccess");
+    expect((await verifiedMembership("owner")).tier).toBe("explore");
+  });
+  it("rejects pending Play test purchases", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    store = "play_store";
+    pendingPayment = true;
+    const { verifiedMembership } = await import("../services/membershipAccess");
+    expect((await verifiedMembership("owner")).tier).toBe("explore");
+  });
+  it("caps retained Play test access at its accelerated expiry", async () => {
+    const start = Date.now();
+    vi.useFakeTimers();
+    vi.setSystemTime(start);
+    vi.stubEnv("NODE_ENV", "production");
+    store = "play_store";
+    subscriptionExpiry = start + 60_000;
+    const { verifiedMembership } = await import("../services/membershipAccess");
+    expect((await verifiedMembership("owner")).training).toBe(true);
+    fail = true;
+    vi.setSystemTime(start + 60_000);
+    await expect(verifiedMembership("owner", true)).rejects.toThrow();
   });
   it("retains access during cancelled-but-unexpired and store-supported grace subscriptions", async () => {
     const { verifiedMembership } = await import("../services/membershipAccess");
