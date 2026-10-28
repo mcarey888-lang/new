@@ -15,6 +15,20 @@ tags:
   - name: community
     description: Authenticated SummitReady member sharing
 paths:
+  /local-hills/source:
+    get:
+      operationId: getLocalHillSource
+      tags: [hills]
+      summary: Download the OpenStreetMap-derived UK hill database under ODbL
+      responses:
+        "200":
+          description: The full source snapshot, with licensing, provenance and named peak records; no private user or canonical third-party data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalHillSourceSnapshot"
+        "503":
+          description: No validated source snapshot is currently available
   /membership/access:
     get:
       operationId: getMembershipAccess
@@ -954,6 +968,105 @@ paths:
         "503":
           description: Canonical history dependency unavailable
 
+  /community/posts/{id}/like:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      operationId: likeCommunityPost
+      tags: [community]
+      summary: Like an accessible post, idempotently
+      responses:
+        "200":
+          description: Current reaction totals for this viewer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunityEngagement" }
+        "401": { description: Sign in required }
+        "404": { description: Post not accessible }
+    delete:
+      operationId: unlikeCommunityPost
+      tags: [community]
+      summary: Remove only the signed-in member's like, idempotently
+      responses:
+        "200":
+          description: Current reaction totals for this viewer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunityEngagement" }
+        "401": { description: Sign in required }
+        "404": { description: Post not accessible }
+  /community/posts/{id}/comments:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getCommunityComments
+      tags: [community]
+      summary: Read a page of comments only while the parent post is accessible
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Newest-first comments and an opaque continuation cursor preserving timestamp precision
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comments, nextCursor]
+                properties:
+                  comments: { type: array, items: { $ref: "#/components/schemas/CommunityComment" } }
+                  nextCursor: { type: [string, "null"] }
+        "400": { description: Invalid cursor }
+        "401": { description: Sign in required }
+        "404": { description: Post not accessible }
+    post:
+      operationId: createCommunityComment
+      tags: [community]
+      summary: Add a comment with an account-and-post-scoped retry key
+      parameters:
+        - { name: X-Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8, maxLength: 128 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 600 }
+      responses:
+        "201":
+          description: Comment saved, including unchanged retries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [saved]
+                properties:
+                  saved: { type: boolean }
+        "400": { description: Invalid comment or retry key }
+        "401": { description: Sign in required }
+        "404": { description: Post not accessible }
+        "409": { description: Retry key already used for different content }
+  /community/posts/{id}/comments/{commentId}:
+    delete:
+      operationId: deleteCommunityComment
+      tags: [community]
+      summary: Delete your own comment, or moderate a comment on your own post
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: commentId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Comment deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted]
+                properties:
+                  deleted: { type: boolean }
+        "401": { description: Sign in required }
+        "404": { description: Post or comment not accessible }
   /community/posts:
     post:
       operationId: createCommunityPost
@@ -1150,6 +1263,51 @@ paths:
 
 components:
   schemas:
+    LocalHillSourcePeak:
+      type: object
+      required: [id, name, aliases, lat, lng, ele]
+      properties:
+        id: { type: integer, minimum: 1 }
+        name: { type: string }
+        aliases: { type: array, items: { type: string } }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        ele: { type: [number, "null"], description: Summit height above sea level, never training ascent }
+    LocalHillSourceRegion:
+      type: object
+      required: [region, url, sha256, dataTimestamp, count]
+      properties:
+        region: { type: string }
+        url: { type: string }
+        sha256: { type: string }
+        dataTimestamp: { type: string }
+        count: { type: integer }
+    LocalHillReviewedAlias:
+      type: object
+      required: [osmNodeId, sourceName, lat, lng, displayName, aliases, reviewedAt, evidenceUrls]
+      properties:
+        osmNodeId: { type: integer }
+        sourceName: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        displayName: { type: string }
+        aliases: { type: array, items: { type: string } }
+        reviewedAt: { type: string }
+        evidenceUrls: { type: array, items: { type: string } }
+    LocalHillSourceSnapshot:
+      type: object
+      required: [schemaVersion, coverage, builtAt, attribution, licence, licenceUrl, sourceUrl, sources, peaks]
+      properties:
+        schemaVersion: { type: integer, enum: [1] }
+        coverage: { type: string, enum: ["United Kingdom and Ireland"] }
+        builtAt: { type: string }
+        attribution: { type: string }
+        licence: { type: string, enum: ["ODbL-1.0"] }
+        licenceUrl: { type: string }
+        sourceUrl: { type: string }
+        reviewedAliases: { type: array, items: { $ref: "#/components/schemas/LocalHillReviewedAlias" } }
+        sources: { type: array, items: { $ref: "#/components/schemas/LocalHillSourceRegion" } }
+        peaks: { type: array, items: { $ref: "#/components/schemas/LocalHillSourcePeak" } }
     MembershipActionInput:
       type: object
       required: [feature]
@@ -1521,10 +1679,31 @@ components:
         visibility:
           type: string
           enum: [private, members]
+    CommunityEngagement:
+      type: object
+      required: [likeCount, commentCount, likedByMe]
+      properties:
+        likeCount: { type: integer, minimum: 0 }
+        commentCount: { type: integer, minimum: 0 }
+        likedByMe: { type: boolean }
+    CommunityComment:
+      type: object
+      required: [id, postId, text, ownerUserId, authorName, createdAt]
+      properties:
+        id: { type: string }
+        postId: { type: string }
+        text: { type: string, minLength: 1, maxLength: 600 }
+        ownerUserId: { type: string }
+        authorName: { type: string }
+        authorAvatarUrl: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
     CommunityPost:
       type: object
       required: [id, kind, text, badgeId, badgeTitle, visibility, authorName, authorAvatarUrl, ownerUserId, createdAt, hasPhoto]
       properties:
+        likeCount: { type: integer, minimum: 0 }
+        commentCount: { type: integer, minimum: 0 }
+        likedByMe: { type: boolean }
         id:
           type: string
         kind:

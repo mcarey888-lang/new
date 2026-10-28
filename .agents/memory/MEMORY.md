@@ -102,3 +102,4 @@
 - [Expedition distance meaning](expedition-distance-meaning.md) — manual stage totals use full listed route distance; GPS completions use recorded distance, never the plan.
 - [Expedition authoring policy](expedition-authoring-policy.md) — support owner-created Claude/ChatGPT batches; catalogue identity does not verify imported route facts.
 - [Route database](expedition-review-drafting.md) — paid catalogue work paused until downloads grow; launch with user planning and GPS tracks; retain source-only and privacy rules.
+- [Nix import tools](nix-python-import-tools.md) — use packaged osmium for one-off OSM processing; Python bootstrapping can target immutable Nix paths and create unrelated project files.

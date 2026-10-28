@@ -88,3 +88,14 @@ evidence that a route belongs to that mountain.
 **How to apply:** Preserve audience checks and the distinction between member
 recordings and verified trails. Keep older unlinked recordings in general
 discovery rather than silently attaching them to a mountain.
+
+Likes and comment threads inherit their parent post's access rules. Do not
+treat social interaction as consent to publish a private post. Fictional
+preview stories remain read-only rather than receiving real member reactions.
+
+**Why:** The owner requested functional likes and comments alongside the light
+feed treatment, without changing the established private-by-default model.
+
+**How to apply:** Re-check the parent on every read/write, isolate thread state
+and drafts across account changes, and retain failed comment drafts for safe
+retries. Changes to visibility must also protect the attached conversation.

@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { hillDetailNavigation, isMappedTrainingHill, sessionHillTitle, resolveSessionHill } from "./hillDetailNavigation";
+import { hillDetailNavigation, isMappedTrainingHill, sessionHillTitle, resolveSessionHill, trainingHillIdentity } from "./hillDetailNavigation";
 import type { NearbyHill, PlanSession, TrainingWeek } from "../context/AppContext";
 
 describe("session hill identity", () => {
+  it("keeps same-name local hills independently selectable", () => {
+    const base = { name: "Bull Hill", lat: 53.7, lng: -2.3 } as NearbyHill;
+    expect(trainingHillIdentity(base)).not.toBe(trainingHillIdentity({ ...base, lat: 53.8 }));
+    expect(trainingHillIdentity({ ...base, summitIdentityKey: "osm:node:1" }))
+      .toBe(trainingHillIdentity({ ...base, name: "Local Alias", summitIdentityKey: "osm:node:1" }));
+    expect(isMappedTrainingHill({ ...base, routeIdentityKey: "route:v1:osm_extract:node:1" })).toBe(true);
+  });
   const bull: NearbyHill = {
     name: "Bull Hill", elevation: 316, distance: 4, repeats: 1, totalElevation: 316,
     surface: "Moorland", grade: "Moderate", emoji: "⛰️",

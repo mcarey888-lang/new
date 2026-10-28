@@ -6,6 +6,8 @@ import { z } from "zod";
 import { lookupNamedMappedPeaks } from "../services/namedMappedPeak.js";
 import { canonicalTrainingHills } from "../services/mountain/canonicalTrainingHills";
 import { requestOverpass } from "../services/overpassRequest";
+import { localTrainingHills } from "../services/mountain/localTrainingHills";
+import { loadLocalHillIndex } from "../services/mountain/localHillIndex";
 
 const router: IRouter = Router();
 
@@ -73,7 +75,7 @@ export const HillSchema = z.object({
   safetyWarning: z.string().optional(),
   hazardLevel: z.enum(["low", "moderate", "high", "severe"]).optional(),
   /** Additive provenance used by custom-expedition matching. */
-  dataSource: z.enum(["legacy_cache", "seeded_osm", "osm_overpass", "osm_nominatim", "canonical_verified"]).optional(),
+  dataSource: z.enum(["legacy_cache", "seeded_osm", "osm_overpass", "osm_nominatim", "osm_extract", "canonical_verified"]).optional(),
   routeDataStatus: z.enum([
     "unverified_cache",
     "seeded_estimate",
@@ -99,7 +101,7 @@ export function normalizedRouteIdentityName(name: string): string {
 
 /** Build a deterministic public identity from provenance and stable geography. */
 export function routeIdentityKeyFor(
-  source: "legacy_cache" | "seeded_osm" | "osm_overpass" | "osm_nominatim",
+  source: "legacy_cache" | "seeded_osm" | "osm_overpass" | "osm_nominatim" | "osm_extract",
   name: string,
   lat: number,
   lng: number,
@@ -588,7 +590,7 @@ export function validateAndCorrectHills(
 // ── OSM Overpass — global peak discovery ─────────────────────────────────────
 
 export interface OSMPeak {
-  source?: "osm_nominatim";
+  source?: "osm_nominatim" | "osm_extract";
   id: number;
   lat: number;
   lng: number;
@@ -771,7 +773,9 @@ export async function osmPeaksToHills(
       summitName: englishPlaceName(peak.name),
       summitId: `osm:node:${peak.id}`,
       routeIdentityKey: routeIdentityKeyFor(
-        peak.source ?? "osm_overpass",
+        // Imported OSM is the seeded-OSM identity family recognised by
+        // installed clients; dataSource below preserves extract provenance.
+        peak.source === "osm_extract" ? "seeded_osm" : peak.source ?? "osm_overpass",
         peak.name,
         peak.lat,
         peak.lng,
@@ -779,7 +783,7 @@ export async function osmPeaksToHills(
       ),
       routeName: englishPlaceName(peak.name),
       routeId: routeIdentityKeyFor(
-        peak.source ?? "osm_overpass",
+        peak.source === "osm_extract" ? "seeded_osm" : peak.source ?? "osm_overpass",
         peak.name,
         peak.lat,
         peak.lng,
@@ -974,6 +978,17 @@ router.post("/hills-unified", async (req, res) => {
       }
       if (center && isUKHillSearch(center)) {
         const r = Math.min(100, Math.max(1, Number(radius) || 50));
+        try {
+          const stored = await localTrainingHills(center.lat, center.lng, r, 0, osmPeaksToHills, name);
+          if (!stored.hills.length) {
+            res.status(404).json({ error: "No mapped hill with usable ascent data found nearby. Try another name or a wider radius.", ...stored });
+            return;
+          }
+          res.json({ hill: stored.hills[0], source: stored.source, attribution: stored.attribution, snapshotDate: stored.snapshotDate });
+          return;
+        } catch (err) {
+          req.log.error({ err }, "Stored UK hill name lookup unavailable; trying independent mapped lookup");
+        }
         const peaks = await fetchOSMPeaks(center.lat, center.lng, r, true, name);
         const matched = peaks.filter(p => normalizedHillSearchName(p.name) === normalizedHillSearchName(name));
         const hills = await osmPeaksToHills(matched, center.lat, center.lng, r, 0, true);
@@ -1074,6 +1089,14 @@ router.post("/hills-unified", async (req, res) => {
       return;
     }
     if (isUKHillSearch(userCoords)) {
+      try {
+        const stored = await localTrainingHills(userCoords.lat, userCoords.lng, r, minElev, osmPeaksToHills);
+        if (stored.hills.length) areaCache.set(cacheKey, { hills: stored.hills, ts: Date.now() });
+        res.json(stored);
+        return;
+      } catch (err) {
+        req.log.error({ err }, "Stored UK hill area lookup unavailable; trying verified catalogue");
+      }
       // A catalogue outage may use independent mapped OSM discovery, but
       // catalogue-backed results never inherit legacy cache or AI identity.
       let canonical: Hill[] | null = null;
@@ -1161,6 +1184,24 @@ router.post("/hills-unified", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "hills-unified area lookup failed");
     res.status(503).json({ error: "Hill map data is temporarily unavailable. Please try again." });
+  }
+});
+
+/** Public source download fulfils the data-licence access requirement without
+ * exposing storage paths, user activity, canonical third-party data or keys. */
+router.get("/local-hills/source", async (req, res) => {
+  try {
+    const { bytes, hash, snapshot } = await loadLocalHillIndex();
+    res.set({
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Disposition": 'attachment; filename="summitready-uk-osm-hills.json"',
+      "Cache-Control": "public, max-age=300",
+      ETag: `"${hash}"`,
+      "X-Data-Licence": snapshot.licence,
+    });
+    res.send(bytes);
+  } catch {
+    res.status(503).json({ error: "Local hill source download is temporarily unavailable." });
   }
 });
 

@@ -214,14 +214,6 @@ export function PrimaryProfilePresentation({
           </View>
         </View>
       </View>
-      {isSignedIn ? <View style={{flexDirection:"row",flexWrap:"wrap",paddingHorizontal:16}}>
-        <TouchableOpacity accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={()=>router.push("/edit-profile" as never)}>
-          <Text style={{color:BASECAMP.accent}}>Edit profile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity accessibilityRole="button" style={{minHeight:48,padding:12}} onPress={()=>router.push("/community-routes" as never)}>
-          <Text style={{color:BASECAMP.accent}}>Discover member routes</Text>
-        </TouchableOpacity>
-      </View>:null}
       <SRUnderlineTabs
         options={PRIMARY_PROFILE_TABS}
         value={selectedTab}
@@ -236,7 +228,7 @@ export function PrimaryProfilePresentation({
 const styles = StyleSheet.create({
   hero: {
     marginHorizontal: -18,
-    marginBottom: SP.md,
+    marginBottom: 0,
   },
   cover: {
     height: 153,
@@ -303,7 +295,7 @@ const styles = StyleSheet.create({
   identity: {
     paddingHorizontal: BASECAMP.gutter,
     marginTop: -28,
-    paddingBottom: SP.sm,
+    paddingBottom: 2,
   },
   identityRow: {
     flexDirection: "row",
@@ -369,5 +361,5 @@ const styles = StyleSheet.create({
     ...TYPE.caption,
     color: BASECAMP.textDim,
   },
-  tabs: { marginHorizontal: -18, marginBottom: SP.xs },
+  tabs: { marginHorizontal: -18, marginBottom: SP.sm },
 });

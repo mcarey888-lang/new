@@ -31,6 +31,7 @@ import { MountainArtworkImage as Image } from "@/components/MountainArtworkImage
 import { HillPlaceholder } from "@/components/HillPlaceholder";
 import { looksLikeUkPostcode, normalizeUkPostcode } from "@/utils/explorePostcode";
 import { searchTrainingHills } from "@/utils/trainingHillSearch";
+import { HillSourceAttribution } from "@/components/HillSourceAttribution";
 import { ExploreSearchControls } from "@/components/explore/ExploreSearchControls";
 import {
   DEFAULT_EXPLORE_FILTERS, activeExploreFilterCount, filterExploreRoutes, mountainDiscoveryParameters,
@@ -987,6 +988,7 @@ export default function ExploreScreen() {
                       </Pressable>
                     </View>
                   ) : null}
+                  {nearbyHills.length > 0 && <HillSourceAttribution />}
                   {nearbySearched && !nearbyLoading && !nearbyError && nearbyHills.length === 0 ? (
                     <View style={styles.emptySearch}>
                       <MapPin size={20} color={BASECAMP.textDim} />

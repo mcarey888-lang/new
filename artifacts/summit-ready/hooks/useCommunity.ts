@@ -13,6 +13,11 @@ import {
   reportCommunityPost,
   updateCommunityPostVisibility,
   useGetCommunityPosts,
+  likeCommunityPost,
+  unlikeCommunityPost,
+  getCommunityComments,
+  createCommunityComment,
+  deleteCommunityComment,
 } from "@workspace/api-client-react";
 import { authenticatedHeaders, responseError } from "@/utils/authRequest";
 import type { CommunityCreate, CommunityHubProps, CommunityPost } from "@/components/profile/CommunityHub";
@@ -32,6 +37,8 @@ export function useCommunity(visible = true): CommunityHubProps {
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
   const previousUserId = useRef<string | null>(null);
+  const activeUserId = useRef(userId);
+  activeUserId.current = userId;
   const mineKey = [...getGetCommunityPostsQueryKey({ scope: "mine" }), userId] as const;
   const membersKey = [...getGetCommunityPostsQueryKey({ scope: "members" }), userId] as const;
   const mine = useGetCommunityPosts({ scope: "mine" }, { query: {
@@ -190,6 +197,44 @@ export function useCommunity(visible = true): CommunityHubProps {
   const onReport = useCallback((id: string) =>
     run(async () => { await reportCommunityPost(id); }), [run]);
 
+  // Capture and re-check the account on both sides of asynchronous requests.
+  // A completed request from the former account must never fill a new thread.
+  const engagementHeaders = useCallback(async () => {
+    const expected = userId;
+    const token = await getTokenRef.current({ skipCache: true });
+    if (!enabled || !expected || activeUserId.current !== expected || !token || !tokenBelongsToUser(token, expected)) {
+      throw new Error("Your account changed or your session expired. Sign in again.");
+    }
+    return authenticatedHeaders(token);
+  }, [enabled, userId]);
+  const checkAccount = useCallback(() => {
+    if (!userId || activeUserId.current !== userId) throw new Error("Your account changed. Reopen the feed.");
+  }, [userId]);
+  const onLike = useCallback(async (id: string, liked: boolean) => {
+    const headers = await engagementHeaders();
+    await (liked ? likeCommunityPost(id, { headers }) : unlikeCommunityPost(id, { headers }));
+    checkAccount();
+    await revalidate();
+  }, [engagementHeaders, checkAccount, revalidate]);
+  const onLoadComments = useCallback(async (id: string, cursor?: string) => {
+    const headers = await engagementHeaders();
+    const data = await getCommunityComments(id, cursor ? { cursor } : undefined, { headers });
+    checkAccount();
+    return data;
+  }, [engagementHeaders, checkAccount]);
+  const onComment = useCallback(async (id: string, text: string, requestId: string) => {
+    const headers = await engagementHeaders();
+    await createCommunityComment(id, { text }, { headers: { ...headers, "X-Idempotency-Key": requestId } });
+    checkAccount();
+    await revalidate();
+  }, [engagementHeaders, checkAccount, revalidate]);
+  const onDeleteComment = useCallback(async (id: string, commentId: string) => {
+    const headers = await engagementHeaders();
+    await deleteCommunityComment(id, commentId, { headers });
+    checkAccount();
+    await revalidate();
+  }, [engagementHeaders, checkAccount, revalidate]);
+
   const photoSource = useCallback((post: CommunityPost): ImageSourcePropType | null => {
     if (!post.hasPhoto) return null;
     if (Platform.OS === "web") {
@@ -211,6 +256,10 @@ export function useCommunity(visible = true): CommunityHubProps {
     onVisibility,
     onDelete,
     onReport,
+    onLike,
+    onLoadComments,
+    onComment,
+    onDeleteComment,
     photoSource,
   };
 }

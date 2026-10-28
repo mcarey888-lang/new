@@ -17,6 +17,7 @@ import { T } from "@/constants/theme";
 import { isMappedTrainingHill } from "@/utils/hillDetailNavigation";
 import { normalizeUkPostcode, looksLikeUkPostcode } from "@/utils/explorePostcode";
 import { searchTrainingHills } from "@/utils/trainingHillSearch";
+import { HillSourceAttribution } from "@/components/HillSourceAttribution";
 
 export function HillPickerModal({
   visible,
@@ -174,6 +175,7 @@ export function HillPickerModal({
             </View>
           )}
 
+          {hills.length > 0 && <HillSourceAttribution />}
           {searchError && (
             <View style={st.searchErrorRow}>
               <AlertCircle size={14} color={T.orange} />

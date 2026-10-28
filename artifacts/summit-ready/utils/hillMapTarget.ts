@@ -24,7 +24,7 @@ export function hillMapTarget(input: {
   }
   const selected = coordinates(input.lat, input.lng);
   if (!selected) return null;
-  const mapped = ["route:v1:osm_overpass:", "route:v1:osm_nominatim:", "route:v1:seeded_osm:"]
+  const mapped = ["route:v1:osm_extract:", "route:v1:osm_overpass:", "route:v1:osm_nominatim:", "route:v1:seeded_osm:"]
     .some(prefix => input.routeIdentityKey?.startsWith(prefix));
   return { ...selected, verified: mapped };
 }

@@ -18,6 +18,7 @@ export * from "./signature-challenges";
 export * from "./atlas";
 export * from "./ai-mountain-discoveries";
 export * from "./community";
+export * from "./community-engagement";
 export * from "./user-demo-profiles";
 export * from "./planned-routes";
 export * from "./recorded-hike-backups";

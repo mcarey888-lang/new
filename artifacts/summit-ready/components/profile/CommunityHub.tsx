@@ -7,6 +7,9 @@ import {useAuth} from "@clerk/expo";
 import { Alert, Image, type ImageSourcePropType, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
 import { DemoCommunityPreview } from "@/components/profile/DemoCommunityPreview";
+import { CommunityEngagement, FEED_CARD, type CommunityComment } from "@/components/profile/CommunityEngagement";
+
+export type { CommunityComment };
 
 export type CommunityPost = {
   id: string;
@@ -20,6 +23,9 @@ export type CommunityPost = {
   ownerUserId: string;
   createdAt: string;
   hasPhoto: boolean;
+  likeCount?: number;
+  commentCount?: number;
+  likedByMe?: boolean;
 };
 
 export type CommunityCreate = {
@@ -45,11 +51,15 @@ export type CommunityHubProps = {
   onDelete: (id: string) => Promise<void> | void;
   onReport: (id: string) => Promise<void> | void;
   photoSource: (post: CommunityPost) => ImageSourcePropType | null;
+  onLike: (id: string, liked: boolean) => Promise<void>;
+  onLoadComments: (id: string, cursor?: string) => Promise<{ comments: CommunityComment[]; nextCursor: string | null }>;
+  onComment: (id: string, text: string, requestId: string) => Promise<void>;
+  onDeleteComment: (postId: string, commentId: string) => Promise<void>;
 };
 
 const audienceLabel = (v: "private" | "members") => v === "private" ? "Only me" : "SummitReady members";
 
-export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh, onCreate, onVisibility, onDelete, onReport, photoSource, draftBadge }: CommunityHubProps) {
+export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh, onCreate, onVisibility, onDelete, onReport, photoSource, draftBadge, onLike, onLoadComments, onComment, onDeleteComment }: CommunityHubProps) {
   const [view, setView] = useState<"members" | "mine">("members");
   const [composing, setComposing] = useState(false);
   const [kind, setKind] = useState<CommunityCreate["kind"]>("story");
@@ -217,12 +227,13 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
           const owned = minePosts.some(mine => mine.id === post.id);
           const source = post.hasPhoto ? photoSource(post) : null;
           const date = new Date(post.createdAt);
-          return <View key={post.id} style={styles.post} testID={`community-post-${post.id}`}>
+          return <View key={`${draftOwner ?? "anon"}:${post.id}`} style={styles.post} testID={`community-post-${post.id}`}>
             <View style={styles.postHeader}>{post.authorAvatarUrl ? <Image source={{ uri: post.authorAvatarUrl }} style={styles.avatar} /> : <View style={styles.avatarFallback}><Text style={styles.avatarLetter}>{post.authorName.charAt(0).toUpperCase()}</Text></View>}<View style={{ flex: 1 }}><Text style={styles.author} numberOfLines={1}>{post.authorName}</Text><Text style={styles.meta}>{Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} · {audienceLabel(post.visibility)}</Text></View></View>
             {source && <ExpoImage source={source} style={styles.postPhoto} contentFit="cover" cachePolicy="none" accessibilityLabel="Member shared photo" />}
             {post.badgeTitle && post.kind === "badge" && <Text style={styles.badge}>Award · {post.badgeTitle}</Text>}
             {!!post.text && <Text style={styles.postText}>{post.text}</Text>}
-            <View style={styles.postActions}>{owned ? <><TouchableOpacity onPress={() => changeAudience(post)} disabled={busy} style={styles.action} accessibilityRole="button" accessibilityLabel={`Change audience to ${audienceLabel(post.visibility === "private" ? "members" : "private")}`}><LockKeyhole size={14} color={BASECAMP.accent} /><Text style={styles.actionText}>Change audience</Text></TouchableOpacity><TouchableOpacity onPress={() => confirmDelete(post.id)} disabled={busy} style={styles.iconAction} accessibilityRole="button" accessibilityLabel="Delete post"><Trash2 size={17} color={BASECAMP.textMuted} /></TouchableOpacity></> : <TouchableOpacity onPress={() => confirmReport(post.id)} disabled={busy} style={styles.action} accessibilityRole="button" accessibilityLabel="Report post"><Flag size={15} color={BASECAMP.textMuted} /><Text style={styles.actionText}>Report</Text></TouchableOpacity>}</View>
+            <CommunityEngagement key={`${draftOwner ?? "anon"}:${post.id}`} postId={post.id} viewerUserId={draftOwner} isPostOwner={owned} likeCount={post.likeCount ?? 0} commentCount={post.commentCount ?? 0} likedByMe={post.likedByMe ?? false} onLike={onLike} onLoadComments={onLoadComments} onComment={onComment} onDeleteComment={onDeleteComment} />
+            <View style={styles.postActions}>{owned ? <><TouchableOpacity onPress={() => changeAudience(post)} disabled={busy} style={styles.action} accessibilityRole="button" accessibilityLabel={`Change audience to ${audienceLabel(post.visibility === "private" ? "members" : "private")}`}><LockKeyhole size={14} color={FEED_CARD.accent} /><Text style={styles.actionText}>Change audience</Text></TouchableOpacity><TouchableOpacity onPress={() => confirmDelete(post.id)} disabled={busy} style={styles.iconAction} accessibilityRole="button" accessibilityLabel="Delete post"><Trash2 size={17} color={FEED_CARD.dim} /></TouchableOpacity></> : <TouchableOpacity onPress={() => confirmReport(post.id)} disabled={busy} style={styles.action} accessibilityRole="button" accessibilityLabel="Report post"><Flag size={15} color={FEED_CARD.dim} /><Text style={styles.actionText}>Report</Text></TouchableOpacity>}</View>
           </View>;
         })}
       {visiblePosts.length > visiblePostCount && (
@@ -243,7 +254,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
 
 const styles = StyleSheet.create({
   root: { marginBottom: SP.xl },
-  composePrompt: { minHeight: 54, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelBorder },
+  composePrompt: { minHeight: 48, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelBorder },
   composePromptText: { ...TYPE.small, color: BASECAMP.textMuted, flex: 1 },
   composeClose: { marginLeft: "auto", width: HIT.minTarget, height: HIT.minTarget, alignItems: "center", justifyContent: "center" },
   composer: { padding: 16, borderRadius: 14, backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelBorder },
@@ -269,10 +280,10 @@ const styles = StyleSheet.create({
   empty: { alignItems: "center", paddingVertical: 30, paddingHorizontal: 18, gap: 8, borderBottomWidth: 1, borderBottomColor: BASECAMP.panelBorder },
   emptyTitle: { ...TYPE.heading, color: BASECAMP.text, textAlign: "center" }, emptyBody: { ...TYPE.small, color: BASECAMP.textMuted, textAlign: "center", lineHeight: 18 },
   retry: { minHeight: HIT.minTarget, flexDirection: "row", alignItems: "center", gap: 7 }, retryText: { ...TYPE.smallBold, color: BASECAMP.accent },
-  post: { paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: BASECAMP.panelBorder },
-  postHeader: { flexDirection: "row", alignItems: "center", gap: 10 }, avatar: { width: 38, height: 38, borderRadius: 19 }, avatarFallback: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: BASECAMP.accentDim }, avatarLetter: { ...TYPE.bodyBold, color: BASECAMP.accent },
-  author: { ...TYPE.bodyBold, color: BASECAMP.text }, meta: { ...TYPE.caption, color: BASECAMP.textDim, marginTop: 2 },
-  postPhoto: { width: "100%", height: 220, borderRadius: 10, marginTop: 13 }, badge: { ...TYPE.smallBold, color: BASECAMP.accent, marginTop: 12 }, postText: { ...TYPE.body, color: BASECAMP.text, lineHeight: 21, marginTop: 12 },
-  postActions: { flexDirection: "row", justifyContent: "space-between", marginTop: 9 }, action: { minHeight: HIT.minTarget, flexDirection: "row", gap: 6, alignItems: "center" }, actionText: { ...TYPE.caption, color: BASECAMP.textMuted }, iconAction: { width: HIT.minTarget, height: HIT.minTarget, alignItems: "center", justifyContent: "center" },
+  post: { marginTop: SP.md, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6, borderRadius: 16, backgroundColor: FEED_CARD.surface, borderWidth: 1, borderColor: FEED_CARD.border },
+  postHeader: { flexDirection: "row", alignItems: "center", gap: 10 }, avatar: { width: 40, height: 40, borderRadius: 20 }, avatarFallback: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: FEED_CARD.accentSoft }, avatarLetter: { ...TYPE.bodyBold, color: FEED_CARD.accent },
+  author: { ...TYPE.bodyBold, color: FEED_CARD.text }, meta: { ...TYPE.caption, color: FEED_CARD.dim, marginTop: 2 },
+  postPhoto: { width: "100%", height: 230, borderRadius: 12, marginTop: 13 }, badge: { ...TYPE.smallBold, color: FEED_CARD.accent, marginTop: 12 }, postText: { ...TYPE.body, fontSize: 15, color: FEED_CARD.text, lineHeight: 22, marginTop: 12 },
+  postActions: { flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: FEED_CARD.divider, marginTop: SP.sm }, action: { minHeight: HIT.minTarget, flexDirection: "row", gap: 6, alignItems: "center" }, actionText: { ...TYPE.caption, color: FEED_CARD.muted }, iconAction: { width: HIT.minTarget, height: HIT.minTarget, alignItems: "center", justifyContent: "center" },
   refresh: { minHeight: HIT.minTarget, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 }, refreshText: { ...TYPE.small, color: BASECAMP.textMuted },
 });

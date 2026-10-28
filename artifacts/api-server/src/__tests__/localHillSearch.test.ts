@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { ai, select, canonical } = vi.hoisted(() => ({ ai: vi.fn(), select: vi.fn(), canonical: vi.fn() }));
+const { ai, select, canonical, stored } = vi.hoisted(() => ({ ai: vi.fn(), select: vi.fn(), canonical: vi.fn(), stored: vi.fn() }));
 vi.mock("@workspace/integrations-openai-ai-server", () => ({
   openai: { chat: { completions: { create: ai } } },
 }));
@@ -14,6 +14,7 @@ vi.mock("@workspace/db", () => ({
 vi.mock("../services/mountain/canonicalTrainingHills", () => ({
   canonicalTrainingHills: canonical,
 }));
+vi.mock("../services/mountain/localTrainingHills", () => ({ localTrainingHills: stored }));
 
 import router, { fetchOSMPeaks, normalizedHillSearchName, osmPeaksToHills } from "../routes/hills-unified.js";
 import { clearOverpassRequestState } from "../services/overpassRequest";
@@ -39,6 +40,7 @@ beforeEach(() => {
   ai.mockReset();
   select.mockReset();
   canonical.mockReset().mockResolvedValue(null);
+  stored.mockReset().mockRejectedValue(new Error("fixture has no stored snapshot"));
   peaks = [peak];
   geocodeAvailable = true;
   peaksAvailable = true;
@@ -64,6 +66,32 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("mapped local training hill searches", () => {
+  it("keeps imported OSM locations usable by existing app builds without mislabelling their source", async () => {
+    const [hill] = await osmPeaksToHills([
+      { id: 123, name: "Small Tor", lat: 53.71, lng: -2.33, ele: 400, source: "osm_extract" },
+    ], 53.7, -2.33, 25, 0, true, true);
+    expect(hill.dataSource).toBe("osm_extract");
+    expect(hill.routeIdentityKey).toBe("route:v1:seeded_osm:node:123");
+    expect(hill.summitIdentityKey).toBe("osm:node:123");
+  });
+  it("uses the stored layer for area searches without Overpass or AI", async () => {
+    stored.mockResolvedValue({ hills: [{ name: "Small Local Tor", elevation: 70, distance: 1 }],
+      source: "osm_extract", attribution: { licence: "ODbL-1.0" } });
+    const res = await search({ location: "BB4 4BH", radius: 24.6 });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.source).toBe("osm_extract");
+    expect(vi.mocked(fetch).mock.calls.some(([u]) => String(u).includes("overpass"))).toBe(false);
+    expect(canonical).not.toHaveBeenCalled();
+    expect(ai).not.toHaveBeenCalled();
+  });
+  it("uses stored name searches without a live mapping lookup", async () => {
+    stored.mockResolvedValue({ hills: [{ name: "Small Local Tor", elevation: 70, distance: 1 }],
+      source: "osm_extract", snapshotDate: "2030-01-01T00:00:00Z" });
+    const res = await search({ hillName: "Small Local Tor", location: "BB4 4BH" });
+    expect(res.body.hill.name).toBe("Small Local Tor");
+    expect(vi.mocked(fetch).mock.calls.every(([u]) => !/overpass|nominatim/.test(String(u)))).toBe(true);
+    expect(ai).not.toHaveBeenCalled();
+  });
   it("returns catalogue-backed hills without calling Overpass or AI", async () => {
     canonical.mockResolvedValue([{
       name: "Real Catalogue Fell", elevation: 170, distance: 2,

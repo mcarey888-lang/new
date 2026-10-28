@@ -10,7 +10,7 @@ describe("hill detail map actions", () => {
       pathname: "/route-planner", params: { focusLat: "54.635", focusLng: "-3.0442" },
     });
   });
-  it.each(["osm_overpass", "osm_nominatim", "seeded_osm"])("accepts %s mapped locations", source => {
+  it.each(["osm_extract", "osm_overpass", "osm_nominatim", "seeded_osm"])("accepts %s mapped locations", source => {
     expect(hillMapTarget({ lat: 54.6, lng: -3, routeIdentityKey: `route:v1:${source}:123` })?.verified).toBe(true);
   });
   it("prefers verified server coordinates and can use them without URL coordinates", () => {

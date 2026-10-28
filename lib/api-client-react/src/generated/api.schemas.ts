@@ -5,6 +5,81 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface LocalHillSourcePeak {
+  /** @minimum 1 */
+  id: number;
+  name: string;
+  aliases: string[];
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  lat: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  lng: number;
+  /**
+   * Summit height above sea level
+   * @nullable
+   */
+  ele: number | null;
+}
+
+export interface LocalHillSourceRegion {
+  region: string;
+  url: string;
+  sha256: string;
+  dataTimestamp: string;
+  count: number;
+}
+
+export interface LocalHillReviewedAlias {
+  osmNodeId: number;
+  sourceName: string;
+  lat: number;
+  lng: number;
+  displayName: string;
+  aliases: string[];
+  reviewedAt: string;
+  evidenceUrls: string[];
+}
+
+export type LocalHillSourceSnapshotSchemaVersion =
+  (typeof LocalHillSourceSnapshotSchemaVersion)[keyof typeof LocalHillSourceSnapshotSchemaVersion];
+
+export const LocalHillSourceSnapshotSchemaVersion = {
+  NUMBER_1: 1,
+} as const;
+
+export type LocalHillSourceSnapshotCoverage =
+  (typeof LocalHillSourceSnapshotCoverage)[keyof typeof LocalHillSourceSnapshotCoverage];
+
+export const LocalHillSourceSnapshotCoverage = {
+  United_Kingdom_and_Ireland: "United Kingdom and Ireland",
+} as const;
+
+export type LocalHillSourceSnapshotLicence =
+  (typeof LocalHillSourceSnapshotLicence)[keyof typeof LocalHillSourceSnapshotLicence];
+
+export const LocalHillSourceSnapshotLicence = {
+  "ODbL-10": "ODbL-1.0",
+} as const;
+
+export interface LocalHillSourceSnapshot {
+  schemaVersion: LocalHillSourceSnapshotSchemaVersion;
+  coverage: LocalHillSourceSnapshotCoverage;
+  builtAt: string;
+  attribution: string;
+  licence: LocalHillSourceSnapshotLicence;
+  licenceUrl: string;
+  sourceUrl: string;
+  reviewedAliases?: LocalHillReviewedAlias[];
+  sources: LocalHillSourceRegion[];
+  peaks: LocalHillSourcePeak[];
+}
+
 export type MembershipActionInputFeature =
   (typeof MembershipActionInputFeature)[keyof typeof MembershipActionInputFeature];
 
@@ -563,6 +638,29 @@ export interface CommunityPostVisibilityInput {
   visibility: CommunityPostVisibilityInputVisibility;
 }
 
+export interface CommunityEngagement {
+  /** @minimum 0 */
+  likeCount: number;
+  /** @minimum 0 */
+  commentCount: number;
+  likedByMe: boolean;
+}
+
+export interface CommunityComment {
+  id: string;
+  postId: string;
+  /**
+   * @minLength 1
+   * @maxLength 600
+   */
+  text: string;
+  ownerUserId: string;
+  authorName: string;
+  /** @nullable */
+  authorAvatarUrl?: string | null;
+  createdAt: string;
+}
+
 export type CommunityPostKind =
   (typeof CommunityPostKind)[keyof typeof CommunityPostKind];
 
@@ -581,6 +679,11 @@ export const CommunityPostVisibility = {
 } as const;
 
 export interface CommunityPost {
+  /** @minimum 0 */
+  likeCount?: number;
+  /** @minimum 0 */
+  commentCount?: number;
+  likedByMe?: boolean;
   id: string;
   kind: CommunityPostKind;
   text: string;
@@ -1270,6 +1373,32 @@ export const GetCanonicalHistoryFilter = {
   expeditions: "expeditions",
   mountains_free_hike: "mountains_free_hike",
 } as const;
+
+export type GetCommunityCommentsParams = {
+  cursor?: string;
+};
+
+export type GetCommunityComments200 = {
+  comments: CommunityComment[];
+  /** @nullable */
+  nextCursor: string | null;
+};
+
+export type CreateCommunityCommentBody = {
+  /**
+   * @minLength 1
+   * @maxLength 600
+   */
+  text: string;
+};
+
+export type CreateCommunityComment201 = {
+  saved: boolean;
+};
+
+export type DeleteCommunityComment200 = {
+  deleted: boolean;
+};
 
 export type CreateCommunityPost201 = {
   post: CommunityPost;

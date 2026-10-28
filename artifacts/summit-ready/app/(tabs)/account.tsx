@@ -467,6 +467,8 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
         ref={scrollRef}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={[styles.scroll, { paddingBottom: botPad }]}
         showsVerticalScrollIndicator={false}
       >

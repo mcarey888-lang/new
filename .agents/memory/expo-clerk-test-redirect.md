@@ -1,4 +1,16 @@
 ---
+
+The test helper can also lack `CLERK_SECRET_KEY` when the API workflow exports
+that name from a development-only secret at process startup. Root helper
+environment and workflow environment are not necessarily identical.
+
+**Why:** A browser QA attempt could not create a test session even though the
+API's normal authenticated middleware was configured. This is not evidence
+that customer sign-in is broken.
+
+**How to apply:** Report the QA limitation and use scoped authenticated API
+integration tests where appropriate. Do not rotate credentials, change Clerk
+instances or bypass application authentication to make a helper pass.
 name: Expo Clerk test redirect mismatch
 description: Programmatic browser test login can fail on the shared development host even while the local Expo screen renders.
 ---

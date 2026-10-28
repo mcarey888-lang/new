@@ -1,4 +1,6 @@
 import { MembershipGate } from "@/components/MembershipGate";
+import { HillSourceAttribution } from "@/components/HillSourceAttribution";
+import { trainingHillIdentity } from "@/utils/hillDetailNavigation";
 import type { LucideIcon } from "lucide-react-native";
 import { searchTrainingHills } from "@/utils/trainingHillSearch";
 import { ArrowLeft, Zap, Search, AlertCircle, Check, Calendar, ChevronDown, CheckCircle, Clock, AlertTriangle, XCircle, SlidersHorizontal, Info, TrendingUp, Heart, Flag, ChevronLeft, ChevronRight, Activity, Link, MapPin, Wrench, Map, Navigation, Repeat } from "lucide-react-native";
@@ -1160,8 +1162,9 @@ function SetupContent() {
                     </View>
                   )}
                 </View>
+                <HillSourceAttribution />
                 {setupHills.map(hill => {
-                  const selected = preferredHills.some(h => h.name === hill.name);
+                  const selected = preferredHills.some(h => trainingHillIdentity(h) === trainingHillIdentity(hill));
                   const gradeColor =
                     hill.grade === "Easy" ? T.green :
                     hill.grade === "Easy–Mod" ? T.green :
@@ -1169,9 +1172,9 @@ function SetupContent() {
                     hill.grade === "Hard" ? T.orange : "#FF4444";
                   return (
                     <TouchableOpacity
-                      key={hill.name}
+                      key={hill.summitIdentityKey ?? hill.routeIdentityKey ?? `${hill.name}:${hill.lat},${hill.lng}`}
                       onPress={() => setPreferredHills(prev =>
-                        selected ? prev.filter(h => h.name !== hill.name) : [...prev, hill]
+                        selected ? prev.filter(h => trainingHillIdentity(h) !== trainingHillIdentity(hill)) : [...prev, hill]
                       )}
                       activeOpacity={0.8}
                       style={[hillStyles.hillCard, selected && { borderColor: T.green, borderWidth: 1.5 }]}

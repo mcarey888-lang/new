@@ -15,18 +15,35 @@ need smaller local hills to be available.
 Do not hide lower local summits merely because a radius also contains higher
 ones. Availability-only catalogue fallback is not a completed coverage solution.
 
-UK area discovery should prefer the verified summit catalogue over public
-Overpass, with independent mapped discovery retained for catalogue gaps.
+UK training discovery should use the stored OSM hill layer, supplemented by
+nearby verified catalogue entries, before live Overpass. Preserve smaller
+mapped hills even when the verified catalogue returns a nonempty result.
 Catalogue verification establishes summit identity, not a verified walking
 route or surveyed ascent; terrain estimates retain that separate status.
 
-**Why:** Training setup was blocked by public peak-provider outages despite
-the same hills being available in the existing protected summit catalogue.
+**Why:** Public peak-provider outages blocked training setup. The subsequent
+catalogue-only fix improved availability but the owner correctly identified
+that obscure local hills and recognised-name variants needed broader coverage.
 
 **How to apply:** Reuse the read-only canonical discovery boundary. Preserve
 canonical IDs and distinguish summit height from per-climb ascent. Do not
 replace unavailable terrain measurements with summit height, prominence,
 invented route facts or an AI guess.
+
+Keep the openly licensed imported hill layer separate from private activity
+and independently licensed canonical records, with a downloadable source.
+Imports should retain stable identities understood by installed clients while
+recording their precise extract provenance separately.
+
+**Why:** Broadening discovery must not silently relicense private data, promote
+mapped facts into verified routes, or break existing mobile builds' mapped-hill
+guards. The owner approved storing licensed source data rather than depending
+on public Overpass for every request.
+
+**How to apply:** Source-backed reviewed local aliases may supplement OSM
+names only for the exact recorded feature and location. A missing name is not
+proof that the physical hill is absent; check alternate labels before adding
+a duplicate or declaring a coverage gap.
 
 **Why:** A user received Brook's Hill with an unsupported 668 m climb and Alpine terrain; name-based map lookup led to a street. Public peak-provider failures were being treated as empty results, making AI substitution particularly misleading.
 

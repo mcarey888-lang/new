@@ -14,3 +14,15 @@ Keep Feed content immediately below the tabs compact: the “Share a moment” b
 **Why:** The user wants community posts to appear on the initial screen without scrolling, while keeping the shared hero intact.
 
 **How to apply:** Avoid adding feed-only headings, descriptions, or large spacers between the You tabs, composer, and first posts.
+
+Do not restore the inline “Edit profile” and “Discover member routes” links
+between the shared hero and the tabs. Use white, dark-text feed cards within
+the dark app shell to highlight posts.
+
+**Why:** The owner explicitly removed those links to reduce wasted space and
+requested the light feed treatment shown in their reference. Editing remains
+available through existing profile/settings controls.
+
+**How to apply:** Keep the tabs close to the metrics on every You section.
+Maintain the light treatment for real and explicitly fictional preview cards,
+but keep sample reactions noninteractive and separate from real member counts.

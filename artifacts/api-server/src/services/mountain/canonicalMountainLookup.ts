@@ -61,6 +61,7 @@ export interface CanonicalSummitAreaInput {
   radiusKm: number;
   /** Kept deliberately small so area discovery cannot become a catalogue scan. */
   limit?: number;
+  order?: "nearest";
 }
 
 export interface AmbiguousCanonicalMountain {
@@ -529,7 +530,12 @@ export async function lookupVerifiedCanonicalSummitsInArea(
     throw new Error("Canonical summit area radius must be greater than 0 and no more than 200 km");
   }
   const limit = Math.min(50, Math.max(1, Math.floor(input.limit ?? 20)));
-  const candidates = (await query(VERIFIED_SUMMITS_IN_AREA_SQL, [
+  const areaSql = input.order === "nearest"
+    ? VERIFIED_SUMMITS_IN_AREA_SQL.replace("ORDER BY\n", `ORDER BY
+  ST_Distance(m.geom::geography, ST_SetSRID(ST_MakePoint($2::float8, $1::float8), 4326)::geography),
+`)
+    : VERIFIED_SUMMITS_IN_AREA_SQL;
+  const candidates = (await query(areaSql, [
     input.centerLat,
     input.centerLng,
     input.radiusKm * 1_000,

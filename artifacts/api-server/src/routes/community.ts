@@ -1,12 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
 import express, { Router, type IRouter, type Request, type Response } from "express";
-import { getAuth, clerkClient } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import rateLimit from "express-rate-limit";
 import sharp from "sharp";
 import { communityPosts, communityReports, db } from "@workspace/db";
 import { ObjectStorageService, objectStorageClient } from "../lib/objectStorage";
-import { publicDisplayName } from "../lib/publicDisplayName";
+import { getAuthor } from "../services/communityAuthors";
+import { communityEngagement } from "../services/communityEngagement";
+import communityEngagementRouter from "./community-engagement";
 import {
   canReadCommunityPost,
   canReportCommunityPost,
@@ -17,6 +19,7 @@ import {
 } from "../services/communityPolicy";
 
 const router: IRouter = Router();
+router.use(communityEngagementRouter);
 const objectStorage = new ObjectStorageService();
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const postWriteLimiter = rateLimit({
@@ -66,29 +69,21 @@ function postResponse(post: typeof communityPosts.$inferSelect, author: { name: 
   };
 }
 
-async function getAuthor(userId: string): Promise<{ name: string; avatarUrl: string | null }> {
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const name = publicDisplayName(user);
-    return { name, avatarUrl: user.imageUrl || null };
-  } catch {
-    // A durable post and everyone else's feed must survive profile outages.
-    return { name: "SummitReady member", avatarUrl: null };
-  }
-}
-
 async function buildPostResponse(post: typeof communityPosts.$inferSelect) {
-  const [response] = await buildPostResponses([post]);
+  const [response] = await buildPostResponses([post], post.ownerUserId);
   if (!response) throw new Error("Could not resolve community post author");
   return response;
 }
 
-async function buildPostResponses(posts: readonly (typeof communityPosts.$inferSelect)[]) {
-  const authors = await resolveUniqueCommunityAuthors(posts.map((post) => post.ownerUserId), getAuthor);
+async function buildPostResponses(posts: readonly (typeof communityPosts.$inferSelect)[], viewerId: string) {
+  const [authors, engagement] = await Promise.all([
+    resolveUniqueCommunityAuthors(posts.map((post) => post.ownerUserId), getAuthor),
+    communityEngagement(posts.map(post => post.id), viewerId),
+  ]);
   return posts.map((post) => {
     const author = authors.get(post.ownerUserId);
     if (!author) throw new Error("Could not resolve community post author");
-    return postResponse(post, author);
+    return { ...postResponse(post, author), ...engagement.get(post.id) };
   });
 }
 
@@ -184,7 +179,8 @@ router.get("/community/posts", async (req, res) => {
     posts = posts.filter((post) => !isHiddenByReport(post, userId, reportedPostIds));
   }
   try {
-    res.json({ posts: await buildPostResponses(posts) });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ posts: await buildPostResponses(posts, userId) });
   } catch (error) {
     req.log.error({ err: error }, "Failed to resolve community post authors");
     res.status(503).json({ error: "Unable to load community author profiles" });

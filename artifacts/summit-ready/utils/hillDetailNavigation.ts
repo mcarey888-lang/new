@@ -30,9 +30,16 @@ export function resolveSessionHill(
 
 export function isMappedTrainingHill(hill: NearbyHill): boolean {
   return hill.dataSource === "canonical_verified" ||
+    !!hill.routeIdentityKey?.startsWith("route:v1:osm_extract:") ||
     !!hill.routeIdentityKey?.startsWith("route:v1:osm_overpass:") ||
     !!hill.routeIdentityKey?.startsWith("route:v1:osm_nominatim:") ||
     !!hill.routeIdentityKey?.startsWith("route:v1:seeded_osm:");
+}
+
+/** Common local names must not select or remove a different nearby hill. */
+export function trainingHillIdentity(hill: NearbyHill): string {
+  return hill.summitIdentityKey ?? hill.routeIdentityKey ??
+    `${hill.name}:${hill.lat ?? ""},${hill.lng ?? ""}`;
 }
 
 export function sessionHillTitle(type: string, label: string, hillName?: string) {

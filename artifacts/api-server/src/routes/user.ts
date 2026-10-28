@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { recordedHikeBackups } from "@workspace/db/schema";
 import { getAuth, clerkClient } from "@clerk/express";
-import { canonicalActivities, communityPosts, communityReports, db, trackedRoutes, userDemoProfiles, activityPreferences } from "@workspace/db";
+import { canonicalActivities, communityPosts, communityReports, communityComments, communityLikes, db, trackedRoutes, userDemoProfiles, activityPreferences } from "@workspace/db";
 import { eq, or, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { deleteCommunityPhoto } from "./community";
@@ -96,6 +96,9 @@ router.delete("/user/me", requireAuth({ json: true }), async (req, res) => {
       eq(communityReports.reporterUserId, userId),
       eq(communityReports.targetOwnerUserId, userId),
     ));
+    // Reactions on other members' posts also belong to the deleted account.
+    await db.delete(communityComments).where(eq(communityComments.ownerUserId, userId));
+    await db.delete(communityLikes).where(eq(communityLikes.userId, userId));
     await db.delete(communityPosts).where(eq(communityPosts.ownerUserId, userId));
     await Promise.all(ownedPosts.flatMap(({ photoPath }) => photoPath
       ? [deleteCommunityPhoto(photoPath).catch((err: unknown) => {

@@ -7,6 +7,65 @@
  */
 import * as zod from "zod";
 
+/**
+ * @summary Download the OpenStreetMap-derived UK hill database under ODbL
+ */
+
+export const getLocalHillSourceResponsePeaksItemLatMin = -90;
+export const getLocalHillSourceResponsePeaksItemLatMax = 90;
+
+export const getLocalHillSourceResponsePeaksItemLngMin = -180;
+export const getLocalHillSourceResponsePeaksItemLngMax = 180;
+
+export const GetLocalHillSourceResponse = zod.object({
+  schemaVersion: zod.literal(1),
+  coverage: zod.enum(["United Kingdom and Ireland"]),
+  builtAt: zod.string(),
+  attribution: zod.string(),
+  licence: zod.enum(["ODbL-1.0"]),
+  licenceUrl: zod.string(),
+  sourceUrl: zod.string(),
+  reviewedAliases: zod
+    .array(
+      zod.object({
+        osmNodeId: zod.number(),
+        sourceName: zod.string(),
+        lat: zod.number(),
+        lng: zod.number(),
+        displayName: zod.string(),
+        aliases: zod.array(zod.string()),
+        reviewedAt: zod.string(),
+        evidenceUrls: zod.array(zod.string()),
+      }),
+    )
+    .optional(),
+  sources: zod.array(
+    zod.object({
+      region: zod.string(),
+      url: zod.string(),
+      sha256: zod.string(),
+      dataTimestamp: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  peaks: zod.array(
+    zod.object({
+      id: zod.number().min(1),
+      name: zod.string(),
+      aliases: zod.array(zod.string()),
+      lat: zod
+        .number()
+        .min(getLocalHillSourceResponsePeaksItemLatMin)
+        .max(getLocalHillSourceResponsePeaksItemLatMax),
+      lng: zod
+        .number()
+        .min(getLocalHillSourceResponsePeaksItemLngMin)
+        .max(getLocalHillSourceResponsePeaksItemLngMax),
+      ele: zod.number().nullable().describe("Summit height above sea level"),
+    }),
+  ),
+});
+
 export const GetMembershipAccessQueryParams = zod.object({
   refresh: zod.coerce.boolean().optional(),
 });
@@ -2306,6 +2365,106 @@ export const GetCanonicalHistoryResponse = zod.object({
 });
 
 /**
+ * @summary Like an accessible post, idempotently
+ */
+export const LikeCommunityPostParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const likeCommunityPostResponseLikeCountMin = 0;
+
+export const likeCommunityPostResponseCommentCountMin = 0;
+
+export const LikeCommunityPostResponse = zod.object({
+  likeCount: zod.number().min(likeCommunityPostResponseLikeCountMin),
+  commentCount: zod.number().min(likeCommunityPostResponseCommentCountMin),
+  likedByMe: zod.boolean(),
+});
+
+/**
+ * @summary Remove only the signed-in member's like, idempotently
+ */
+export const UnlikeCommunityPostParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const unlikeCommunityPostResponseLikeCountMin = 0;
+
+export const unlikeCommunityPostResponseCommentCountMin = 0;
+
+export const UnlikeCommunityPostResponse = zod.object({
+  likeCount: zod.number().min(unlikeCommunityPostResponseLikeCountMin),
+  commentCount: zod.number().min(unlikeCommunityPostResponseCommentCountMin),
+  likedByMe: zod.boolean(),
+});
+
+/**
+ * @summary Read a page of comments only while the parent post is accessible
+ */
+export const GetCommunityCommentsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetCommunityCommentsQueryParams = zod.object({
+  cursor: zod.coerce.string().optional(),
+});
+
+export const getCommunityCommentsResponseCommentsItemTextMax = 600;
+
+export const GetCommunityCommentsResponse = zod.object({
+  comments: zod.array(
+    zod.object({
+      id: zod.string(),
+      postId: zod.string(),
+      text: zod
+        .string()
+        .min(1)
+        .max(getCommunityCommentsResponseCommentsItemTextMax),
+      ownerUserId: zod.string(),
+      authorName: zod.string(),
+      authorAvatarUrl: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  nextCursor: zod.string().nullable(),
+});
+
+/**
+ * @summary Add a comment with an account-and-post-scoped retry key
+ */
+export const CreateCommunityCommentParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const createCommunityCommentHeaderXIdempotencyKeyMin = 8;
+export const createCommunityCommentHeaderXIdempotencyKeyMax = 128;
+
+export const CreateCommunityCommentHeader = zod.object({
+  "X-Idempotency-Key": zod
+    .string()
+    .min(createCommunityCommentHeaderXIdempotencyKeyMin)
+    .max(createCommunityCommentHeaderXIdempotencyKeyMax),
+});
+
+export const createCommunityCommentBodyTextMax = 600;
+
+export const CreateCommunityCommentBody = zod.object({
+  text: zod.string().min(1).max(createCommunityCommentBodyTextMax),
+});
+
+/**
+ * @summary Delete your own comment, or moderate a comment on your own post
+ */
+export const DeleteCommunityCommentParams = zod.object({
+  id: zod.coerce.string(),
+  commentId: zod.coerce.string(),
+});
+
+export const DeleteCommunityCommentResponse = zod.object({
+  deleted: zod.boolean(),
+});
+
+/**
  * @summary Create a private-by-default member post
  */
 export const createCommunityPostBodyTextMax = 600;
@@ -2337,9 +2496,22 @@ export const GetCommunityPostsQueryParams = zod.object({
     .default(getCommunityPostsQueryScopeDefault),
 });
 
+export const getCommunityPostsResponsePostsItemLikeCountMin = 0;
+
+export const getCommunityPostsResponsePostsItemCommentCountMin = 0;
+
 export const GetCommunityPostsResponse = zod.object({
   posts: zod.array(
     zod.object({
+      likeCount: zod
+        .number()
+        .min(getCommunityPostsResponsePostsItemLikeCountMin)
+        .optional(),
+      commentCount: zod
+        .number()
+        .min(getCommunityPostsResponsePostsItemCommentCountMin)
+        .optional(),
+      likedByMe: zod.boolean().optional(),
       id: zod.string(),
       kind: zod.enum(["story", "badge", "photo"]),
       text: zod.string(),
@@ -2366,8 +2538,21 @@ export const UpdateCommunityPostVisibilityBody = zod.object({
   visibility: zod.enum(["private", "members"]),
 });
 
+export const updateCommunityPostVisibilityResponsePostLikeCountMin = 0;
+
+export const updateCommunityPostVisibilityResponsePostCommentCountMin = 0;
+
 export const UpdateCommunityPostVisibilityResponse = zod.object({
   post: zod.object({
+    likeCount: zod
+      .number()
+      .min(updateCommunityPostVisibilityResponsePostLikeCountMin)
+      .optional(),
+    commentCount: zod
+      .number()
+      .min(updateCommunityPostVisibilityResponsePostCommentCountMin)
+      .optional(),
+    likedByMe: zod.boolean().optional(),
     id: zod.string(),
     kind: zod.enum(["story", "badge", "photo"]),
     text: zod.string(),
@@ -2400,8 +2585,21 @@ export const UploadCommunityPostPhotoParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const uploadCommunityPostPhotoResponsePostLikeCountMin = 0;
+
+export const uploadCommunityPostPhotoResponsePostCommentCountMin = 0;
+
 export const UploadCommunityPostPhotoResponse = zod.object({
   post: zod.object({
+    likeCount: zod
+      .number()
+      .min(uploadCommunityPostPhotoResponsePostLikeCountMin)
+      .optional(),
+    commentCount: zod
+      .number()
+      .min(uploadCommunityPostPhotoResponsePostCommentCountMin)
+      .optional(),
+    likedByMe: zod.boolean().optional(),
     id: zod.string(),
     kind: zod.enum(["story", "badge", "photo"]),
     text: zod.string(),

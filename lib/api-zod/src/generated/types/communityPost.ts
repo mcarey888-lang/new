@@ -9,6 +9,11 @@ import type { CommunityPostKind } from "./communityPostKind";
 import type { CommunityPostVisibility } from "./communityPostVisibility";
 
 export interface CommunityPost {
+  /** @minimum 0 */
+  likeCount?: number;
+  /** @minimum 0 */
+  commentCount?: number;
+  likedByMe?: boolean;
   id: string;
   kind: CommunityPostKind;
   text: string;
