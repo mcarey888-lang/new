@@ -30,3 +30,13 @@ starting under the image or identity were not the desired boundary.
 Only the composer, audience switcher and posts sit on the off-white area;
 other You sections keep their existing treatment. Maintain light fictional cards,
 but keep sample reactions noninteractive and separate from real member counts.
+
+The full profile header may scroll away, but keep a compact main You tab menu
+pinned below the Training/Expeditions switcher, with a one-tap return to the
+full header. Keep the same expanded hero rather than substituting a new one.
+
+**Why:** The owner wants to read a long Feed without having to manually scroll
+all the way back up to reach the top controls.
+
+**How to apply:** Respect safe-area/shell clearance, preserve feed drafts and
+scroll content during collapse, and avoid mounting a second polling hero.

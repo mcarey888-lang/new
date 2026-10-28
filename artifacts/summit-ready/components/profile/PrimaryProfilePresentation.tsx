@@ -1,4 +1,4 @@
-import { ChevronRight, Settings, UserRound, Camera } from "lucide-react-native";
+import { ChevronRight, ChevronsUp, Settings, UserRound, Camera } from "lucide-react-native";
 import React, { useCallback,useEffect, useState,useRef } from "react";
 import {tokenBelongsToUser} from "@/utils/authRequest";
 import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -43,6 +43,10 @@ type Props = {
   onTabChange: (tab: PrimaryProfileTab) => void;
   onOpenSettings: () => void;
   topInset: number;
+  /** Reports the main tab strip's position within the scroll content. */
+  onTabsLayout?: (y: number, height: number) => void;
+  /** True while the compact pinned strip stands in for these tabs. */
+  tabsCollapsed?: boolean;
 };
 
 /** The shared editorial identity and local navigation for both primary shells. */
@@ -61,6 +65,8 @@ export function PrimaryProfilePresentation({
   onTabChange,
   onOpenSettings,
   topInset,
+  onTabsLayout,
+  tabsCollapsed = false,
 }: Props) {
   const styles = darkStyles;
   const [approvedCoverUri, setApprovedCoverUri] = useState<string | null>(null);
@@ -215,16 +221,77 @@ export function PrimaryProfilePresentation({
           </View>
         </View>
       </View>
-      <SRUnderlineTabs
-        options={PRIMARY_PROFILE_TABS}
-        value={selectedTab}
-        onChange={onTabChange}
-        style={styles.tabs}
-      />
+      <View
+        testID="profile-main-tabs"
+        onLayout={event => onTabsLayout?.(event.nativeEvent.layout.y, event.nativeEvent.layout.height)}
+        accessibilityElementsHidden={tabsCollapsed}
+        importantForAccessibility={tabsCollapsed ? "no-hide-descendants" : "auto"}
+        style={styles.tabsWrap}
+      >
+        <SRUnderlineTabs
+          options={PRIMARY_PROFILE_TABS}
+          value={selectedTab}
+          onChange={onTabChange}
+          style={styles.tabsInner}
+        />
+      </View>
       {selectedTab==="saved" ? <CommunityRecordingLibrary saved /> : null}
     </>
   );
 }
+
+/** Compact pinned tab strip shown once the main tabs scroll under the shell
+ *  switcher. It is an overlay, not a second hero: no cover, no polling. */
+export function CompactProfileTabsBar({
+  selectedTab, onTabChange, onExpand, topInset,
+}: {
+  selectedTab: PrimaryProfileTab;
+  onTabChange: (tab: PrimaryProfileTab) => void;
+  onExpand: () => void;
+  topInset: number;
+}) {
+  return (
+    <View style={[compactStyles.bar, { top: topInset }]} testID="profile-compact-tabs">
+      <View
+        pointerEvents="none"
+        style={[compactStyles.switcherBackdrop, { top: -topInset, height: topInset }]}
+      />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <SRUnderlineTabs options={PRIMARY_PROFILE_TABS} value={selectedTab} onChange={onTabChange} />
+      </View>
+      <TouchableOpacity
+        onPress={onExpand}
+        activeOpacity={0.75}
+        hitSlop={HIT.slop}
+        accessibilityRole="button"
+        accessibilityLabel="Back to top"
+        accessibilityHint="Scrolls up to show your full profile header"
+        testID="profile-back-to-top"
+        style={compactStyles.expand}
+      >
+        <ChevronsUp size={18} color={BASECAMP.text} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const compactStyles = StyleSheet.create({
+  switcherBackdrop: {
+    position: "absolute", left: 0, right: 0, backgroundColor: BASECAMP.ink,
+  },
+  bar: {
+    position: "absolute", left: 0, right: 0, zIndex: 20, elevation: 6,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: BASECAMP.ink,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BASECAMP.hairline,
+  },
+  expand: {
+    width: HIT.minTarget, height: HIT.minTarget, marginRight: SP.sm,
+    alignItems: "center", justifyContent: "center",
+    borderRadius: 11, backgroundColor: BASECAMP.glass,
+    borderWidth: 1, borderColor: BASECAMP.glassBorder,
+  },
+});
 
 const darkStyles = StyleSheet.create({
   hero: {
@@ -362,5 +429,6 @@ const darkStyles = StyleSheet.create({
     ...TYPE.caption,
     color: BASECAMP.textDim,
   },
-  tabs: { marginHorizontal: -18, marginBottom: SP.sm },
+  tabsWrap: { marginHorizontal: -18, marginBottom: SP.sm },
+  tabsInner: {},
 });

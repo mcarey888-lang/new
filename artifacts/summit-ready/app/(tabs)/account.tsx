@@ -5,13 +5,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { openMapSearch } from "@/utils/openMaps";
 import {
   ActivityIndicator,
   Alert,
   Linking,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Platform,
   ScrollView,
   Share,
@@ -72,6 +74,7 @@ import { readDevRankEvidence } from "@/utils/devProfiles";
 import { englishPlaceName } from "@/utils/placeNames";
 import {
   PrimaryProfilePresentation,
+  CompactProfileTabsBar,
   type PrimaryProfileTab,
 } from "@/components/profile/PrimaryProfilePresentation";
 import { CommunityHub, type CommunityHubProps } from "@/components/profile/CommunityHub";
@@ -200,6 +203,16 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
     [community?.posts],
   );
   const [visiblePhotoCount, setVisiblePhotoCount] = useState(8);
+  /* Collapsible header: the main tabs' measured offset decides the threshold;
+     state only flips when the scroll position crosses it. */
+  const tabsY = useRef<number | null>(null);
+  const collapsedRef = useRef(false);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const setCollapsed = useCallback((next: boolean) => {
+    if (collapsedRef.current === next) return;
+    collapsedRef.current = next;
+    setHeaderCollapsed(next);
+  }, []);
 
 
   const [devRankEvidence, setDevRankEvidence] = useState<readonly import("@/utils/challengeDomain").EvidenceReference[]>([]);
@@ -463,6 +476,22 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   // Leave the persistent shell toggle clear above the editorial cover.
   const topInset = Platform.OS === "web" ? 67 : insets.top + 48;
   const botPad = Platform.OS === "web" ? 100 : insets.bottom + 100;
+  const topInsetRef = useRef(topInset);
+  topInsetRef.current = topInset;
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = tabsY.current;
+    if (y === null) return;
+    setCollapsed(event.nativeEvent.contentOffset.y >= y - topInsetRef.current);
+  }, [setCollapsed]);
+  const changeTab = useCallback((nextTab: PrimaryProfileTab) => {
+    setTab(nextTab);
+    setCollapsed(false);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [setCollapsed]);
+  const expandHeader = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, []);
+  useEffect(() => { if (showSettings) setCollapsed(false); }, [showSettings, setCollapsed]);
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -472,6 +501,8 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={[styles.scroll, { paddingBottom: botPad }, tab === "feed" && !showSettings && styles.feedScroll]}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={32}
       >
         {!showSettings ? (
           <PrimaryProfilePresentation
@@ -494,12 +525,11 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
               { value: `${unlockedAchievements.length}/${ACHIEVEMENTS.length}`, label: "Achievements" },
             ]}
             selectedTab={tab}
-            onTabChange={(nextTab) => {
-              setTab(nextTab);
-              scrollRef.current?.scrollTo({ y: 0, animated: false });
-            }}
+            onTabChange={changeTab}
             onOpenSettings={() => setShowSettings(true)}
             topInset={topInset}
+            onTabsLayout={(y) => { tabsY.current = y; }}
+            tabsCollapsed={headerCollapsed}
           />
         ) : (
           <View style={[styles.settingsHeader, { paddingTop: topInset + 8 }]}>
@@ -1494,6 +1524,14 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         </Animated.View>
         </>}
       </ScrollView>
+      {headerCollapsed && !showSettings ? (
+        <CompactProfileTabsBar
+          selectedTab={tab}
+          onTabChange={changeTab}
+          onExpand={expandHeader}
+          topInset={topInset}
+        />
+      ) : null}
 
     </LinearGradient>
   );
