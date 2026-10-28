@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { lookupNamedMappedPeaks } from "../services/namedMappedPeak.js";
 import { canonicalTrainingHills } from "../services/mountain/canonicalTrainingHills";
+import { requestOverpass } from "../services/overpassRequest";
 
 const router: IRouter = Router();
 
@@ -624,28 +625,12 @@ export async function fetchOSMPeaks(
     `[out:json][timeout:7];` +
     `node["natural"="peak"]["name"](around:${radiusM},${centerLat},${centerLng});` +
     `out body;`;
-  const providers = [
-    "https://overpass-api.de/api/interpreter",
-    "https://overpass.private.coffee/api/interpreter",
-  ];
-  let lastError: unknown;
-  for (const provider of providers) {
-    try {
-    const url = `${provider}?data=${encodeURIComponent(query)}`;
-    const res = await fetch(url, {
-      headers: { "User-Agent": GEO_UA },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) throw new Error(`Peak provider returned HTTP ${res.status}`);
-    const data = await res.json() as {
-      remark?: string;
-      elements: Array<{ id: number; lat: number; lon: number; tags?: Record<string, string> }>;
-    };
-    if (!Array.isArray(data.elements) || data.remark) {
-      throw new Error("Peak provider returned an incomplete result");
-    }
-    return data.elements
-      .filter(e => e.tags?.name && e.lat && e.lon)
+  try {
+    const data = await requestOverpass(query);
+    return (data.elements as Array<{ id: number; lat: number; lon: number; tags?: Record<string, string> }>)
+      .filter(e => e && Number.isSafeInteger(e.id) && e.tags?.name &&
+        Number.isFinite(e.lat) && Number.isFinite(e.lon) &&
+        Math.abs(e.lat) <= 90 && Math.abs(e.lon) <= 180)
       .map(e => ({
         id: e.id,
         lat: e.lat,
@@ -654,12 +639,10 @@ export async function fetchOSMPeaks(
         ele: e.tags?.ele ? parseFloat(e.tags.ele) : null,
       }))
       .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-    } catch (err) {
-      lastError = err;
-    }
+  } catch (err) {
+    if (strict) throw err;
+    return [];
   }
-  if (strict) throw lastError;
-  return [];
 }
 
 /**

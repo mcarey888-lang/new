@@ -50,3 +50,16 @@ HTTP errors; trying an independent mirror did not guarantee recovery.
 **How to apply:** Never report failover as a confirmed fix without a successful
 live search. Preserve explicit outages rather than serving invented hills or
 silently treating provider failure as a genuinely empty area.
+
+Respect provider-wide failure cooldowns and Retry-After, share identical
+in-flight queries, and cache only complete successful responses. A timeout
+must cover response-body parsing as well as connection establishment.
+
+**Why:** Overpass can reject requests because its own workers are full;
+repeated user retries then amplify the outage rather than restoring access.
+Changing GET to POST does not repair upstream capacity.
+
+**How to apply:** Use documented identifying headers, sequential failover to
+full-planet providers, and explicit unavailable errors. Never evade provider
+blocks, log precise query coordinates or credential-bearing URLs, or call
+resilience improvements proof that the public service is restored.

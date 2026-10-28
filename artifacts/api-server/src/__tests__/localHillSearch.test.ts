@@ -16,6 +16,7 @@ vi.mock("../services/mountain/canonicalTrainingHills", () => ({
 }));
 
 import router, { fetchOSMPeaks, normalizedHillSearchName, osmPeaksToHills } from "../routes/hills-unified.js";
+import { clearOverpassRequestState } from "../services/overpassRequest";
 
 const handler = (router as any).stack.find((r: any) => r.route?.path === "/hills-unified").route.stack[0].handle;
 const peak = { id: 123, lat: 53.71, lon: -2.33, tags: { name: "Nearby Fell", ele: "400" } };
@@ -34,6 +35,7 @@ async function search(body: Record<string, unknown>) {
 }
 
 beforeEach(() => {
+  clearOverpassRequestState();
   ai.mockReset();
   select.mockReset();
   canonical.mockReset().mockResolvedValue(null);

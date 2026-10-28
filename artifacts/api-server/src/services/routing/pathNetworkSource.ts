@@ -1,4 +1,6 @@
 import type { PathWay } from "./pathSnapping";
+import { OVERPASS_ENDPOINTS } from "../overpassRequest";
+export { OVERPASS_ENDPOINTS } from "../overpassRequest";
 
 /**
  * Where the path network comes from.
@@ -49,14 +51,6 @@ import type { PathWay } from "./pathSnapping";
  * fix if this ever carries real traffic — this only makes the public ones less
  * fragile in the meantime.
  */
-export const OVERPASS_ENDPOINTS: readonly string[] =
-  process.env.OVERPASS_URL
-    ? [process.env.OVERPASS_URL]
-    : [
-        "https://overpass-api.de/api/interpreter",
-        "https://overpass.kumi.systems/api/interpreter",
-      ];
-
 /* ⚠️ ANY ENDPOINT ADDED HERE MUST CARRY THE WHOLE PLANET.
  *
  * Several public Overpass instances hold one country or region. One of those
@@ -81,7 +75,7 @@ export const OVERPASS_ENDPOINTS: readonly string[] =
  *  three instances all rejecting the same bad query is three times the
  *  nuisance for the same answer. */
 export function worthRetrying(status: number): boolean {
-  return status === 429 || status === 502 || status === 503 || status === 504;
+  return status === 406 || status === 429 || status === 502 || status === 503 || status === 504;
 }
 
 /**
