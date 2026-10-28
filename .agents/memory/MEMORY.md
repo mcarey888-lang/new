@@ -104,3 +104,4 @@
 - [Route database](expedition-review-drafting.md) — paid catalogue work paused until downloads grow; launch with user planning and GPS tracks; retain source-only and privacy rules.
 - [Store test membership](store-test-membership.md) — verified Play license-test receipts can unlock tester access; browser Test Store products and prices stay separate.
 - [Nix import tools](nix-python-import-tools.md) — use packaged osmium for one-off OSM processing; Python bootstrapping can target immutable Nix paths and create unrelated project files.
+- [Basecamp progress priority](basecamp-progress-priority.md) — progress stays directly below the hero; explanations belong in expedition details, live activity totals at the bottom.

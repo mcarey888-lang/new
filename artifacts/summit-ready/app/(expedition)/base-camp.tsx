@@ -1202,23 +1202,6 @@ export default function BaseCampScreen() {
           </View>
         </SRHeroFrame>
 
-        {activeExpedition?.virtualHills[0]?.completionPolicy === "selected_stages" && (
-          <View style={{ margin: BASECAMP.gutter, padding: 14, backgroundColor: T.card, borderRadius: 10, gap: 8 }}>
-            <Text style={{ color: T.text, fontWeight: "700" }}>Self-paced · {activeExpedition.virtualHills.length} stages · any order</Text>
-            <Text style={{ color: T.text, lineHeight: 19 }}>
-              Local planning totals: Approx. ascent {activeExpedition.virtualHills.reduce((sum, hill) => sum + hill.elevation, 0).toLocaleString()} m · Approach distance {Number(activeExpedition.virtualHills.reduce((sum, hill) => sum + (hill.approachDistanceKm ?? 0), 0).toFixed(1))} km.
-            </Text>
-            <Text style={{ color: T.textMuted, lineHeight: 19 }}>
-              International reference: Approx. ascent {activeExpedition.virtualHills[0].internationalReference?.ascentM.toLocaleString()} m · Approach distance {activeExpedition.virtualHills[0].internationalReference?.approachDistanceKm} km.{"\n"}
-              {activeExpedition.virtualHills[0].internationalReference?.comparison}
-            </Text>
-            <Text style={{ color: T.textMuted, lineHeight: 19 }}>
-              Actual linked activity: {Math.round(linkedExpeditionElevation).toLocaleString()} m ascent · {Number(linkedExpeditionDistance.toFixed(1))} km recorded/reported. Separate from simulated progress and planning estimates.
-            </Text>
-            <Text style={{ color: T.textMuted, lineHeight: 19 }}>Approach distances exclude the post-summit return; return walking is additional. Complete the selected stages under the existing verification rules; there is no extra international-ascent threshold.</Text>
-          </View>
-        )}
-
         {/* ── Mountain Progress — centrepiece of Expedition Mode ───────────── */}
         <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 2 }}>
           {/* mountainImageRef placed on the inner mountain image view via CompactBasecampMountain */}
@@ -1368,6 +1351,18 @@ export default function BaseCampScreen() {
         <Animated.View entering={FadeInDown.delay(140).duration(400)}>
           <JourneyHistory presentation={presentation} />
         </Animated.View>
+
+        {activeExpedition?.virtualHills[0]?.completionPolicy === "selected_stages" && (
+          <View style={{ margin: BASECAMP.gutter, gap: 6 }}>
+            <Text style={{ ...TYPE.caption, color: BASECAMP.textDim }}>ACTUAL LINKED ACTIVITY</Text>
+            <Text style={{ color: T.text, lineHeight: 19 }}>
+              {Math.round(linkedExpeditionElevation).toLocaleString()} m ascent · {Number(linkedExpeditionDistance.toFixed(1))} km recorded/reported
+            </Text>
+            <Text style={{ ...TYPE.caption, color: BASECAMP.textDim }}>
+              Separate from simulated progress and planning estimates.
+            </Text>
+          </View>
+        )}
 
         {/* Keep the modal stuff below intact */}
 
