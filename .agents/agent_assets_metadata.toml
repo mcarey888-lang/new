@@ -844,3 +844,59 @@ mtime_ms = 1793033854872
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/48e2b306-b55f-46a1-9e69-284172fcda2c/9f01f40d-39e0-4f46-a83e-8c0c104af0ff"
 storage_version_token = "1793033861347913"
 content_type = "text/csv"
+
+[[outputs]]
+id = "vGClk2R0gZalJrdj2vMtR"
+uri = "file://generated-artifacts/expedition-curation-pack/CHATGPT-INSTRUCTIONS.txt"
+type = "text"
+title = "ChatGPT instructions and return format"
+description = "Upload this with the other three files. Defines uphill-only matching, larger local summit preference, evidence requirements and review-only JSON output."
+logical_id = "e2196eaf-af50-4ee5-9623-296077b214af"
+content_hash = "sha256:756dd652bf496d38470d0e06234c879a7627c43fbd2ee459083a088a2537627d"
+size = 16497
+mtime_ms = 1793211482762
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/e2196eaf-af50-4ee5-9623-296077b214af/76b2036d-db84-4081-ad84-111e26f88d98"
+storage_version_token = "1793211491692323"
+content_type = "text/plain"
+
+[[outputs]]
+id = "2iuFt3zD89582RiN1uqzZ"
+uri = "file://generated-artifacts/expedition-curation-pack/approved-expedition-artwork.json"
+type = "unspecified"
+title = "Approved expeditions — 61 entries"
+description = "Exact source expedition IDs, target mountain names, local walking regions and approved artwork references. Includes one workspace-only approved entry."
+logical_id = "f391d950-64ef-45ed-989f-711d66a490cc"
+content_hash = "sha256:d90bd088cc5374af50698d928c3dd8b0132904a1ba7ac5a2c7be843b0714b85c"
+size = 116588
+mtime_ms = 1793211343805
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/f391d950-64ef-45ed-989f-711d66a490cc/41de729d-48d6-463e-a184-e9e3a24cfa9a"
+storage_version_token = "1793211492750636"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "CixyrzHc-idswZnddmX9p"
+uri = "file://generated-artifacts/expedition-curation-pack/verified-summits.csv"
+type = "table"
+title = "Verified summit catalogue — 21,649 records"
+description = "Exact database IDs, canonical names, verified aliases, locations, heights and trust provenance. Unknown approach metrics remain blank."
+logical_id = "8c93bc60-80f8-4099-83a3-b9d35d2c8f1d"
+content_hash = "sha256:d62a866ec7f8b00c3b5cd5bf8b985cfd521cf5026409bffa7177395592c088fd"
+size = 7075450
+mtime_ms = 1793211322969
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/8c93bc60-80f8-4099-83a3-b9d35d2c8f1d/049228cf-cd2e-43c0-af98-031fc929a9fd"
+storage_version_token = "1793211494280172"
+content_type = "text/csv"
+
+[[outputs]]
+id = "VQlQTp-uZ-CsH44wEdMJd"
+uri = "file://generated-artifacts/expedition-curation-pack/approved-artwork-reference.pdf"
+type = "pdf"
+title = "Approved artwork — visual reference"
+description = "Seven labelled pages showing all 61 approved artworks, including export-time version references. No backend login required."
+logical_id = "798a691c-cfc1-4333-b312-be1b616b9953"
+content_hash = "sha256:fc53246d665be81dd182a205db16799f0f27d2de92b0659e4c0f5e339768ca97"
+size = 3960900
+mtime_ms = 1793211435088
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/798a691c-cfc1-4333-b312-be1b616b9953/9f7131b0-63fc-4c67-a1c5-d945e9fe3d4c"
+storage_version_token = "1793211495702176"
+content_type = "application/pdf"

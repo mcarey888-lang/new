@@ -110,3 +110,18 @@ alone are not evidence of a summit location, route geometry or starting point.
 multi-summit circuit needs explicit review rather than a single guessed summit.
 Keep historical stage completion identities and saved progress intact, and
 keep unverified route facts clearly separate from verified summit details.
+
+New externally curated summit-stage proposals should match the target's
+cumulative ascent and uphill distance, excluding descent, using as few sensible
+distinct stages as possible and prioritising larger local mountains/hills.
+
+**Why:** The owner explicitly requested this matching policy for the replacement
+collection. Summit altitude is not climb gain; legacy full-route distance is
+not uphill-only distance.
+
+**How to apply:** Require an identified approach/start and sourced comparable
+target/stage metrics. Keep missing uphill figures null and distinguish
+one-way approach distance from strictly uphill distance where an approach
+undulates. Produce review-only candidates rather than forcing these values
+into the existing full-route-distance import fields. This new curation policy
+does not rewrite saved targets, historical manual totals or actual GPS records.
