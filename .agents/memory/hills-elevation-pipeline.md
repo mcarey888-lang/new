@@ -26,3 +26,14 @@ Named hill lookup should not depend solely on broad-area peak discovery. A mappe
 **Why:** Pendle Hill was present in OpenStreetMap, but a failing broad-area Overpass request made setup claim the hill could not be found. A direct mapped-peak lookup resolved the Lancashire summit while rejecting the Australian suburb.
 
 **How to apply:** Preserve provider lineage and mapped identity across lookup, assignment and map navigation. Distinguish service outages from empty results, and retain separate, source-backed climb calculations.
+
+Public Overpass mirrors are a resilience aid, not guaranteed availability.
+Keep their combined timeout below the mobile request budget and reject
+partial/error responses even when HTTP status is 200.
+
+**Why:** Live UK training searches failed through public-provider timeouts and
+HTTP errors; trying an independent mirror did not guarantee recovery.
+
+**How to apply:** Never report failover as a confirmed fix without a successful
+live search. Preserve explicit outages rather than serving invented hills or
+silently treating provider failure as a genuinely empty area.

@@ -177,6 +177,7 @@ function SetupContent() {
   const skipLookupRef = useRef(false);
 
   const [hillSearchState, setHillSearchState] = useState<"idle" | "loading" | "results" | "error">("idle");
+  const [hillSearchError, setHillSearchError] = useState("");
   const [setupHills, setSetupHills] = useState<NearbyHill[]>([]);
   const [preferredHills, setPreferredHills] = useState<NearbyHill[]>([]);
 
@@ -407,12 +408,14 @@ function SetupContent() {
   async function fetchSetupHills() {
     const location = loc.trim();
     if (location.length < 2) return;
+    setHillSearchError("");
     setHillSearchState("loading");
     try {
       const hills = await searchTrainingHills("area", location, "", undefined, +radius || 25);
       setSetupHills(hills);
       setHillSearchState("results");
-    } catch {
+    } catch (error) {
+      setHillSearchError(error instanceof Error ? error.message : "Hill search is unavailable. Please retry.");
       setHillSearchState("error");
     }
   }
@@ -1141,7 +1144,7 @@ function SetupContent() {
             {hillSearchState === "error" && (
               <Animated.View entering={FadeInDown.duration(300)} style={hillStyles.errorBanner}>
                 <AlertCircle size={13} color={T.orange} />
-                <Text style={hillStyles.errorText}>Could not fetch hills — check your location and try again.</Text>
+                <Text style={hillStyles.errorText}>{hillSearchError || "Hill search is unavailable. Please retry."}</Text>
               </Animated.View>
             )}
 

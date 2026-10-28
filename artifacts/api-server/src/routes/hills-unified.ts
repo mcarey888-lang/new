@@ -596,7 +596,8 @@ export interface OSMPeak {
 
 /**
  * Query the Overpass API for named natural peaks within `radiusKm` of a point.
- * Returns an empty array on any network/parse failure so the caller can fall back.
+ * Tries independent mapped-data mirrors within a bounded request budget.
+ * Strict UK callers distinguish outages from genuine empty results.
  */
 export async function fetchOSMPeaks(
   centerLat: number,
@@ -619,20 +620,30 @@ export async function fetchOSMPeaks(
   }
   const radiusM = Math.round(radiusKm * 1000);
   const query =
-    `[out:json][timeout:20];` +
+    `[out:json][timeout:7];` +
     `node["natural"="peak"]["name"](around:${radiusM},${centerLat},${centerLng});` +
     `out body;`;
-  const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-  try {
+  const providers = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+  ];
+  let lastError: unknown;
+  for (const provider of providers) {
+    try {
+    const url = `${provider}?data=${encodeURIComponent(query)}`;
     const res = await fetch(url, {
       headers: { "User-Agent": GEO_UA },
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) throw new Error(`Peak provider returned HTTP ${res.status}`);
     const data = await res.json() as {
+      remark?: string;
       elements: Array<{ id: number; lat: number; lon: number; tags?: Record<string, string> }>;
     };
-    return (data.elements ?? [])
+    if (!Array.isArray(data.elements) || data.remark) {
+      throw new Error("Peak provider returned an incomplete result");
+    }
+    return data.elements
       .filter(e => e.tags?.name && e.lat && e.lon)
       .map(e => ({
         id: e.id,
@@ -642,10 +653,12 @@ export async function fetchOSMPeaks(
         ele: e.tags?.ele ? parseFloat(e.tags.ele) : null,
       }))
       .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-  } catch (err) {
-    if (strict) throw err;
-    return [];
+    } catch (err) {
+      lastError = err;
+    }
   }
+  if (strict) throw lastError;
+  return [];
 }
 
 /**

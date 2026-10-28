@@ -12,7 +12,7 @@ vi.mock("@workspace/db", () => ({
   },
 }));
 
-import router, { normalizedHillSearchName, osmPeaksToHills } from "../routes/hills-unified.js";
+import router, { fetchOSMPeaks, normalizedHillSearchName, osmPeaksToHills } from "../routes/hills-unified.js";
 
 const handler = (router as any).stack.find((r: any) => r.route?.path === "/hills-unified").route.stack[0].handle;
 const peak = { id: 123, lat: 53.71, lon: -2.33, tags: { name: "Nearby Fell", ele: "400" } };
@@ -58,6 +58,26 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("mapped local training hill searches", () => {
+  it.each(["http", "timeout", "incomplete"])("uses a second mapped mirror after a primary %s failure", async failure => {
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(async () => {
+        if (failure === "timeout") throw new Error("Timed out");
+        return { ok: failure !== "http", status: 502, json: async () => ({ elements: [], remark: "runtime error: timed out" }) };
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ elements: [peak] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await fetchOSMPeaks(53.7, -2.33, 25, true)).toMatchObject([{ name: "Nearby Fell", id: 123 }]);
+    expect(fetchMock.mock.calls[0][0]).toContain("overpass-api.de");
+    expect(fetchMock.mock.calls[1][0]).toContain("overpass.private.coffee");
+    expect(ai).not.toHaveBeenCalled();
+  });
+
+  it("does not retry a valid empty mapped search", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ elements: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await fetchOSMPeaks(53.7, -2.33, 25, true)).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
   it("keeps even a single nearby peak instead of replacing it with AI results", async () => {
     const res = await search({ location: "BB4 4BH", radius: 49.1 });
     expect(res.statusCode).toBe(200);

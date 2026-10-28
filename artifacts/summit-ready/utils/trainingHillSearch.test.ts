@@ -100,6 +100,9 @@ describe("shared Explore and session hill search", () => {
   });
 
   it("both screens use the shared search, with automatic postcode lookup in the picker", () => {
+    const setup = readFileSync(join(__dirname, "../app/setup.tsx"), "utf8");
+    expect(setup).toContain("setHillSearchError(error instanceof Error ? error.message");
+    expect(setup).not.toContain("Could not fetch hills — check your location");
     const explore = readFileSync(join(__dirname, "../app/(tabs)/explore.tsx"), "utf8");
     const picker = readFileSync(join(__dirname, "../components/HillPickerModal.tsx"), "utf8");
     expect(explore).toContain('searchTrainingHills("area", term, "", controller.signal)');
