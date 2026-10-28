@@ -3,6 +3,7 @@ import { mountRequestBodyParsers } from "./lib/requestBodyParsers";
 import cors from "cors";
 import { isLoopbackCorsOrigin } from "./lib/corsPolicy.js";
 import rateLimit from "express-rate-limit";
+import { createExpeditionCatalogueLimiter, isExpeditionCatalogueRead } from "./middlewares/expeditionCatalogueRateLimit";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import router from "./routes";
@@ -85,6 +86,7 @@ app.use(
       }
     },
     credentials: true,
+    exposedHeaders: ["Retry-After"],
   }),
 );
 
@@ -109,6 +111,7 @@ const generalLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many requests. Please slow down." },
 });
+const expeditionCatalogueLimiter = createExpeditionCatalogueLimiter();
 
 // Candidate galleries can request three protected crops per candidate at once.
 // Keep them rate-limited, but do not let a gallery fill the budget used by
@@ -167,6 +170,11 @@ const routeReviewLimiter = rateLimit({
 });
 
 app.use("/api", (req, res, next) => {
+  // Opening a saved catalogue expedition is a DB read, not AI generation.
+  // Asset/background fan-out must not exhaust its request budget.
+  if (isExpeditionCatalogueRead(req.method, req.path)) {
+    return expeditionCatalogueLimiter(req, res, next);
+  }
   if (req.method === "GET" && artworkImagePath.test(req.path)) {
     return artworkImageLimiter(req, res, next);
   }

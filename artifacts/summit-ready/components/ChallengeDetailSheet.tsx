@@ -28,6 +28,7 @@ import {
 import { mountainImageUri } from "@/utils/mountainImage";
 import { approvedExpeditionArtwork } from "@/utils/expeditionArtwork";
 import { signatureChallengeTarget } from "@/utils/signatureExpedition";
+import { ExpeditionDetailError, requestExpeditionDetail } from "@/utils/expeditionDetailRequest";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -114,6 +115,13 @@ export function ChallengeDetailSheet({
   const [challenge, setChallenge] = useState<SigChallenge | null>(null);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [retryIn, setRetryIn] = useState(0);
+  useEffect(() => {
+    if (retryIn <= 0) return;
+    const timer = setTimeout(() => setRetryIn(seconds => Math.max(0, seconds - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [retryIn]);
   const [stagesExpanded, setStagesExpanded] = useState(true);
   const [limitsExpanded, setLimitsExpanded] = useState(false);
   const [imgError, setImgError]   = useState(false);
@@ -123,18 +131,25 @@ export function ChallengeDetailSheet({
   }, [challengeId]);
 
   useEffect(() => {
-    if (!challengeId) { setChallenge(null); return; }
+    const controller = new AbortController();
+    setChallenge(null);
+    if (!challengeId) { setLoading(false); return; }
     setLoading(true);
     setError(null);
+    setRetryIn(0);
     setImgError(false);
     setStagesExpanded(true);
     setLimitsExpanded(false);
-    fetch(`${API_BASE}/sx/challenges/${challengeId}`)
-      .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
-      .then((d: { challenge: SigChallenge }) => setChallenge(d.challenge))
-      .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false));
-  }, [challengeId]);
+    requestExpeditionDetail<SigChallenge>(API_BASE, challengeId, controller.signal)
+      .then(detail => { if (!controller.signal.aborted) setChallenge(detail); })
+      .catch(e => {
+        if (controller.signal.aborted) return;
+        setError(e instanceof ExpeditionDetailError ? e.message : "Could not reach the expedition service. Check your connection and try again.");
+        setRetryIn(e instanceof ExpeditionDetailError ? e.retryAfterSeconds : 0);
+      })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [challengeId, retryAttempt]);
 
   const dayLabel = (order: number, total: number) => {
     if (total === 1) return "Day 1";
@@ -237,9 +252,20 @@ export function ChallengeDetailSheet({
           )}
 
           {error && (
-            <View style={{ margin: 16, padding: 14, backgroundColor: T.orange + "15", borderRadius: 6, flexDirection: "row", gap: 8 }}>
+            <View style={{ margin: 16, padding: 14, backgroundColor: T.orange + "15", borderRadius: 6, gap: 8 }}>
+              <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
               <AlertTriangle size={14} color={T.orange} />
-              <Text style={{ fontSize: 13, color: T.textMuted, fontFamily: "Inter_400Regular" }}>{error}</Text>
+              <Text style={{ flex: 1, fontSize: 13, color: T.textMuted, fontFamily: "Inter_400Regular" }} accessibilityRole="alert">{error}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setRetryAttempt(attempt => attempt + 1)}
+                disabled={retryIn > 0}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: retryIn > 0 }}
+                style={{ paddingVertical: 12, paddingHorizontal: 8, opacity: retryIn > 0 ? 0.6 : 1 }}
+              >
+                <Text style={{ color: T.green, fontWeight: "600" }}>{retryIn > 0 ? `Try again in ${retryIn}s` : "Try again"}</Text>
+              </TouchableOpacity>
             </View>
           )}
 
