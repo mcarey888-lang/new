@@ -914,3 +914,17 @@ mtime_ms = 1793213842616
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/2e7bcfd0-fe80-4d05-a97b-8c5771ce5b1e/582b230f-9221-4865-8f0c-f9413877b123"
 storage_version_token = "1793213849168300"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "aiNROhsL1shY7IYnp2fcm"
+uri = "file://generated-artifacts/expedition-collection/summit-ready-collection-review.zip"
+type = "unspecified"
+title = "SummitReady collection review"
+description = "CSV and JSON metrics, source references, verification notes, approved-artwork checks, and all 28 named pending items with their precise gaps."
+logical_id = "69a2236f-2429-4405-9e58-c52336a80514"
+content_hash = "sha256:a80fc8a0678a284c38f1f67be8d7ddf7df714ab50aa16a8ac685a7578cb44f23"
+size = 62639
+mtime_ms = 1793229146596
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/69a2236f-2429-4405-9e58-c52336a80514/c8b3a10b-b738-4646-98c4-5f55a4fdef65"
+storage_version_token = "1793229185716029"
+content_type = "application/octet-stream"

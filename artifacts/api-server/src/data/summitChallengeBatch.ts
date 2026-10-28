@@ -2,20 +2,23 @@
  * Owner-agreed approximate challenge batch. Immutable revision IDs protect
  * existing saved plans. These are approach estimates, never navigable tracks.
  */
+import { remainingSummitChallenges } from "./remainingSummitChallenges";
 export const APPROACH_NOTE = "Approach distance is one-way to the summit, including pre-summit undulations. Return walking is additional. Approximate planning figures, not a GPS track or a safe descent plan. Local walks do not reproduce alpine difficulty, altitude or glaciation.";
 
-type Stage = {
+export type Stage = {
   id: string; name: string; ascentM: number; approachDistanceKm: number;
   approach: string; start: string; safetyWarning?: string; evidenceNote?: string;
+  area?: string; sources?: string[]; difficulty?: string;
 };
-type BatchChallenge = {
+export type BatchChallenge = {
   sourceId: string; challengeId: string; title: string; target: string;
   slug: string; region: string; referenceRoute: string;
   referenceAscentM: number; referenceApproachKm: number;
   comparison: string; sources: string[]; stages: Stage[];
+  evidenceNote?: string; dataConfidence?: string;
 };
 
-export const SUMMIT_CHALLENGE_BATCH: BatchChallenge[] = [
+export const AGREED_SUMMIT_CHALLENGES: BatchChallenge[] = [
   {
     sourceId: "SIG024", challengeId: "SIG024-SUMMITS-1",
     title: "The Welsh Matterhorn", target: "Matterhorn", slug: "matterhorn",
@@ -83,6 +86,11 @@ export const SUMMIT_CHALLENGE_BATCH: BatchChallenge[] = [
         evidenceNote: "Estimate derived from sparse public author waypoints and may omit small undulations." },
     ],
   },
+];
+
+export const SUMMIT_CHALLENGE_BATCH: BatchChallenge[] = [
+  ...AGREED_SUMMIT_CHALLENGES,
+  ...remainingSummitChallenges(AGREED_SUMMIT_CHALLENGES),
 ];
 
 export function sourceArtworkId(id: string): string {

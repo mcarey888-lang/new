@@ -127,3 +127,18 @@ exact-uphill and full-outing figures null, not zero. Label Approx. ascent and
 Approach distance, explain additional return walking, and separate local,
 international-reference and actual activity totals. Never force approach
 figures into full-route fields or rewrite saved plans, manual totals or GPS.
+
+Keep genuinely unsupported international comparisons as explicitly named
+pending sources with their precise evidence gap; never count them as startable
+challenges or replace missing figures with zero.
+
+**Why:** The owner explicitly accepts pending exceptions while asking that all
+other supported challenges be finished. This is not permission to block on
+strict uphill-only segmentation or to treat summit height as climb ascent.
+
+**How to apply:** Report available challenge counts separately from source
+coverage, aliases and exclusions. Retain source/artwork identities and legacy
+detail access. The owner made one explicit region-inference exception for
+"The Lake District Mont Blanc 2"; it does not relax the general rule against
+guessing walking regions from titles. Account for its artwork association
+without an indistinguishable second collection card.

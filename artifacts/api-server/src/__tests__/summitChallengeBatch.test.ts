@@ -37,10 +37,10 @@ describe("owner-agreed summit challenge batch", () => {
     expect((await revisedSummitChallenge(source)).challengeId).toBe(revised.challengeId);
   });
   it("leaves unrelated entries unchanged and has no UK targets", async () => {
-    const unrelated = { challengeId: "SIG001" } as SignatureChallenge;
+    const unrelated = { challengeId: "SIG042" } as SignatureChallenge;
     expect(await revisedSummitChallenge(unrelated)).toBe(unrelated);
-    expect(new Set(SUMMIT_CHALLENGE_BATCH.map(challenge => challenge.challengeId)).size).toBe(3);
-    expect(SUMMIT_CHALLENGE_BATCH.map(challenge => challenge.target)).toEqual(["Matterhorn", "Mont Blanc", "Kilimanjaro"]);
+    expect(new Set(SUMMIT_CHALLENGE_BATCH.map(challenge => challenge.challengeId)).size).toBe(SUMMIT_CHALLENGE_BATCH.length);
+    expect(SUMMIT_CHALLENGE_BATCH.some(challenge => ["Ben Nevis", "Snowdon", "Scafell Pike", "Helvellyn"].includes(challenge.target))).toBe(false);
     expect(APPROACH_NOTE).toContain("Return walking is additional");
   });
 });

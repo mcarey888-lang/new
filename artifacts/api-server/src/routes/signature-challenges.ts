@@ -21,8 +21,70 @@ import {
 import { eq, and, ilike, or, sql } from "drizzle-orm";
 import { revisedSummitChallenge } from "../services/summitChallengeRevisions";
 import { sourceArtworkId } from "../data/summitChallengeBatch";
+import { collectionCounts, collectionCoverage, visibleInSummitCollection } from "../data/expeditionCollectionCoverage";
 
 export const signatureChallengesRouter = Router();
+
+/** Public, read-only review/export. Includes every source, including pending,
+ * UK-target exclusions and the additional Mont Blanc artwork association.
+ */
+signatureChallengesRouter.get("/sx/summit-collection", async (req, res) => {
+  try {
+    const entries = collectionCoverage();
+    const sources = await db.select().from(signatureChallenges)
+      .where(eq(signatureChallenges.status, "active"));
+    const sourceMap = new Map(sources.map(source => [source.challengeId, source]));
+    const challenges: Awaited<ReturnType<typeof revisedSummitChallenge>>[] = [];
+    const issues: { sourceId: string; error: string }[] = [];
+    for (const entry of entries.filter(item => item.challengeId)) {
+      const source = sourceMap.get(entry.sourceId);
+      if (!source) {
+        issues.push({ sourceId: entry.sourceId, error: "Active source catalogue record is missing; no substitute created." });
+        continue;
+      }
+      try { challenges.push(await revisedSummitChallenge(source)); }
+      catch (error) {
+        issues.push({ sourceId: entry.sourceId, error: error instanceof Error ? error.message : "Trusted identity could not be verified" });
+      }
+    }
+    const review = {
+      formatVersion: 1, collection: "International goals, local summit stages",
+      counts: collectionCounts(entries), availableChallenges: challenges.length,
+      notes: [
+        "Handled source entries include named pending items; they are not all startable.",
+        "One-way approach distances exclude post-summit return. Exact uphill-only measurements are intentionally absent, never zero.",
+        "No source catalogue, artwork, saved plan, history, manual total or GPS activity is written by this read-only collection overlay.",
+        "Reused first-batch local estimates retain their owner-supplied provenance; a separate original publisher bibliography was not included in that handover.",
+      ],
+      entries, challenges, issues,
+    };
+    res.setHeader("Cache-Control", "no-store");
+    if (req.query.download === "csv") {
+      const header = ["source_id", "status", "target", "challenge_id", "alias_of", "permitted_areas", "reference_route", "reference_ascent_m", "reference_approach_km", "stage_number", "summit_id", "summit_name", "stage_area", "latitude", "longitude", "approach", "start", "approx_ascent_m", "approach_distance_km", "reference_sources", "stage_sources", "evidence_or_gap"];
+      const line = (values: unknown[]) => values.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",");
+      const rows = entries.flatMap(entry => {
+        const challenge = challenges.find(item => item.challengeId === entry.challengeId);
+        const stages = challenge && "stages" in challenge ? challenge.stages : [];
+        return (stages.length ? stages : [null]).map((stage, index) => line([
+          entry.sourceId, entry.status, entry.target, entry.challengeId, entry.aliasOf, entry.permittedLocalAreas.join(" | "),
+          entry.reference?.route, entry.reference?.ascentM, entry.reference?.approachDistanceKm,
+          stage ? index + 1 : "", stage?.catalogueMountain.id, stage?.catalogueMountain.name,
+          stage?.region, stage?.catalogueMountain.latitude, stage?.catalogueMountain.longitude,
+          stage?.routeName, stage?.approachStart, stage?.ascentM, stage?.approachDistanceKm,
+          entry.researchSources.join(" | "), stage?.sources.join(" | "),
+          [entry.note, stage?.evidenceNote, stage?.safetyWarning].filter(Boolean).join(" "),
+        ]));
+      });
+      res.setHeader("Content-Disposition", 'attachment; filename="summit-ready-expedition-collection.csv"');
+      return res.type("text/csv").send("\uFEFF" + [line(header), ...rows].join("\r\n"));
+    }
+    if (req.query.download === "json") res.setHeader("Content-Disposition", 'attachment; filename="summit-ready-expedition-collection.json"');
+    return res.json(review);
+  } catch (error) {
+    console.error("[sx/summit-collection] review failed", error);
+    return res.status(500).json({ error: "Could not load collection review" });
+  }
+});
 
 // ── Mountain fame ranking ─────────────────────────────────────────────────────
 // Lower number = more famous. Mountains not listed default to 999.
@@ -135,7 +197,7 @@ signatureChallengesRouter.get("/sx/challenges", async (req, res) => {
       .select()
       .from(signatureChallenges)
       .where(and(...conditions))
-    ).map(revisedSummitChallenge))).sort(byFame);
+    ).filter(row => visibleInSummitCollection(row.challengeId)).map(revisedSummitChallenge))).sort(byFame);
 
     if (withStages === "true") {
       const enriched = await Promise.all(
@@ -167,7 +229,7 @@ signatureChallengesRouter.get("/sx/featured", async (_req, res) => {
           eq(signatureChallenges.featured, true)
         )
       )
-    ).map(revisedSummitChallenge))).sort(byFame);
+    ).filter(row => visibleInSummitCollection(row.challengeId)).map(revisedSummitChallenge))).sort(byFame);
 
     return res.json({ challenges: rows, total: rows.length });
   } catch (err) {
@@ -193,7 +255,7 @@ signatureChallengesRouter.get("/sx/challenges/for-mountain/:slug", async (req, r
         )
       )
       .orderBy(signatureChallenges.adventureScore);
-    const rows = await Promise.all(sourceRows.map(revisedSummitChallenge));
+    const rows = await Promise.all(sourceRows.filter(row => visibleInSummitCollection(row.challengeId)).map(revisedSummitChallenge));
 
     if (rows.length === 0) {
       return res.json({ challenges: [], total: 0 });

@@ -53,6 +53,7 @@ interface SigStage {
   approachStart?: string;
   safetyWarning?: string | null;
   evidenceNote?: string | null;
+  sources?: string[];
   reference?: { target: string; route: string; ascentM: number; approachDistanceKm: number; comparison: string; sources: string[] };
   stageOrder: number;
   routeKey: string | null;
