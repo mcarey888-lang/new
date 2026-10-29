@@ -563,8 +563,6 @@ export default function HillDetailScreen() {
             <Text style={styles.coverLabel}>
               {showPersonalCover ? "YOUR JOURNEY PHOTO" : "ILLUSTRATIVE IMAGE"}
             </Text>
-          ) : stageArtwork?.key === stageArtworkKey && !imageError ? (
-            <Text style={styles.coverLabel}>AI MOUNTAIN ILLUSTRATION</Text>
           ) : null}
 
           <View style={{ paddingHorizontal: BASECAMP.gutter, paddingBottom: 16 }}>
