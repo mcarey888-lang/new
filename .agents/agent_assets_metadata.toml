@@ -942,3 +942,31 @@ mtime_ms = 1793281260189
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/8d8e935b-6ba0-46bc-9296-a1510d37b7be/cae06b13-bae6-4df7-b1b1-2ef1040e0990"
 storage_version_token = "1793281753173719"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "RWBMUA_8Mk71YVC_G4njj"
+uri = "file://generated-artifacts/summitready-build-story/summitready-behind-the-build.jpg"
+type = "image"
+title = "SummitReady — Behind the Build"
+description = "Shareable one-page image showing the measured codebase, testing work, connected features and recorded development history."
+logical_id = "d46d4900-5028-4c85-b66e-ed86bce21c4d"
+content_hash = "sha256:75dc1c554791c4d23c0275f05fa77852520d06cdc6158721815d2a09d91def76"
+size = 173538
+mtime_ms = 1793283026222
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/d46d4900-5028-4c85-b66e-ed86bce21c4d/33f3345a-5799-4b27-b97c-b43eb9c05a90"
+storage_version_token = "1793283095088484"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "4-xa8UcQR5vCwt-OexXJ-"
+uri = "file://generated-artifacts/summitready-build-story/summitready-behind-the-build.pdf"
+type = "pdf"
+title = "Behind the Build — PDF"
+description = "One-page PDF to email, print or share with coworkers. Based on the project snapshot measured 29 October 2026."
+logical_id = "d0a86475-4f0a-4b02-b2ee-9371a2d1f49b"
+content_hash = "sha256:10f982c94d803281ce8afeba8daa2d80bd546ead082797ba56e0632b06f304cd"
+size = 178834
+mtime_ms = 1793283075245
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/d0a86475-4f0a-4b02-b2ee-9371a2d1f49b/28c99d8b-52b8-4fc1-adf3-8e256a3a51fd"
+storage_version_token = "1793283096933088"
+content_type = "application/pdf"
