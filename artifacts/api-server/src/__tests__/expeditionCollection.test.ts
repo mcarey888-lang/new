@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { AGREED_SUMMIT_CHALLENGES, SUMMIT_CHALLENGE_BATCH, sourceArtworkId } from "../data/summitChallengeBatch";
 import { COLLECTION_SOURCES, FIRST_THREE, MONT_BLANC_ALIAS } from "../data/expeditionCollectionSources";
 import { collectionCounts, collectionCoverage, visibleInSummitCollection } from "../data/expeditionCollectionCoverage";
 import { remainingSummitChallenges } from "../data/remainingSummitChallenges";
+import { PENDING_SOURCE_IDS } from "../data/pendingExpeditionLocalApproaches";
 
 describe("complete source coverage, without claiming pending items are complete", () => {
   it("accounts exactly for 61 sources / 54 remaining / 57 non-UK / four exclusions", () => {
@@ -15,6 +17,9 @@ describe("complete source coverage, without claiming pending items are complete"
     expect(counts.retainedFirstBatch).toBe(3);
     expect(counts.excludedUkTargets).toBe(4);
     expect(counts.artworkAliases).toBe(1);
+    expect(counts.newStartableChallenges).toBe(45);
+    expect(counts.startableChallenges).toBe(48);
+    expect(counts.pendingSourceEntries).toBe(8);
     expect(counts.startableChallenges + counts.pendingSourceEntries + counts.artworkAliases).toBe(57);
     expect(new Set(COLLECTION_SOURCES.map(source => source.id)).size).toBe(61);
   });
@@ -52,6 +57,20 @@ describe("curated revisions and stage estimates", () => {
     expect(new Set(SUMMIT_CHALLENGE_BATCH.map(item => item.challengeId)).size).toBe(SUMMIT_CHALLENGE_BATCH.length);
     expect(AGREED_SUMMIT_CHALLENGES.map(item => item.stages.length)).toEqual([2, 3, 10]);
   });
+  it("preserves all 28 previously reviewed challenge specifications byte-for-byte", () => {
+    const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical)
+      : value && typeof value === "object"
+        ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, canonical(item)]))
+        : value;
+    const previous = collectionCoverage().filter(item =>
+      (item.status === "ready" || item.status === "retained") && !PENDING_SOURCE_IDS.has(item.sourceId))
+      .map(item => ({ sourceId: item.sourceId, target: item.target, reference: item.reference, stages: item.stages }))
+      .sort((a, b) => a.sourceId.localeCompare(b.sourceId));
+    expect(previous).toHaveLength(28);
+    // Captured from the public read-only review before this pending batch.
+    expect(createHash("sha256").update(JSON.stringify(canonical(previous))).digest("hex"))
+      .toBe("dc259df91710f956377bb4a71cc0dd13b795bb60e6ff4b321e2d59221c46e9b8");
+  });
   it.each(SUMMIT_CHALLENGE_BATCH)("$sourceId uses distinct exact identities inside permitted local areas, with positive non-zero estimates", challenge => {
     const source = COLLECTION_SOURCES.find(item => item.id === challenge.sourceId)!;
     expect(new Set(challenge.stages.map(stage => stage.id)).size).toBe(challenge.stages.length);
@@ -81,6 +100,36 @@ describe("curated revisions and stage estimates", () => {
     const monch = SUMMIT_CHALLENGE_BATCH.find(item => item.sourceId === "SIG035")!;
     expect(monch.referenceAscentM).toBe(650);
     expect(monch.referenceApproachKm).toBe(2.5);
+  });
+  it("resolves the actionable gaps without zero uphill measurements or a two-day requirement", () => {
+    const bySource = (id: string) => SUMMIT_CHALLENGE_BATCH.find(item => item.sourceId === id)!;
+    const peak = bySource("SIG060");
+    expect(peak.stages.length).toBeGreaterThan(1);
+    expect(peak.stages.every(stage => stage.area === "Peak District")).toBe(true);
+    expect(peak.referenceAscentM).toBe(2650);
+    expect(bySource("SIG033").referenceApproachKm).toBe(8);
+    expect(bySource("SIG034").referenceRoute).toContain("Konkordiahütte");
+    expect(bySource("SIG034").referenceApproachKm).toBe(10.8);
+    expect(bySource("SIG020").referenceAscentM).toBe(5050);
+    expect(bySource("SIG020").referenceApproachKm).toBe(85.3);
+    expect(bySource("SIG020").referenceRoute).toBe(bySource("SIG057").referenceRoute);
+    expect(bySource("SIG020").referenceAscentM).toBe(bySource("SIG057").referenceAscentM);
+    expect(bySource("SIG020").referenceApproachKm).toBe(bySource("SIG057").referenceApproachKm);
+    expect(bySource("SIG020").target).toBe("Everest Base Camp");
+    expect(bySource("SIG016").referenceRoute).toContain("Atacama");
+    expect(bySource("SIG016").evidenceNote).toContain("no vehicle lift to Tejos");
+    expect(bySource("SIG005").referenceApproachKm).toBe(8.9);
+    expect(bySource("SIG006").referenceApproachKm).toBe(8);
+    expect(bySource("SIG013").referenceApproachKm).toBe(10.5);
+    expect(bySource("SIG037").referenceRoute).toContain("main summit");
+    expect(bySource("SIG036").stages[0].name).toBe("Schiehallion");
+    expect(bySource("SIG059").stages[0].name).toBe("Ben Rinnes");
+    expect(bySource("SIG036").title).not.toBe(bySource("SIG059").title);
+  });
+  it("keeps only specific source/endpoint problems pending", () => {
+    expect(collectionCoverage().filter(item => item.status === "pending").map(item => item.sourceId).sort()).toEqual([
+      "SIG003", "SIG004", "SIG009", "SIG010", "SIG011", "SIG012", "SIG014", "SIG039",
+    ]);
   });
   it("keeps catalogue construction read-only and old-ID detail lookups unmodified", () => {
     const route = readFileSync(resolve(import.meta.dirname, "../routes/signature-challenges.ts"), "utf8");

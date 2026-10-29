@@ -128,6 +128,30 @@ Approach distance, explain additional return walking, and separate local,
 international-reference and actual activity totals. Never force approach
 figures into full-route fields or rewrite saved plans, manual totals or GPS.
 
+One credible published approximate ascent figure is sufficient. Sum published
+camp/itinerary legs where appropriate; a public author's mapped approach can
+support a clearly documented approximate distance. Do not demand multiple
+independent sources, survey-grade cumulative totals or strict uphill segments.
+
+**Why:** The owner repeatedly clarified that these are practical fun
+comparisons, and that requiring a precise paired cumulative metric was blocking
+otherwise usable challenges.
+
+**How to apply:** Keep the source, conventional start, transport assumption,
+endpoint and derivation explicit. Reuse a consistently defined reference across
+related variants. Reject genuinely ambiguous endpoints or unusable source
+figures rather than increasing precision requirements for everything else.
+
+Keep reviewed stage selections stable when expanding the local candidate pool.
+New candidates must not silently retarget a previously reviewed catalogue
+revision, even though saved user-plan snapshots are separately protected.
+
+**Why:** Retaining user plans alone is insufficient: the owner also requires
+the already completed catalogue additions to remain intact between batches.
+
+**How to apply:** Isolate later curation or pin reviewed stage sets before
+growing the pool. Compare previous specifications, not only challenge counts.
+
 Keep genuinely unsupported international comparisons as explicitly named
 pending sources with their precise evidence gap; never count them as startable
 challenges or replace missing figures with zero.

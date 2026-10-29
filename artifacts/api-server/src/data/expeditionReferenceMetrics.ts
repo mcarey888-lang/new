@@ -1,6 +1,8 @@
 /** Published planning estimates; no summit-height-to-ascent conversion.
  * Sources and conversion notes travel with every reference in the export.
  */
+import { PENDING_RESOLVED_REFERENCES } from "./pendingExpeditionReferenceMetrics";
+
 export type MountainReference = {
   route: string; ascentM: number; approachKm: number;
   sources: string[]; note: string;
@@ -8,6 +10,7 @@ export type MountainReference = {
 const ref = (route: string, ascentM: number, approachKm: number, sources: string[], note: string): MountainReference =>
   ({ route, ascentM, approachKm, sources, note });
 export const REFERENCE_METRICS: Record<string, MountainReference> = {
+  ...PENDING_RESOLVED_REFERENCES,
   "aconcagua": ref("Plaza de Mulas base camp to Aconcagua summit via the Normal Route", 2650, 10.5,
     ["https://www.alpineascents.com/climbs/aconcagua/itinerary/"], "Uses the Normal Route's outbound camp moves: 2,300 + 1,700 + 1,400 + 3,300 ft ascent. Distances 1.5 + 1.5 + 1.5 miles plus half the 4-mile same-route summit-and-return day = 6.5 miles / 10.5 km. Rounded ascent 2,650 m. Excludes the Horcones approach, acclimatisation hikes, duplicate carries and descent. Only the explicit same-route summit-day return distance is halved, never ascent."),
   "vinson": ref("Branscomb Glacier fly-in base camp via Low Camp and High Camp to Vinson summit", 2750, 22.5,
