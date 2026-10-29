@@ -17,9 +17,9 @@ describe("complete source coverage, without claiming pending items are complete"
     expect(counts.retainedFirstBatch).toBe(3);
     expect(counts.excludedUkTargets).toBe(4);
     expect(counts.artworkAliases).toBe(1);
-    expect(counts.newStartableChallenges).toBe(45);
-    expect(counts.startableChallenges).toBe(48);
-    expect(counts.pendingSourceEntries).toBe(8);
+    expect(counts.newStartableChallenges).toBe(47);
+    expect(counts.startableChallenges).toBe(50);
+    expect(counts.pendingSourceEntries).toBe(6);
     expect(counts.startableChallenges + counts.pendingSourceEntries + counts.artworkAliases).toBe(57);
     expect(new Set(COLLECTION_SOURCES.map(source => source.id)).size).toBe(61);
   });
@@ -128,8 +128,34 @@ describe("curated revisions and stage estimates", () => {
   });
   it("keeps only specific source/endpoint problems pending", () => {
     expect(collectionCoverage().filter(item => item.status === "pending").map(item => item.sourceId).sort()).toEqual([
-      "SIG003", "SIG004", "SIG009", "SIG010", "SIG011", "SIG012", "SIG014", "SIG039",
+      "SIG003", "SIG009", "SIG010", "SIG011", "SIG012", "SIG039",
     ]);
+  });
+  it("preserves all 48 already reviewed source specifications, not only the original three", () => {
+    const finalEight = new Set(["SIG003", "SIG004", "SIG009", "SIG010", "SIG011", "SIG012", "SIG014", "SIG039"]);
+    const canonical = (value: any): any => Array.isArray(value) ? value.map(canonical)
+      : value && typeof value === "object"
+        ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, canonical(item)]))
+        : value;
+    const previous = collectionCoverage().filter(item =>
+      (item.status === "ready" || item.status === "retained") && !finalEight.has(item.sourceId))
+      .map(item => ({ sourceId: item.sourceId, target: item.target, reference: item.reference, stages: item.stages }))
+      .sort((a, b) => a.sourceId.localeCompare(b.sourceId));
+    expect(previous).toHaveLength(48);
+    expect(createHash("sha256").update(JSON.stringify(canonical(previous))).digest("hex"))
+      .toBe("e9822e84ffab72f9067de63116eef7467bb2ce590e023d372f93a4aa1ae520a7");
+  });
+  it("uses sourced same-itinerary legs and the explicit main summit for the latest resolutions", () => {
+    const lhotse = SUMMIT_CHALLENGE_BATCH.find(item => item.sourceId === "SIG004")!;
+    expect(lhotse.referenceAscentM).toBe(3150);
+    expect(lhotse.referenceApproachKm).toBe(10.4);
+    expect(lhotse.evidenceNote).toContain("705 + 335 + 900");
+    const shisha = SUMMIT_CHALLENGE_BATCH.find(item => item.sourceId === "SIG014")!;
+    expect(shisha.referenceAscentM).toBe(3000);
+    expect(shisha.referenceApproachKm).toBe(23.6);
+    expect(shisha.referenceRoute).toContain("MAIN summit");
+    expect(shisha.evidenceNote).toContain("0.25 km scope uncertainty");
+    expect(shisha.evidenceNote).toContain("weather");
   });
   it("keeps catalogue construction read-only and old-ID detail lookups unmodified", () => {
     const route = readFileSync(resolve(import.meta.dirname, "../routes/signature-challenges.ts"), "utf8");

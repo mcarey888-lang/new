@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Linking, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
+import { ExpeditionEditionBadge } from "@/components/ExpeditionEditionBadge";
 import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import { approvedExpeditionArtwork } from "@/utils/expeditionArtwork";
 import { signatureChallengeTarget } from "@/utils/signatureExpedition";
@@ -46,7 +47,7 @@ export default function ExpeditionBatchPreview() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: T.bg }} contentContainerStyle={{ padding: 18, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 32 }}>
       <Text style={{ color: T.text, fontSize: 24, fontWeight: "700", marginBottom: 8 }}>Summit challenge collection</Text>
-      <Text style={[body, { marginBottom: 18 }]}>Read-only preview · live catalogue data. No saved plans or activities are changed here. Start and record stages in the signed-in app.</Text>
+      <Text style={[body, { marginBottom: 18 }]}>Read-only preview · live catalogue data. New · Summit stages identifies the revised collection; Original identifies an older signature expedition. Existing plans keep their original stages and progress. Start and record stages in the signed-in app.</Text>
       {counts && <View style={card}>
         <Text style={{ color: T.green, fontWeight: "700" }}>{challenges.length} available challenges · first three retained</Text>
         <Text style={body}>{counts.remainingSourceEntriesHandled} remaining sources reviewed · {counts.nonUkSourceEntries} non-UK sources overall{"\n"}{counts.pendingSourceEntries} pending · {counts.artworkAliases} artwork alias · {counts.excludedUkTargets} UK targets excluded</Text>
@@ -67,6 +68,7 @@ export default function ExpeditionBatchPreview() {
         {challenges.map(item => (
           <TouchableOpacity key={item.challengeId} accessibilityRole="button" onPress={() => { setSelected(item.challengeId); setStageIndex(0); }}
             style={{ width: 220, padding: 13, borderRadius: 9, borderWidth: 1, borderColor: selected === item.challengeId ? T.green : T.border, backgroundColor: T.card }}>
+            <ExpeditionEditionBadge challengeId={item.challengeId} />
             <Text style={{ color: selected === item.challengeId ? T.green : T.text, fontWeight: "600" }}>{item.challengeName} · {item.stages.length} stages</Text>
           </TouchableOpacity>
         ))}

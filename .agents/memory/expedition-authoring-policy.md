@@ -152,6 +152,16 @@ the already completed catalogue additions to remain intact between batches.
 **How to apply:** Isolate later curation or pin reviewed stage sets before
 growing the pool. Compare previous specifications, not only challenge counts.
 
+Make the revised summit-stage collection visually distinguishable from original
+signature expeditions without renaming or resetting previously saved plans.
+
+**Why:** The owner needs to recognise the newer editions while older saved
+expeditions and their history remain available.
+
+**How to apply:** Show an edition label in discovery and expedition details,
+using stable catalogue identity rather than names or an arbitrary recent date.
+Do not add explanatory panels above Basecamp's progress mountain.
+
 Keep genuinely unsupported international comparisons as explicitly named
 pending sources with their precise evidence gap; never count them as startable
 challenges or replace missing figures with zero.

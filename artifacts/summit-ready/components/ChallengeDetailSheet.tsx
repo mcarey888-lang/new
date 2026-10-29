@@ -9,6 +9,7 @@ import {
   StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
 import { ExpoMountainArtworkImage as ExpoImage } from "@/components/MountainArtworkImage";
+import { ExpeditionEditionBadge } from "@/components/ExpeditionEditionBadge";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   X, Mountain, MapPin, Clock, TrendingUp,
@@ -242,6 +243,7 @@ export function ChallengeDetailSheet({
                 </View>
 
                 {/* Challenge name */}
+                <ExpeditionEditionBadge challengeId={challenge.challengeId} />
                 <Text style={s.heroTitle}>{stripSuffix(challenge.challengeName)}</Text>
 
                 {/* Target route */}

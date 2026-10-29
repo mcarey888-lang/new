@@ -16,6 +16,7 @@ import {
 } from "lucide-react-native";
 import { VirtualMountainCard } from "@/components/VirtualMountainCard";
 import { ExpeditionDayCount } from "@/components/ExpeditionDayCount";
+import { ExpeditionEditionBadge } from "@/components/ExpeditionEditionBadge";
 import { ManualDnaHeader } from "@/components/ManualDnaHeader";
 import { ExpoMountainArtworkImage as ExpoImage } from "@/components/MountainArtworkImage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -1744,6 +1745,7 @@ export default function ExpeditionMountainsScreen() {
                   </View>
                 ) : sigChallenge ? (
                   <>
+                    <ExpeditionEditionBadge challengeId={sigChallenge.challengeId} />
                     <Text style={s.sigTitle}>{stripSuffix(sigChallenge.challengeName)}</Text>
                     {sigChallenge.targetRoute ? (
                       <Text style={s.sigRoute}>{sigChallenge.targetRoute}</Text>
@@ -2568,6 +2570,7 @@ export default function ExpeditionMountainsScreen() {
               </TouchableOpacity>
             </View>
             <View style={{ paddingHorizontal: 16, gap: 10 }}>
+              <Text style={s.popularSub}>New · Summit stages marks the revised collection. Your existing plans keep their original stages and progress.</Text>
               {filteredFeatured.map(ch => (
                 <TouchableOpacity
                   key={ch.challengeId}
@@ -2594,6 +2597,7 @@ export default function ExpeditionMountainsScreen() {
                   </View>
                   {/* Content */}
                   <View style={{ flex: 1 }}>
+                    <ExpeditionEditionBadge challengeId={ch.challengeId} />
                     <Text style={s.popularTitle} numberOfLines={1}>{ch.challengeName}</Text>
                     <Text style={s.popularSub} numberOfLines={1}>
                       {ch.targetMountainName}{ch.regions ? ` · ${ch.regions.split(",")[0].trim()}` : ""}
