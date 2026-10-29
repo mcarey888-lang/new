@@ -105,3 +105,4 @@
 - [Store test membership](store-test-membership.md) — verified Play license-test receipts can unlock tester access; browser Test Store products and prices stay separate.
 - [Nix import tools](nix-python-import-tools.md) — use packaged osmium for one-off OSM processing; Python bootstrapping can target immutable Nix paths and create unrelated project files.
 - [Basecamp progress priority](basecamp-progress-priority.md) — progress stays directly below the hero; explanations belong in expedition details, live activity totals at the bottom.
+- [Privacy disclosure boundary](privacy-disclosure-boundary.md) — distinguish pseudonymous measurement, native SDK uncertainty and actual erasure scope; policy text does not create consent.
