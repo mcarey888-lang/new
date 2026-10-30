@@ -984,3 +984,31 @@ mtime_ms = 1793343477847
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/017a2654-4d4b-4898-96e5-0ba91855b875/a984a82a-4b74-4bb5-98c1-7d23de0ad9e2"
 storage_version_token = "1793344772350903"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "RHZYqzp0Fy7fEaS6LUU06"
+uri = "file://docs/releases/privacy-website-2026-10-30/POLICY.txt"
+type = "text"
+title = "Reviewed privacy policy — 30 October 2026"
+description = "Corrected live-versus-prepared policy text from the pinned four-file website release. Not published."
+logical_id = "dd2b3048-49c6-450c-856e-6bb8a38ef1ad"
+content_hash = "sha256:666f309f1c5a97278f214b6cb3de7d4275c0aa2a8deebd6b1d9bb58ec6e2c9d8"
+size = 19343
+mtime_ms = 1793345668747
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/dd2b3048-49c6-450c-856e-6bb8a38ef1ad/1486fd6e-a7e4-4b22-8e2a-e7684adc43a9"
+storage_version_token = "1793346131473279"
+content_type = "text/plain"
+
+[[outputs]]
+id = "75ZR33GAKs_yPzyjgOxF0"
+uri = "file://docs/releases/privacy-website-2026-10-30/README.md"
+type = "text"
+title = "Privacy-only release and rollback guide"
+description = "Pinned source, pushed backup, publication safety gates and rollback instructions."
+logical_id = "07e87111-1603-4bdf-90cf-2feaec4f677d"
+content_hash = "sha256:ef966285cc48977819b9f5445c61f640ecaead72528f845bce80bfa097ebcc16"
+size = 5602
+mtime_ms = 1793345801543
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/07e87111-1603-4bdf-90cf-2feaec4f677d/038e98b4-9ae5-414c-88c2-4048efb4d635"
+storage_version_token = "1793346132263806"
+content_type = "text/markdown"
