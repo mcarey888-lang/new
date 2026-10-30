@@ -2,18 +2,12 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
+import { optionalAllowed, privacyReady, optionalRequest, releaseOptionalRequest, initialiseNativePrivacy } from "./privacy";
 
 /**
- * Firebase Analytics wrapper — Android only.
- *
- * Every call in this file is guarded behind `Platform.OS === "android"` and
- * wrapped in try/catch so that:
- *  - iOS builds never touch the Firebase Analytics native module. There is
- *    no GoogleService-Info.plist / iOS Firebase config in this project, so
- *    the module is only initialised for Android (see app.json).
- *  - Any analytics failure (native module not ready, network issue, etc.)
- *    can never crash the app or block real app functionality — logging is
- *    always best-effort.
+ * Consent-gated native usage analytics. Reddit remains Android-only and has
+ * an independent advertising-measurement choice. Unknown/declined choices
+ * never emit or queue events. Errors cannot block essential app functionality.
  */
 
 type EventParams = Record<string, string | number | boolean | undefined>;
@@ -41,9 +35,13 @@ async function mirrorToReddit(
   eventName: RedditEventName,
   metadata?: { plan?: string; value?: number; currency?: string },
 ): Promise<boolean> {
-  if (!isAndroid()) return false;
+  await privacyReady;
+  if (!isAndroid() || !optionalAllowed("advertising")) return false;
+  const controller = optionalRequest();
   try {
     const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
+    const installId = await getInstallId();
+    if (!optionalAllowed("advertising") || controller.signal.aborted) return false;
     const response = await fetch(`https://${domain}/api/reddit-conversions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -51,22 +49,30 @@ async function mirrorToReddit(
         eventName,
         eventAt: Date.now(),
         conversionId: Crypto.randomUUID(),
-        installId: await getInstallId(),
+        installId,
+        advertisingConsent: true,
         ...metadata,
       }),
+      signal: controller.signal,
     });
     return response.ok;
   } catch (err) {
     if (__DEV__) console.warn(`[analytics] Failed to mirror "${eventName}" to Reddit`, err);
     return false;
+  } finally {
+    releaseOptionalRequest(controller);
+    if (!optionalAllowed("advertising")) {
+      await AsyncStorage.removeItem(INSTALL_ID_KEY).catch(() => {});
+    }
   }
 }
 
 /** Mirrors Firebase's automatic first_open once per app installation. Retries after failures. */
 export async function logFirstOpenForReddit(): Promise<void> {
-  if (!isAndroid()) return;
+  await privacyReady;
+  if (!isAndroid() || !optionalAllowed("advertising")) return;
   if ((await AsyncStorage.getItem(FIRST_OPEN_SENT_KEY)) === "1") return;
-  if (await mirrorToReddit("first_open")) {
+  if (await mirrorToReddit("first_open") && optionalAllowed("advertising")) {
     await AsyncStorage.setItem(FIRST_OPEN_SENT_KEY, "1");
   }
 }
@@ -76,16 +82,22 @@ function isAndroid(): boolean {
 }
 
 async function getAnalyticsInstance() {
+  await initialiseNativePrivacy();
   const analyticsModule = await import("@react-native-firebase/analytics");
   return analyticsModule.default();
 }
 
-/** Low-level helper — logs a raw Firebase Analytics event. Android only, never throws. */
+/** Consent-gated Firebase event with a deliberately narrow parameter allowlist. */
 export async function logAnalyticsEvent(name: string, params?: EventParams): Promise<void> {
-  if (!isAndroid()) return;
+  await privacyReady;
+  if (Platform.OS === "web" || !optionalAllowed("analytics")) return;
   try {
     const analytics = await getAnalyticsInstance();
-    await analytics.logEvent(name, params);
+    if (!optionalAllowed("analytics")) return;
+    // Never send location names, readiness scores or coaching text as analytics.
+    const permitted = new Set(["method", "plan", "value", "currency"]);
+    const safe = Object.fromEntries(Object.entries(params ?? {}).filter(([key]) => permitted.has(key)));
+    await analytics.logEvent(name, safe);
   } catch (err) {
     if (__DEV__) {
       console.warn(`[analytics] Failed to log event "${name}"`, err);
@@ -93,11 +105,13 @@ export async function logAnalyticsEvent(name: string, params?: EventParams): Pro
   }
 }
 
-/** Logs a screen_view event. Android only, never throws. */
+/** Consent-gated native screen_view. */
 export async function logScreenView(screenName: string, screenClass?: string): Promise<void> {
-  if (!isAndroid()) return;
+  await privacyReady;
+  if (Platform.OS === "web" || !optionalAllowed("analytics")) return;
   try {
     const analytics = await getAnalyticsInstance();
+    if (!optionalAllowed("analytics")) return;
     await analytics.logScreenView({
       screen_name: screenName,
       screen_class: screenClass ?? screenName,

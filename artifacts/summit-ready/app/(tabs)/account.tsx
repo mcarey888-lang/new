@@ -1,3 +1,4 @@
+import { PrivacyChoices } from "@/components/PrivacyChoices";
 import { User, Users, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity, Lock, Camera, ChevronLeft } from "lucide-react-native";
 import { useAuth, useUser, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -423,12 +424,12 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
 
   async function handleDeleteAccount() {
     if (Platform.OS === "web") {
-      if (!window.confirm("Permanently delete your account and all data? This cannot be undone.")) return;
+      if (!window.confirm("Delete your account, saved app records and uploaded media? This cannot be undone. Provider erasure or legally retained purchase records may need follow-up. This does not cancel your store subscription.")) return;
       doDeleteAccount();
     } else {
       Alert.alert(
         "Delete account",
-        "This will permanently delete your account and all local data. This cannot be undone.",
+        "This removes your account, saved app records and uploaded media. Provider erasure and any lawfully retained purchase records may need follow-up. This does not cancel your store subscription.",
         [
           { text: "Cancel", style: "cancel" },
           { text: "Delete account", style: "destructive", onPress: doDeleteAccount },
@@ -440,32 +441,50 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   async function doDeleteAccount() {
     setDeletingAccount(true);
     const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
+    let deletionMessage = "";
     try {
       const token = await getToken();
+      const { privacyErasureIdentifiers } = await import("@/lib/privacy");
       const res = await fetch(`https://${domain}/api/user/me`, {
         method: "DELETE",
-        headers: authenticatedHeaders(token),
+        headers: { ...authenticatedHeaders(token), "Content-Type": "application/json" },
+        body: JSON.stringify({ erasureIdentifiers: await privacyErasureIdentifiers() }),
       });
       if (!res.ok) {
         throw await responseError(res, "Could not delete account data");
       }
+      const result = await res.json();
+      if (result.accountDeleted !== true && result.deleted !== true) {
+        throw new Error("Account deletion is not confirmed. Please retry or contact support.");
+      }
+      deletionMessage = result.pendingProviders?.length
+        ? `Account removed. Provider erasure/retention review is pending. Keep request reference ${result.requestId} and contact support@summitready.uk for progress. Deletion does not cancel your store subscription.`
+        : "Account removed. Deletion does not cancel your store subscription.";
     } catch (err: unknown) {
       setDeletingAccount(false);
       const msg = err instanceof Error ? err.message : "Could not delete account. Please try signing out and back in, then try again.";
       Alert.alert("Delete failed", msg);
       return;
     }
-    await discardActiveHike();
+    let localCleanupFailed = false;
+    try { await discardActiveHike(); } catch { localCleanupFailed = true; }
+    try {
+      const { savePrivacyChoice } = await import("@/lib/privacy");
+      await savePrivacyChoice(false, false);
+    } catch { localCleanupFailed = true; }
     try { await logoutRevenueCat(); } catch {}
     if (userId) {
       try {
         const allKeys = await AsyncStorage.getAllKeys();
-        const userKeys = allKeys.filter(k => k.endsWith(`_${userId}`));
+        const userKeys = allKeys.filter(k => k.includes(userId));
         if (userKeys.length > 0) await AsyncStorage.multiRemove(userKeys);
-      } catch {}
+      } catch { localCleanupFailed = true; }
     }
     try { await signOut(); } catch {}
     setDeletingAccount(false);
+    const outcome = deletionMessage + (localCleanupFailed ? " Some device data could not be cleared; remove this app's storage or contact support." : "");
+    if (Platform.OS === "web") window.alert(outcome);
+    else Alert.alert("Account deletion outcome", outcome);
     router.replace("/");
   }
 
@@ -1431,6 +1450,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         {/* Account actions */}
         <Animated.View entering={FadeInDown.delay(240).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>ACCOUNT</Text>
+          <PrivacyChoices settings />
           <View style={styles.actionList}>
             <TouchableOpacity style={styles.actionRow} onPress={handleSignOut} activeOpacity={0.7}>
               <LogOut size={16} color={T.orange} />
@@ -1453,7 +1473,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
                 : <Trash2 size={16} color="#FF4444" />}
               <View style={{ flex: 1 }}>
                 <Text style={[styles.actionText, { color: "#FF4444" }]}>Delete account</Text>
-                <Text style={styles.actionSub}>Permanently removes your Clerk account and all data</Text>
+                <Text style={styles.actionSub}>Remove your account and app records; provider follow-up may be needed. Does not cancel subscriptions.</Text>
               </View>
               <ChevronRight size={16} color={T.textDim} />
             </TouchableOpacity>

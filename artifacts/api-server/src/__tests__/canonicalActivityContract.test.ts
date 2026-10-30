@@ -104,8 +104,10 @@ describe("canonical activity Phase 0 contract", () => {
   });
 
   it("removes owner activity records during authenticated account deletion", () => {
-    expect(userRouteSource).toMatch(/canonicalActivities/);
-    expect(userRouteSource).toMatch(/canonicalActivities\.ownerUserId,\s*userId/);
+    expect(userRouteSource).toMatch(/deleteAccountHandler/);
+    const deletionSource = readFileSync(new URL("../services/accountDeletion.ts", import.meta.url), "utf8");
+    expect(deletionSource).toContain('["canonical_activities", ["owner_user_id"]]');
+    expect(deletionSource).toContain("WHERE user_id=${owner} OR canonical_activity_id IN");
   });
 });
 

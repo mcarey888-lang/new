@@ -43,7 +43,7 @@ export function MembershipGate({ children, allowExpedition = false }: { children
       {isError && <TouchableOpacity onPress={() => { void refetchCustomerInfo(); }}><Text style={{ color: T.textMuted }}>We couldn’t refresh membership. Retry</Text></TouchableOpacity>}
       <TouchableOpacity onPress={() => router.push({ pathname: "/paywall", params: expeditionView
         ? { tier: "expeditions", trigger: "resume_expedition" }
-        : { tier: "pro", trigger: "training", returnTo: "questionnaire" } })} style={{ backgroundColor: T.green, padding: 18, borderRadius: 12 }}>
+        : { tier: "pro", trigger: "training", returnTo: "training_basecamp" } })} style={{ backgroundColor: T.green, padding: 18, borderRadius: 12 }}>
         <Text style={{ fontWeight: "700" }}>{expeditionView ? "See Expeditions membership" : "See SummitReady Pro"}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => router.replace("/(tabs)/explore" as any)}><Text style={{ color: T.green }}>Continue exploring for free</Text></TouchableOpacity>

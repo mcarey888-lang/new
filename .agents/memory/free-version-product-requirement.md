@@ -24,8 +24,12 @@ simulated adventures; Pro prepares users for a real mountain.
   readiness assessments, adaptive schedules or coaching.
 - Pro includes both expeditions and personalised training/readiness/coaching.
   Earlier free initial-readiness and first-week-training previews are superseded.
-  Offer Pro before the questionnaire; do not compute personalised free results
-  merely to hide them later.
+  Fitness questionnaire and goal setup are free. Save the setup separately and
+  let users reach Training Basecamp with a locked readiness meter and programme.
+  Offer Pro to unlock these results, not before the questionnaire; do not compute
+  personalised free plans/readiness merely to hide them later.
+  **Why:** On 2026-10-30 the owner explicitly moved the paywall after the fitness
+  profile, with readiness and the programme locked at Training Basecamp.
 - Preserve existing full-access subscribers as full Pro, including restoration.
   Expiry retains activities, progress, plans and clearly historical readiness;
   it never interrupts saving a recording. Ordinary hiking on any mountain is

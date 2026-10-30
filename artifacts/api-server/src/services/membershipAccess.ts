@@ -26,6 +26,20 @@ async function revenueCatToken(): Promise<string> {
   return value;
 }
 
+/** Erasure only; never used by sign-in, purchase, restore or entitlement checks.
+ * A provider refusal remains a pending erasure task, never a fabricated success. */
+export async function deleteRevenueCatCustomer(userId: string): Promise<void> {
+  const project = process.env.REVENUECAT_PROJECT_ID;
+  if (!project) throw new Error("RevenueCat erasure project is not configured");
+  const response = await fetch(`https://api.revenuecat.com/v2/projects/${encodeURIComponent(project)}/customers/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${await revenueCatToken()}`, Accept: "application/json" },
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!response.ok && response.status !== 404) throw new Error("RevenueCat erasure requires follow-up");
+  cache.delete(userId);
+}
+
 async function readRevenueCat(path: string): Promise<any> {
   const response = await fetch(`https://api.revenuecat.com/v2/${path}`, {
     headers: { Authorization: `Bearer ${await revenueCatToken()}`, Accept: "application/json" },

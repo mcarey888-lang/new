@@ -1,4 +1,5 @@
 export * from "./activity-sharing";
+export * from "./privacy-deletion-jobs";
 export * from "./conversations";
 export * from "./messages";
 export * from "./seeded-trails";

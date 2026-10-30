@@ -2,6 +2,7 @@ import { pgTable, text, real, integer, timestamp, jsonb, index } from "drizzle-o
 import { trackedRoutes } from "./tracked-routes";
 
 export const routeContributions = pgTable("route_contributions", {
+  ownerUserId: text("owner_user_id"),
   id:               text("id").primaryKey(),
   canonicalRouteId: text("canonical_route_id").notNull().references(() => trackedRoutes.id, { onDelete: "cascade" }),
   trackPoints:      jsonb("track_points").notNull().default([]),

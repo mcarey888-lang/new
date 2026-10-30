@@ -9,7 +9,7 @@ manifest = json.loads((ROOT / "app.json").read_text())["expo"]["ios"]["privacyMa
 expected = {
     "PreciseLocation", "CoarseLocation", "Name", "EmailAddress", "UserID",
     "Fitness", "PhotosorVideos", "OtherUserContent", "PurchaseHistory",
-    "ProductInteraction", "CustomerSupport", "OtherDiagnosticData",
+    "ProductInteraction", "CustomerSupport", "OtherDiagnosticData", "DeviceID",
 }
 entries = manifest["NSPrivacyCollectedDataTypes"]
 by_type = {entry["NSPrivacyCollectedDataType"]: entry for entry in entries}
@@ -20,13 +20,13 @@ assert manifest["NSPrivacyTrackingDomains"] == []
 for entry in entries:
     assert entry["NSPrivacyCollectedDataTypeLinked"] is True
     assert entry["NSPrivacyCollectedDataTypeTracking"] is False
-    assert "NSPrivacyCollectedDataTypePurposeAppFunctionality" in entry["NSPrivacyCollectedDataTypePurposes"]
+    assert entry["NSPrivacyCollectedDataTypePurposes"], "Every category needs a purpose"
 for name in ("UserID", "PurchaseHistory"):
     assert "NSPrivacyCollectedDataTypePurposeAnalytics" in by_type["NSPrivacyCollectedDataType" + name]["NSPrivacyCollectedDataTypePurposes"]
 for name in ("Fitness", "OtherUserContent"):
     assert "NSPrivacyCollectedDataTypePurposeProductPersonalization" in by_type["NSPrivacyCollectedDataType" + name]["NSPrivacyCollectedDataTypePurposes"]
 assert len(manifest["NSPrivacyAccessedAPITypes"]) == 3
-print("PASS: 12 unique account-linked categories, purposes and non-tracking app declaration")
+print("PASS: 13 unique account-linked categories, purposes and non-tracking app declaration")
 
 native_path = ROOT / "ios/SummitReady/PrivacyInfo.xcprivacy"
 if native_path.exists():
@@ -37,10 +37,10 @@ else:
 
 policy = (ROOT.parent / "summit-landing/src/pages/Privacy.tsx").read_text()
 for required in (
-    "29 October 2026", "Expeditions and Pro", "linked to your account",
+    "30 October 2026", "Expeditions and Pro", "linked to your account",
     "Community, Photos and Profile Covers", "AI Coaching and Planning",
     "Reddit", "Google Analytics", 'id="account-deletion"',
-    "does not itself cancel", "one calendar month", "no dedicated in-app analytics",
+    "does not itself cancel", "one calendar month", "No choice means optional measurement stays off",
 ):
     assert required in policy, f"Policy missing coverage: {required}"
 for obsolete in ("anonymised usage", "within 30 days", "Last updated: July 2026"):

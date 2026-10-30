@@ -19,6 +19,12 @@
       "usesAppleSignIn": true,
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
+        "FIREBASE_ANALYTICS_COLLECTION_ENABLED": false,
+        "GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED": false,
+        "GOOGLE_ANALYTICS_DEFAULT_ALLOW_ANALYTICS_STORAGE": false,
+        "GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_STORAGE": false,
+        "GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_USER_DATA": false,
+        "GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS": false,
         "NSLocationWhenInUseUsageDescription": "SummitReady uses your location to find hiking trails and hills near you so we can build your personalised mountain training plan.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "SummitReady tracks your location in the background so your hike continues recording accurately when your screen is locked.",
         "ITSAppUsesNonExemptEncryption": false
@@ -64,6 +70,12 @@
             "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
           },
           {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeDeviceID",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAnalytics"]
+          },
+          {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeUserID",
             "NSPrivacyCollectedDataTypeLinked": true,
             "NSPrivacyCollectedDataTypeTracking": false,
@@ -97,7 +109,7 @@
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeProductInteraction",
             "NSPrivacyCollectedDataTypeLinked": true,
             "NSPrivacyCollectedDataTypeTracking": false,
-            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality", "NSPrivacyCollectedDataTypePurposeAnalytics"]
           },
           {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCustomerSupport",
@@ -120,6 +132,11 @@
       "package": "uk.summitready.app",
       "versionCode": 77,
       "googleServicesFile": "./google-services.json",
+      "blockedPermissions": [
+        "com.google.android.gms.permission.AD_ID",
+        "android.permission.ACCESS_ADSERVICES_AD_ID",
+        "android.permission.ACCESS_ADSERVICES_ATTRIBUTION"
+      ],
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -171,7 +188,7 @@
       "./plugins/removeMediaPlaybackPermission.js",
       "./plugins/allowNonModularIncludes.js",
       "@react-native-firebase/app",
-      "@react-native-firebase/analytics"
+      ["@react-native-firebase/analytics", { "ios": { "withoutAdIdSupport": true } }]
     ],
     "experiments": {
       "typedRoutes": true,

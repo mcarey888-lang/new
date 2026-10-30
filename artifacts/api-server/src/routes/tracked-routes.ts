@@ -286,6 +286,7 @@ router.post("/tracked-routes/:id/contribute", requireAuth({ json: true }), async
         }
       }
       await tx.insert(routeContributions).values({
+        ownerUserId: userId,
         id:               contribId,
         canonicalRouteId: id,
         trackPoints:      d.trackPoints,

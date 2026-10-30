@@ -25,7 +25,8 @@ import type { AlpineExperience, AlpineExperienceCategory } from "@/context/AppCo
 import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { useAuth } from "@clerk/expo";
-import { MembershipGate } from "@/components/MembershipGate";
+import { TrainingBasecampPreview } from "@/components/basecamp/TrainingBasecampPreview";
+import { useTrainingSetupDraft } from "@/hooks/useTrainingSetupDraft";
 import { logAiCoachUsed, logReadinessScoreViewed, useScreenView } from "@/lib/analytics";
 import { AchievementToast } from "@/components/AchievementToast";
 import { getDaysRemaining, getWeeklyCompletion, isRequirementMet } from "@/utils/readinessScore";
@@ -311,7 +312,13 @@ function AlpineCard({
 
 export default function DashboardScreen() {
   const { summitGoal } = useApp();
-  return summitGoal ? <MembershipGate><DashboardContent /></MembershipGate> : <DashboardContent />;
+  const { access } = useSubscription();
+  const setup = useTrainingSetupDraft();
+  if (setup.loading || setup.preparing || setup.draft || !access.training) {
+    return <TrainingBasecampPreview goal={setup.draft ?? summitGoal} error={setup.error}
+      preparing={setup.preparing || setup.loading} pro={access.training} onRetry={setup.retry} />;
+  }
+  return <DashboardContent />;
 }
 
 function DashboardContent() {

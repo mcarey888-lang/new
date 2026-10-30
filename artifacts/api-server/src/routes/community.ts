@@ -103,6 +103,19 @@ export async function deleteCommunityPhoto(storedPath: string): Promise<void> {
   await objectStorageClient.bucket(bucketName).file(objectName).delete({ ignoreNotFound: true });
 }
 
+export async function listOwnedCommunityMedia(owner: string): Promise<string[]> {
+  const root = objectStorage.getPrivateObjectDir().replace(/\/+$/, "");
+  const paths: string[] = [];
+  // Also find uploaded files never attached to a post/cover after an interrupted
+  // upload. A trailing slash prevents matching another account's prefix.
+  for (const folder of ["community-posts", "profile-covers"]) {
+    const { bucketName, objectName } = privateObjectLocation(`${root}/${folder}/${owner}/`);
+    const [files] = await objectStorageClient.bucket(bucketName).getFiles({ prefix: objectName });
+    paths.push(...files.map(file => `/${bucketName}/${file.name}`));
+  }
+  return paths;
+}
+
 router.post("/community/posts", postWriteLimiter, async (req, res) => {
   const userId = requireMember(req, res);
   if (!userId) return;

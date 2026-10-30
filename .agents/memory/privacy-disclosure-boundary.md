@@ -16,3 +16,13 @@ were not supported by the collection paths and cross-provider cleanup.
 Describe actual automated deletion scope, qualify residuals and confirm provider
 retention operationally. Keep behavioural consent/SDK changes separate when the
 owner authorises privacy-copy/declaration updates only.
+
+Core sign-in, purchases, recording and progress must remain usable when optional
+measurement is declined. Erasure completion must distinguish app-account removal
+from unresolved provider work and lawfully retained records.
+
+**Why:** The owner explicitly required privacy controls without feature or
+subscription regressions, and an accurate outcome rather than blanket erasure.
+
+**How to apply:** Keep consent out of access gates; never mark a pending external
+cleanup as complete merely because the authentication identity is gone.

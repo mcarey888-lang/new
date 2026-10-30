@@ -1,4 +1,5 @@
-import { MembershipGate } from "@/components/MembershipGate";
+import { useSubscription } from "@/lib/revenuecat";
+import { trainingSetupDraftKey, saveTrainingSetupDraft } from "@/utils/trainingSetupDraft";
 import { HillSourceAttribution } from "@/components/HillSourceAttribution";
 import { trainingHillIdentity } from "@/utils/hillDetailNavigation";
 import type { LucideIcon } from "lucide-react-native";
@@ -131,10 +132,11 @@ const LOCATIONS = [
 ];
 
 export default function SetupScreen() {
-  return <MembershipGate><SetupContent /></MembershipGate>;
+  return <SetupContent />;
 }
 
 function SetupContent() {
+  const { access } = useSubscription();
   useScreenView("setup");
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
@@ -457,14 +459,25 @@ function SetupContent() {
       planStartMode,
       availableDays: availableDays.length > 0 ? availableDays : undefined,
     };
-    if (isChangeMode) {
-      await changeSummit(newGoal);
-    } else {
-      await setSummitGoal(newGoal);
-    }
-    void logMountainSelected({ mountain_name: newGoal.mountainName, difficulty: newGoal.difficulty });
-    setSaving(false);
-    router.replace("/(tabs)/dashboard");
+    try {
+      const pending = access.training && userId ? await AsyncStorage.getItem(trainingSetupDraftKey(userId)) : null;
+      if (!access.training) {
+        await saveTrainingSetupDraft(userId ?? "", newGoal);
+        await setShellMode("training");
+      } else if (isChangeMode) {
+        await changeSummit(newGoal);
+      } else {
+        await setSummitGoal(newGoal);
+      }
+      if (access.training && userId && pending &&
+          await AsyncStorage.getItem(trainingSetupDraftKey(userId)) === pending) {
+        await AsyncStorage.removeItem(trainingSetupDraftKey(userId));
+      }
+      void logMountainSelected({ mountain_name: newGoal.mountainName, difficulty: newGoal.difficulty });
+      router.replace("/(tabs)/dashboard");
+    } catch (error) {
+      setErrors(prev => ({ ...prev, submit: error instanceof Error ? error.message : "Could not save your profile. Please retry." }));
+    } finally { setSaving(false); }
   }
 
   const inp = (field: string) => [styles.input, errors[field] ? { borderColor: T.red + "80" } : null];
@@ -496,7 +509,7 @@ function SetupContent() {
             </TouchableOpacity>
             <View>
               <Text style={styles.title}>{isChangeMode ? "Change Summit" : "Your Summit"}</Text>
-              <Text style={styles.subtitle}>{isChangeMode ? "Your training sessions are kept" : "Build a plan tailored to you"}</Text>
+              <Text style={styles.subtitle}>{isChangeMode ? "Your training sessions are kept" : access.training ? "Build a plan tailored to you" : "Save your profile and unlock training later"}</Text>
             </View>
           </View>
 
@@ -1218,6 +1231,7 @@ function SetupContent() {
             SummitReady generates AI training guidance only. It is not a substitute for medical advice. Consult a doctor before starting any new exercise programme, especially if you have any health conditions.
           </Text>
 
+          {errors.submit && <Text style={{ color: T.red, marginBottom: 12 }}>{errors.submit}</Text>}
           <TouchableOpacity onPress={submit} disabled={saving}
             style={[styles.submitBtn, { opacity: saving ? 0.7 : 1 }]} activeOpacity={0.85}
           >
@@ -1226,7 +1240,7 @@ function SetupContent() {
                 ? <ActivityIndicator size="small" color="#fff" />
                 : <CheckCircle size={20} color="#fff" />}
               <Text style={styles.submitText}>
-                {saving ? "Generating plan…" : "Generate my training plan"}
+                {access.training ? (saving ? "Generating plan…" : "Generate my training plan") : (saving ? "Saving profile…" : "Save profile & go to Basecamp")}
               </Text>
             </LinearGradient>
           </TouchableOpacity>

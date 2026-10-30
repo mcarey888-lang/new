@@ -1,5 +1,5 @@
 import { Check, MapPin, Minus, Plus, ArrowLeft, Zap, ArrowRight, TrendingUp, X, Search, Mountain } from "lucide-react-native";
-import { MembershipGate } from "@/components/MembershipGate";
+import { useSubscription } from "@/lib/revenuecat";
 import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PENDING_PAST_HIKES_KEY, type PastHike } from "@/context/AppContext";
@@ -739,10 +739,11 @@ function deriveFitnessLevel(level: number): "Beginner" | "Average" | "Strong" {
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function QuestionnaireScreen() {
-  return <MembershipGate><QuestionnaireContent /></MembershipGate>;
+  return <QuestionnaireContent />;
 }
 
 function QuestionnaireContent() {
+  const { access } = useSubscription();
   const intent = useLocalSearchParams<{ mountain?: string; goal?: string }>();
   useScreenView("questionnaire");
   const insets = useSafeAreaInsets();
@@ -855,8 +856,13 @@ function QuestionnaireContent() {
     } else {
       await AsyncStorage.removeItem(_pendingKey);
     }
-    void logReadinessTestCompleted({ readiness_score: score, fitness_level: fitnessLevelStr });
-    setShowBaselineModal(true);
+    if (access.training) {
+      void logReadinessTestCompleted({ readiness_score: score, fitness_level: fitnessLevelStr });
+      setShowBaselineModal(true);
+    } else {
+      // Save the self-reported profile, not a free readiness assessment.
+      router.replace("/setup");
+    }
   }
 
   async function continueToSetup() {

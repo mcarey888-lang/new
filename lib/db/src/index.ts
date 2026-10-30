@@ -14,6 +14,12 @@ if (!process.env.DATABASE_URL) {
 }
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Erasure fences hold a session lock until a write response completes. Keep
+// those sessions separate so they cannot exhaust the CRUD pool and deadlock it.
+export const privacyLockPool = new Pool({
+  connectionString: process.env.DATABASE_URL, max: 3,
+  idleTimeoutMillis: 30_000, connectionTimeoutMillis: 8_000,
+});
 export const db = drizzle(pool, { schema });
 
 let engineReadOnlyPool: pg.Pool | null | undefined;

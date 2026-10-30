@@ -26,3 +26,14 @@ The test helper's documented `basePath` is relative to the shared development ho
 **Why:** Retrying the helper on the correct Expo page still produced a marketing-host redirect rejected by Clerk. This does not justify adding that unrelated origin to Clerk's allowlist.
 
 **How to apply:** Confirm the generated redirect's origin before retrying. If the helper cannot target Expo and no supported secure ticket handoff is available, stop authentication retries and report the tooling boundary; never pass sign-in tokens through chat, logs or files.
+
+The helper can also fail before redirect because it requires the root
+`CLERK_SECRET_KEY`, even when the managed development API successfully exports its
+separate development key inside its workflow.
+
+**Why:** A training onboarding check hit this helper-only prerequisite while
+ordinary welcome/onboarding screens loaded.
+
+**How to apply:** Do not change application authentication, expose a credential,
+or create an auth bypass to unblock QA. Use isolated logic tests and clearly
+report the signed-in browser verification limitation.

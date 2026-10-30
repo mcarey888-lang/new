@@ -1,10 +1,9 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { recordedHikeBackups } from "@workspace/db/schema";
-import { getAuth, clerkClient } from "@clerk/express";
-import { canonicalActivities, communityPosts, communityReports, communityComments, communityLikes, db, trackedRoutes, userDemoProfiles, activityPreferences } from "@workspace/db";
-import { eq, or, sql } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
+import { db, userDemoProfiles } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { deleteCommunityPhoto } from "./community";
+import { deleteAccountHandler } from "../services/accountDeletion";
 
 const router: IRouter = Router();
 
@@ -82,59 +81,6 @@ router.delete("/user/demo-profile", requireAuth({ json: true }), async (req, res
   }
 });
 
-router.delete("/user/me", requireAuth({ json: true }), async (req, res) => {
-  const { userId } = getAuth(req);
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  try {
-    await db.delete(recordedHikeBackups).where(eq(recordedHikeBackups.ownerUserId, userId));
-    const ownedPosts = await db.select({ photoPath: communityPosts.photoPath })
-      .from(communityPosts).where(eq(communityPosts.ownerUserId, userId));
-    await db.delete(communityReports).where(or(
-      eq(communityReports.reporterUserId, userId),
-      eq(communityReports.targetOwnerUserId, userId),
-    ));
-    // Reactions on other members' posts also belong to the deleted account.
-    await db.delete(communityComments).where(eq(communityComments.ownerUserId, userId));
-    await db.delete(communityLikes).where(eq(communityLikes.userId, userId));
-    await db.delete(communityPosts).where(eq(communityPosts.ownerUserId, userId));
-    await Promise.all(ownedPosts.flatMap(({ photoPath }) => photoPath
-      ? [deleteCommunityPhoto(photoPath).catch((err: unknown) => {
-        req.log.error({ err, userId }, "Failed to remove community photo during account deletion");
-      })]
-      : []));
-    const [preferences] = await db.select().from(activityPreferences).where(eq(activityPreferences.owner,userId)).limit(1);
-    if(preferences?.coverPath) await deleteCommunityPhoto(preferences.coverPath);
-    await db.execute(sql`DELETE FROM activity_route_reports WHERE reporter=${userId} OR owner=${userId}`);
-    await db.execute(sql`DELETE FROM activity_bookmarks WHERE viewer=${userId} OR owner=${userId}`);
-    await db.execute(sql`DELETE FROM activity_trail_suggestions WHERE owner=${userId}`);
-    await db.execute(sql`DELETE FROM activity_follows WHERE follower=${userId} OR followed=${userId}`);
-    await db.delete(activityPreferences).where(eq(activityPreferences.owner,userId));
-    // Delete owned community routes by their authoritative server-side owner.
-    // Route contributions on those canonical routes are removed by FK cascade.
-    await db.delete(trackedRoutes).where(eq(trackedRoutes.createdBy, userId));
-    // Canonical activity evidence, links, qualifications and conflicts cascade.
-    // Legacy tracked hill rows retain their original data and have their nullable
-    // canonical link cleared by ON DELETE SET NULL.
-    await db.delete(canonicalActivities).where(eq(canonicalActivities.ownerUserId, userId));
-    try {
-      await db.delete(userDemoProfiles).where(eq(userDemoProfiles.clerkUserId, userId));
-    } catch (err: unknown) {
-      if (!isMissingDemoProfilesTable(err)) throw err;
-      req.log.warn({ err, userId }, "Skipping demo profile cleanup because its database migration has not been applied");
-    }
-    await clerkClient.users.deleteUser(userId);
-    res.status(200).json({ deleted: true });
-  } catch (err: unknown) {
-    req.log.error({ err, userId }, "Failed to delete Clerk user");
-    /* Logged in full above. What reaches the person says what to do next,
-       and nothing about the inside of the server. */
-    res.status(500).json({
-      error: "Could not delete your account. Please try again, or contact support if it keeps failing.",
-    });
-  }
-});
+router.delete("/user/me", requireAuth({ json: true }), deleteAccountHandler);
 
 export default router;

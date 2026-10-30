@@ -26,6 +26,10 @@ function clientIp(value: string | undefined): string | undefined {
 }
 
 router.post("/reddit-conversions", async (req, res) => {
+  if (req.body?.advertisingConsent !== true) {
+    res.status(403).json({ error: "Advertising measurement requires an explicit opt-in." });
+    return;
+  }
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid conversion event" });

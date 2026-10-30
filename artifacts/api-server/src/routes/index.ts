@@ -1,3 +1,4 @@
+import { privacyDeletionFence } from "../middlewares/privacyDeletionFence";
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import weatherRouter from "./weather";
@@ -52,6 +53,7 @@ import { membershipRouter } from "./membership";
 
 const router: IRouter = Router();
 
+router.use(privacyDeletionFence);
 router.use(membershipRouter);
 // Keep personal recording, history, safety and public catalogue browsing free.
 router.use(["/coach-assessment", "/coach-ask", "/adjust-plan", "/alpine-assessment"], requireMembership("training"));

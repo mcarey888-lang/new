@@ -970,3 +970,17 @@ mtime_ms = 1793283075245
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/d0a86475-4f0a-4b02-b2ee-9371a2d1f49b/28c99d8b-52b8-4fc1-adf3-8e256a3a51fd"
 storage_version_token = "1793283096933088"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "5cE6tZIXI7sRJdFn7z1se"
+uri = "file://docs/SUMMITREADY_PRIVACY_RELEASE_2026-10-30.md"
+type = "text"
+title = "SummitReady privacy release review"
+description = "Platform disclosures, consent and deletion checks, policy-only release procedure, and remaining launch decisions."
+logical_id = "017a2654-4d4b-4898-96e5-0ba91855b875"
+content_hash = "sha256:7b88739fdda1a9e176556405fc8234f2d161cde79e0cffd0d3c3c3afcae73ff2"
+size = 12068
+mtime_ms = 1793343477847
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/017a2654-4d4b-4898-96e5-0ba91855b875/09d3e352-6aff-4b8c-ae7c-614603091123"
+storage_version_token = "1793343482971044"
+content_type = "text/markdown"

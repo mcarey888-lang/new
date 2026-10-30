@@ -115,7 +115,7 @@ export default function PaywallScreen() {
 
   const tier: PaidTier = params.tier === "expeditions" ? "expeditions" : "pro";
   const trigger = params.trigger ?? "direct";
-  const returnTo = params.returnTo ?? null; // only "questionnaire" survives sanitising
+  const returnTo = params.returnTo ?? null; // explicit internal destinations only
   const fromQuestionnaire = params.fromQuestionnaire === "true";
   const mountain = params.mountain ?? null;
 
@@ -144,7 +144,9 @@ export default function PaywallScreen() {
   }, []);
 
   function goOnward() {
-    if (returnTo === "questionnaire") {
+    if (returnTo === "training_basecamp") {
+      router.replace("/(tabs)/dashboard");
+    } else if (returnTo === "questionnaire") {
       router.replace({ pathname: "/questionnaire", params: { ...(mountain && { mountain }), ...(params.goal && { goal: params.goal }) } });
     } else if (fromQuestionnaire) router.replace("/setup");
     else if (router.canGoBack()) router.back();
@@ -153,7 +155,9 @@ export default function PaywallScreen() {
 
   function continueFree() {
     void logAnalyticsEvent("paywall_dismissed", { tier, trigger });
-    if (returnTo === "questionnaire" || fromQuestionnaire) {
+    if (returnTo === "training_basecamp") {
+      router.replace("/(tabs)/dashboard");
+    } else if (returnTo === "questionnaire" || fromQuestionnaire) {
       // No personalised plan is generated on the free tier.
       router.replace("/(tabs)/explore");
     } else if (router.canGoBack()) router.back();

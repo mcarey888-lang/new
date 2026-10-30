@@ -1870,7 +1870,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setShellMode = useCallback(async (mode: "training" | "expedition") => {
-    if (mode === shellMode) return;
+    if (mode === shellMode) {
+      // An explicit choice still needs persistence when it matches the default,
+      // including free training setup before an active paid goal exists.
+      await AsyncStorage.setItem(SHELL_MODE_KEY, mode);
+      return;
+    }
     const nextGoal = selectShellGoal(mode, trainingGoal, expeditionGoal);
     const writes: [string, string][] = [[SHELL_MODE_KEY, mode]];
     if (nextGoal) writes.push([GOAL_KEY, JSON.stringify(nextGoal)]);

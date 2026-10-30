@@ -13,7 +13,7 @@ type PaywallReturnParams = {
 };
 
 /** Only these post-paywall intents may be carried through sign-in. */
-export const SAFE_PAYWALL_RETURN = ["questionnaire"] as const;
+export const SAFE_PAYWALL_RETURN = ["questionnaire", "training_basecamp"] as const;
 const SAFE_TRIGGER = /^[a-z0-9_]{1,40}$/;
 
 export function sanitisePaywallParams(params: PaywallReturnParams): Record<string, string> {

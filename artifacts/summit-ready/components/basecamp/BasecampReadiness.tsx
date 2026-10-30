@@ -43,12 +43,12 @@ export function BasecampReadiness({
   result, nextAction, isSubscribed, onOpen,
 }: BasecampReadinessProps) {
   const reduced = useReducedMotion();
-  if (!result) return null;
+  if (!result && isSubscribed) return null;
 
   /* A missing score stays null — never a confident-looking zero. */
-  const score = result.overallScore ?? null;
-  const status = readinessStatus(result.state, result.overallScore);
-  const proj = projection(result.overallScore, nextAction?.projectedImpact?.delta ?? null);
+  const score = result?.overallScore ?? null;
+  const status = result ? readinessStatus(result.state, result.overallScore) : null;
+  const proj = projection(score, nextAction?.projectedImpact?.delta ?? null);
 
   /* The approved ring is SummitReady green whenever there is a score to draw.
      Status is carried by the label under the figure, not by recolouring the
@@ -56,10 +56,10 @@ export function BasecampReadiness({
   const ringTone = score === null ? T.textMuted : BASECAMP.accent;
 
   const actionTitle = isSubscribed
-    ? nextAction?.label?.trim() || STATUS_COPY[status].label
+    ? nextAction?.label?.trim() || (status ? STATUS_COPY[status].label : "Readiness unavailable")
     : "Unlock your readiness";
   const actionDetail = isSubscribed
-    ? (nextAction ? `Focus · ${PILLAR_LABELS[nextAction.focusDimension]}` : STATUS_COPY[status].detail)
+    ? (nextAction ? `Focus · ${PILLAR_LABELS[nextAction.focusDimension]}` : status ? STATUS_COPY[status].detail : "")
     : "Endurance, elevation, consistency and mountain experience — scored against your objective.";
 
   return (
@@ -88,7 +88,7 @@ export function BasecampReadiness({
               projected={proj ? proj.projected : null}
               size={GAUGE_SIZE}
               strokeWidth={GAUGE_STROKE}
-              statusLabel={isSubscribed ? STATUS_COPY[status].label : undefined}
+              statusLabel={isSubscribed && status ? STATUS_COPY[status].label : undefined}
               tone={ringTone}
               locked={!isSubscribed}
               /* the compact panel has no room for an anchored callout —
