@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App";
+import { WebsitePrivacy } from "./components/WebsitePrivacy";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import TrainingGuides from "./pages/TrainingGuides";
@@ -72,6 +73,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/internal/virtual-expedition" element={<VirtualExpeditionPreview />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
+  <WebsitePrivacy />
   </BrowserRouter>
   </ThemeProvider>
 );
