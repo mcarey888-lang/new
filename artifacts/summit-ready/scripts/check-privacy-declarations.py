@@ -40,7 +40,9 @@ for required in (
     "30 October 2026", "Expeditions and Pro", "linked to your account",
     "Community, Photos and Profile Covers", "AI Coaching and Planning",
     "Reddit", "Google Analytics", 'id="account-deletion"',
-    "does not itself cancel", "one calendar month", "No choice means optional measurement stays off",
+    "does not itself cancel", "one calendar month",
+    "prepared but not yet deployed", "Existing Android releases", "Existing iOS releases",
+    "Current deletion request", "not a guarantee of provider erasure",
 ):
     assert required in policy, f"Policy missing coverage: {required}"
 for obsolete in ("anonymised usage", "within 30 days", "Last updated: July 2026"):

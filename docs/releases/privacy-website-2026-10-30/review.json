@@ -1,0 +1,31 @@
+{
+  "baseline": "714a5bc2c6626825776a500af5d60d58a41c2ac7",
+  "sourceHeadBeforePreparation": "a1cac298e693ec44daf7068f581811b99c5b0d28",
+  "releaseRef": "refs/heads/release/policy-website-20261030",
+  "releaseCommit": "78b3ba9be33603a58a8c8924d7b18a49d9c23054",
+  "backupRef": "refs/heads/backup/before-policy-release-20261030",
+  "backupCommit": "a1cac298e693ec44daf7068f581811b99c5b0d28",
+  "changed": [
+    "artifacts/summit-landing/index.html",
+    "artifacts/summit-landing/src/components/WebsitePrivacy.tsx",
+    "artifacts/summit-landing/src/main.tsx",
+    "artifacts/summit-landing/src/pages/Privacy.tsx"
+  ],
+  "fileHashes": {
+    "artifacts/summit-landing/index.html": "b66248e3f8e44aaada1d862b039fabd99898b99420a0cb7e88282241dd4b4007",
+    "artifacts/summit-landing/src/components/WebsitePrivacy.tsx": "a0a2195fede129841626c2e2aa7dd353165845290cd104fe1a44f4d36806b586",
+    "artifacts/summit-landing/src/main.tsx": "bf5ad0bf27105511d733eb969fe24d44bb05f590490f8da98f9aaf26304c9cba",
+    "artifacts/summit-landing/src/pages/Privacy.tsx": "9f8113df7ef1e8fe3ffac60610aea2beddc71815e716c947acd603ce695127e5"
+  },
+  "patchSha256": "abaa79597a24e02636561a2aef3448ec37a222b3451143a8d2ba846fc2ff0095",
+  "published": false,
+  "nativeBuildStarted": false,
+  "productionSchemaChange": false,
+  "githubPushVerified": true,
+  "approvalGates": [
+    "Confirm current production artifact sources and baseline immediately before publication.",
+    "Use a dedicated publication checkout; never normal Publish from the development tree.",
+    "Inspect the actual Publish database diff; reject all schema/data changes for this website release.",
+    "Review build, preview and rollback before approving publication."
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "checkedAt": "2026-10-30T07:34:28.754Z",
+  "productionUrl": "https://summitready.uk",
+  "scope": "Hosted mobile source only; not independent proof of every website/API artifact",
+  "evidence": {
+    "android": {
+      "createdAt": "2026-10-28T11:03:27.633Z",
+      "provenance": {
+        "builtAt": "2026-10-28T11:03:27.633Z",
+        "gitCommit": "714a5bc2c6626825776a500af5d60d58a41c2ac7",
+        "gitTreeDirty": false,
+        "verificationSourceHash": "3665fc5dbb91fb66b7aad47b257eea4c5c3ceeaf159e9cb59d2b9fb2dbe61510",
+        "verificationFiles": [
+          "artifacts/api-server/src/routes/summit-layer-script.ts",
+          "artifacts/summit-ready/components/SharedTrackScreen.tsx",
+          "artifacts/summit-ready/utils/mountainArtworkSlots.ts",
+          "artifacts/summit-ready/scripts/build.js",
+          "artifacts/summit-ready/server/serve.js",
+          "artifacts/summit-ready/server/build-provenance.cjs",
+          "artifacts/summit-ready/.replit-artifact/artifact.toml"
+        ]
+      }
+    },
+    "ios": {
+      "createdAt": "2026-10-28T11:03:27.633Z",
+      "provenance": {
+        "builtAt": "2026-10-28T11:03:27.633Z",
+        "gitCommit": "714a5bc2c6626825776a500af5d60d58a41c2ac7",
+        "gitTreeDirty": false,
+        "verificationSourceHash": "3665fc5dbb91fb66b7aad47b257eea4c5c3ceeaf159e9cb59d2b9fb2dbe61510",
+        "verificationFiles": [
+          "artifacts/api-server/src/routes/summit-layer-script.ts",
+          "artifacts/summit-ready/components/SharedTrackScreen.tsx",
+          "artifacts/summit-ready/utils/mountainArtworkSlots.ts",
+          "artifacts/summit-ready/scripts/build.js",
+          "artifacts/summit-ready/server/serve.js",
+          "artifacts/summit-ready/server/build-provenance.cjs",
+          "artifacts/summit-ready/.replit-artifact/artifact.toml"
+        ]
+      }
+    }
+  }
+}

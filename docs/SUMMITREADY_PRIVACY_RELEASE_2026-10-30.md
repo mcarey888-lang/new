@@ -133,30 +133,47 @@ Agree a ledger/provider/log/backup retention schedule before operational rollout
 
 ## Controlled policy-only release
 
-`node scripts/preparePrivacyRelease.mjs <verified-live-40-character-commit>`
-creates a separate /tmp snapshot from that live baseline. It overlays exactly:
+The earlier temporary-only copy is superseded by the durable release at
+`release/policy-website-20261030`, commit
+`78b3ba9be33603a58a8c8924d7b18a49d9c23054`. Its exact parent is the live hosted
+source `714a5bc2c6626825776a500af5d60d58a41c2ac7`, reconfirmed in both hosted
+mobile JSON manifests. It overlays exactly:
 
 1. `artifacts/summit-landing/src/pages/Privacy.tsx`
 2. `artifacts/summit-landing/src/components/WebsitePrivacy.tsx`
 3. the consent-only changes to baseline `src/main.tsx`
 4. removal of the automatic GA tag from baseline `index.html`
 
-Its hash-based review rejects any other changed file. It neither changes HEAD nor
-publishes. Use its reviewed source snapshot, not normal Publish from the current
-development workspace. Reconfirm the live baseline immediately before any
-approved publication; hosted-mobile provenance alone is not proof of each
-independently served backend artifact. Build and inspect the isolated landing
-snapshot first. The policy explains rollout differences, so a policy-only release
-does not falsely claim old installed binaries already have native controls.
+Its Git diff and hash review reject any other changed file. Both the release and
+pre-existing complete-work backup `backup/before-policy-release-20261030`
+(`a1cac298e693ec44daf7068f581811b99c5b0d28`) were pushed and remotely confirmed.
+No current workspace checkout/reset was performed. See
+`docs/releases/privacy-website-2026-10-30/README.md`, `review.json`,
+`POLICY.txt`, `policy-only.patch` and `CHECKS.md`.
+
+The policy was corrected again: current Android measurement and deletion gaps
+are explicit; iOS automatic SDK collection remains uncertain; native/server
+improvements are prominently **prepared, not yet deployed**. There is no blanket
+claim that the live relay enforces consent or that provider erasure is guaranteed.
+The website choice is scoped to the website serving this policy revision.
+
+Do not normal-Publish the development workspace. A separate approved publication
+checkout/handoff and inspection of the actual database diff are still required.
+Hosted-mobile provenance does not independently certify every backend/website
+artifact. Reconfirm artifact sources immediately before publication.
 
 Source isolation is not approval of a database promotion. Review the publish
 database diff separately and reject any unapproved schema/data operation; this
 policy-only snapshot does not require a database migration.
 
-The backend migration `lib/db/migrations/20261030_privacy_deletion_jobs.sql`
-must be reviewed and applied to production as part of the later full privacy
-release, **before** deploying the write fence/erasure code. It is not included in
-the isolated policy/website-only snapshot.
+Read-only production inspection still found the deletion-job table and
+contribution-owner column absent. For the later full release, use the reviewed
+Replit-managed **Publish schema diff before API activation**. The existing SQL
+file `lib/db/migrations/20261030_privacy_deletion_jobs.sql` is a schema reference,
+not a custom script to execute against managed production. No production
+migration or erasure was performed. It is not part of the isolated website
+release. The detailed migration, provider-decision and test-build gates are in
+`docs/releases/privacy-website-2026-10-30/MIGRATION-AND-BUILDS.md`.
 
 ## Remaining release decisions / proof
 

@@ -1,0 +1,165 @@
+Privacy Policy
+Last updated: 30 October 2026
+
+What this website update changes: this revision explains existing processing and adds website analytics choices. The native optional-measurement controls and enhanced server deletion workflow described below are prepared but not yet deployed at the time of this revision. Publishing this website does not install an app update, change the production API or erase provider records. Older apps may continue their existing measurement behaviour until updated. The new controls must not be assumed available simply because you can read this policy.
+
+
+
+
+
+1. Who We Are
+SummitReady is a UK-based mountain discovery, hike recording, expedition, community and personalised training service ("we", "us", "our"). This policy covers our iOS and Android apps, browser app and website at summitready.uk, including Explore Free, Expeditions and Pro. It explains our use of personal data and your rights under UK GDPR and the Data Protection Act 2018.
+For any privacy enquiries, contact us at support@summitready.uk.
+
+
+
+2. What Data We Collect
+We collect the following categories of data when you use SummitReady:
+
+Account Information
+When you create an account by email/password, Sign in with Apple or Sign in with Google, Clerk handles authentication. Account data includes your name or display name, email address (which may be an Apple relay address), account ID, sign-in/session information and any profile image supplied through sign-in. We use account IDs to associate saved activity, community content and subscriptions with you. We do not receive your Apple or Google password.
+
+Fitness and Training Data
+
+Fitness assessment answers (current fitness level, training goals)
+Your target summit and planned route
+Workout logs and hike session history
+Summit readiness score
+Saved expeditions, stage selections, completion evidence, achievements and manual activity totals
+Recorded distance, ascent, duration, timestamps, route points and optional activity notes or photos
+
+Some information is kept on your device; records submitted for backup, community features, activity verification or AI guidance are processed by our servers and relevant providers. Locally stored information is not necessarily synchronised across devices. Fitness information can reveal information about your health; please avoid including medical or other sensitive details in free-text questions or public posts.
+
+Location Data
+SummitReady requests access to your device location for two purposes:
+
+Foreground location — to find hills and hiking trails near you and pre-populate your training plan with local terrain.
+Background location (during active hike tracking only) — when you start a hike recording session, the app continues tracking your GPS position even when your screen is locked, so your route is recorded accurately. Background tracking stops as soon as you end the session.
+
+Saved GPS routes, coordinates and activity timestamps uploaded to us are linked to your account; they are not anonymous location data. Search places, map areas, route endpoints and forecast locations may also be sent to mapping, search, routing or weather providers. Sharing a route can reveal where you have been. We do not send your GPS track to Reddit through our conversion integration. You can revoke location permission in device settings, but that does not delete previously saved records. Manual searches remain available without device location permission; background recording may be less reliable without background permission.
+
+Community, Photos and Profile Covers
+We process posts, captions, comments, likes, follows, shared routes, moderation reports and photos you choose to upload, including profile covers. These records are associated with account IDs. Private content is not automatically a public contribution: you choose whether to share supported content with other members. Shared content can display your name, profile image, date, caption, photo and route/activity information. Other members can view or copy content you share; deleting it cannot recall copies they have already made. Do not upload someone else's personal information without permission. Our photo upload features do not give us access to your entire photo library.
+
+AI Coaching and Planning
+AI features send the question you submit and relevant planning/training context to OpenAI through our hosting integration. Context can include your mountain goal, intended date, fitness level, readiness score, schedule and recent activity summaries. Your question may itself identify you or contain sensitive information. Routine coaching prompts do not need your account email or full GPS track, but service requests are authenticated and should not be treated as anonymous. Do not include medical records, passwords or unnecessary personal details. AI guidance is not medical advice.
+
+Analytics and Usage Data
+Existing Android releases: the inspected release source uses Firebase Analytics for screen views, feature use, sign-in method and purchase events. Older event calls can include mountain names, fitness-level values and numerical readiness scores; the stricter event filtering described below is not a promise about those releases. Firebase app-instance/device information is pseudonymous, not anonymous. The inspected Android 94 binary enables Firebase Advertising ID collection and contains the Advertising ID permission; this does not establish that an advertising ID is available on every device. These older releases do not provide the new separate in-app analytics and advertising choices.
+Existing Android Reddit measurement: the Android integration relays selected conversion events, including first open, readiness-test completion, readiness-score viewing and subscription/trial/purchase events, without the newly prepared in-app opt-in control. Events can contain an installation UUID, conversion/event IDs and time, IP address and user-agent; applicable purchases include plan/product, value and currency. This relay does not send account names/emails, numerical readiness scores, questions, photos or GPS tracks. Reddit can match these signals for advertising measurement. This is advertising-related data sharing, not anonymous analytics. A policy-only update does not add a consent check to the live relay.
+Existing iOS releases: our app event wrapper does not invoke the Android Firebase/Reddit event path on iOS. Authentication, purchase processing and provider/network diagnostics still apply. Firebase native SDK configuration alone does not prove that no automatic data is collected: automatic SDK collection in installed iOS releases has not been fully verified on a device. Do not interpret the prepared settings below as a retrospective guarantee about old builds. No iOS Reddit conversion relay is implemented.
+Prepared native and server improvements — not yet deployed: the next privacy-enabled Android and iOS implementation is designed to keep optional Firebase usage analytics off until an explicit choice, and offer decline and withdrawal. The prepared wrapper excludes location names, numerical readiness scores, fitness-level values and coaching text, and does not attach account ID, name or email. Android Advertising ID/SSAID collection is disabled in the prepared configuration; iOS Firebase IDFA support is excluded and IDFV collection disabled. Google advertising signals remain denied. Android has a separate, initially-off Reddit measurement choice; the prepared server rejects relay requests without its explicit opt-in indication. These protections require the new native binaries and server deployment, plus device verification; they are not activated by publishing this policy.
+Website serving this revision: no Google Analytics tag is loaded until you allow website analytics. If allowed, Google receives page views, browser/device and network information using browser identifiers/cookies. Google advertising storage, advertising-user-data, Google Signals and advertising personalisation remain off. Use this website's Privacy choices control to decline or withdraw; website choices do not change the installed app. Older cached website versions may lack this control. The browser app does not invoke native Firebase or our Android Reddit relay.
+The prepared native choice screen will be at You → Account → Privacy choices; it is not available in inspected older builds, including iOS 73 and Android 94. The planned withdrawal flow stops future optional events, aborts pending relay requests where possible and resets local measurement identifiers. It cannot recall data already sent. Essential sign-in, purchases and requested hiking functions are not intended to depend on optional consent. Until an app update is installed, use available platform controls or contact support to object to measurement or request erasure. A location permission is not analytics consent, and accepting this policy is not consent to optional measurement.
+
+Subscription and Purchase Data
+For Expeditions and Pro, RevenueCat processes store transaction/receipt information, product and purchase history, subscription status, expiry, entitlement and trial eligibility information. We identify signed-in RevenueCat customers using their app account ID; an anonymous RevenueCat customer ID may exist before sign-in. Apple or Google processes native payments. We do not receive or store your payment card details. Deleting your SummitReady account does not itself cancel a store subscription; manage cancellation through Apple or Google.
+
+Device Information
+Our hosting and service providers process network and technical information such as IP address, user-agent, request URL, app/browser version, status/error information and timestamps to operate, secure and troubleshoot the service. Support enquiries contain the contact details and information you send us. Server requests, saved records and errors may be attributable to an account; diagnostics are not guaranteed anonymous. We do not request access to your contacts or use HealthKit/Health Connect to import medical records in the current app.
+
+
+
+3. How We Use Your Data
+We use your data to:
+
+Create and personalise your mountain training plan and Readiness Score
+Find local hills and trails suited to your fitness level and summit goal
+Record and display your hike sessions and training history
+Process and manage your subscription payments
+Display chosen community contributions and handle likes, comments and moderation
+Provide AI coaching using the question and relevant training context
+Improve the service using usage analytics and measure advertising conversions where used
+Protect accounts and investigate failures or abuse
+Respond to your support enquiries
+
+We rely on contract performance for account, recording, expedition, subscription and requested community/training services; legitimate interests for proportionate security and support; and legal obligations where records must be retained. Optional device permissions control access to location and selected media. Non-essential analytics and advertising technologies require a separate assessment under UK GDPR and PECR, including consent where required; a device permission is not a substitute. Fitness or other information revealing health may also require an appropriate special-category condition. We do not claim that accepting this policy supplies all of those consents.
+
+
+
+4. Data Retention and Deletion
+We keep account-linked saved records while needed to provide your account and requested features. Subscription expiry does not itself erase your hike history or expedition progress. There is no automatic account-inactivity deletion schedule in the current app. Device data remains until removed through the app, account deletion or device/browser controls; other devices and downloaded copies may retain their own data.
+Current deletion request: open You → Account → Delete account and confirm, or email support@summitready.uk from your account email requesting deletion of the account and associated personal data. We may verify ownership; never send your password. The existing implementation attempts account/associated-record and media cleanup, but identified gaps can leave some uploaded media, legacy activity links, local copies or provider data outstanding. A successful sign-out or disappearance of the login account is not proof that all data has been erased. Contact support for review of outstanding data. Publishing this policy does not repair the live deletion implementation.
+Prepared deletion workflow — not yet deployed: the enhanced implementation records a restricted erasure request before cleanup, checkpoints uploaded post/cover/orphan removal, transactionally removes owned records and linked legacy sessions, then removes the Clerk identity. It is designed to preserve failed work for retry and distinguish incomplete cleanup from app-account removal. This requires a production schema change and server release; the website update supplies neither. Its request-reference and pending-provider status must not be assumed available in current app versions.
+The prepared workflow attempts RevenueCat customer deletion and records failures for follow-up; a request is not a guarantee of provider erasure. Firebase/Google Analytics, Reddit, AI/support logs and backups require provider-specific review or verified expiry. Historical records without reliable authorship require ownership review, not guessed deletion. The prepared server will retain authorship for new route contributions and a restricted request ledger containing the account identifier, available measurement identifiers supplied for erasure, cleanup checkpoints and provider-review status while needed to complete and demonstrate erasure. It is not used for marketing. These operational arrangements and retention decisions still require approval. No automatic, complete provider erasure is promised now or by the prepared workflow.
+Apple/Google transaction, tax, fraud-prevention or accounting records may lawfully need retention; removing the app account does not erase store records or cancel billing. We must assess the applicable basis and period and restrict retained records to that purpose. There is no universal verified 30-day purge guarantee. Comprehensive account-scoped device cleanup and optional-measurement withdrawal are part of the prepared native update, not guarantees about older builds. Other devices, platform caches and downloaded/shared copies may require separate removal.
+We handle rights requests without undue delay, normally within one calendar month, subject to lawful extensions. Account deletion and subscription cancellation are separate: cancel any active subscription in your Apple or Google subscription settings.
+
+
+
+5. Third-Party Services
+SummitReady works with the following third-party services, each of which has its own privacy policy:
+
+
+Clerk — handles user authentication including email/password, Sign in with Apple, and Sign in with Google. Clerk processes your email address and authentication tokens. 
+clerk.com/privacy
+
+
+Google Firebase and Google Analytics — Android app analytics and website analytics, using events and installation/browser identifiers rather than guaranteed anonymous data. Firebase components are also present in iOS as described above. 
+firebase.google.com/support/privacy
+
+
+RevenueCat — Expeditions/Pro subscription, purchase and entitlement management, associated with your app account ID after sign-in. 
+revenuecat.com/privacy
+
+
+Apple App Store — processes in-app purchase transactions for iOS users. Subject to Apple's privacy policy at 
+apple.com/legal/privacy
+
+
+Google Play — processes in-app purchase transactions for Android users. Subject to Google's privacy policy at 
+policies.google.com/privacy
+
+
+Reddit — Android advertising conversion measurement using the limited event, installation and network signals described in Section 2. 
+Reddit privacy policy
+
+
+OpenAI — powers AI coaching insights and personalised training guidance. Training data sent to OpenAI is processed in accordance with 
+openai.com/privacy
+
+Replit and cloud storage/infrastructure providers — host our API, database, uploaded photos and other files, and process service requests and logs. AI requests pass through our hosting integration. Replit privacy policy
+Mapping, routing, search and weather providers — depending on the selected feature these include Ordnance Survey, OpenStreetMap/Overpass/Nominatim services, Mapbox, openrouteservice, WeatherAPI, and Apple/Google maps or directions. Requests may include map tile/view areas, search places or route/forecast coordinates. Providers contacted directly by your device also receive network/browser information. Opening external directions passes the chosen destination to that provider; these services have their own privacy notices.
+
+We do not sell your GPS tracks, photos or account details. We do share information with service providers to deliver the app, and with Reddit for Android advertising measurement as described above. Do not interpret this policy as a promise that no advertising-related data sharing occurs.
+
+
+
+6. International Data Transfers
+Our hosting and third-party providers, including Clerk, Google, RevenueCat, Reddit and OpenAI, may process data outside the UK, including in the United States. Their processing locations and retention arrangements vary. International transfers require an applicable UK legal mechanism, such as an adequacy decision or appropriate contractual safeguards where relevant. Contact us for information about the arrangements applicable to your data; this policy does not certify that every provider's contract or transfer assessment has been independently audited.
+
+
+
+7. Children's Privacy
+SummitReady is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If you believe a child has provided us with personal data, please contact us at support@summitready.uk and we will delete it promptly.
+
+
+
+8. Your Rights Under UK GDPR
+As a UK resident, you have the following rights regarding your personal data:
+
+Access — request a copy of the personal data we hold about you
+Rectification — ask us to correct inaccurate data
+Erasure — request deletion of your personal data (also available in-app via Delete Account)
+Restriction — ask us to stop processing your data in certain circumstances
+Portability — receive your data in a structured, machine-readable format
+Object — object to processing based on legitimate interests
+Withdraw consent — withdraw location permission at any time via your device Settings
+
+To exercise any of these rights, email us at support@summitready.uk. We normally respond within one calendar month, subject to lawful extensions. Withdrawing a device permission does not erase data already saved. You also have the right to lodge a complaint with the Information Commissioner's Office (ICO).
+
+
+
+9. Changes to This Policy
+We may update this policy as features or processing change. We publish revisions here with an updated date and provide additional notice of significant changes where required.
+
+
+
+10. Contact
+Questions about this policy? Email us at support@summitready.uk.
+
+
+
+
+
+← Back to SummitReady

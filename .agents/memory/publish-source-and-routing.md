@@ -25,3 +25,15 @@ Mobile artifacts must use Expo-aware routing, not ordinary path routing, when ho
 **Why:** The production artifact router has a separate Expo-header dispatch path. With `router = "path"`, plain asset requests reached the Node server but requests carrying `expo-platform` returned the router's plain-text 404. An isolated test through the installed router reproduced the failure; switching to `expo-domain` alone made both platform manifests return JSON 200.
 
 **How to apply:** Run the hosted-router smoke check through the actual production router, not only directly against the Node handler. Keep generated native exports out of Git tracking so rebuilding them does not falsely mark the source snapshot dirty.
+
+A four-file Git release does not isolate the managed database promotion diff.
+Checking out a released source baseline leaves the development database's newer
+schema in place.
+
+**Why:** The privacy website release needed no migration while development already
+contained deletion tables and columns missing from production.
+
+**How to apply:** Preserve current work on a separate pushed backup ref, pin the
+website release commit, and inspect the actual Publish schema diff independently.
+Reject any schema/data change for a policy-only release; do not promise that
+normal Publish can select a temporary checkout or automatically suppress DDL.

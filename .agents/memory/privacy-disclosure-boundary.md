@@ -26,3 +26,14 @@ subscription regressions, and an accurate outcome rather than blanket erasure.
 
 **How to apply:** Keep consent out of access gates; never mark a pending external
 cleanup as complete merely because the authentication identity is gone.
+
+Policy-only publications must visibly separate currently deployed processing
+from prepared native/server improvements. A future-release paragraph is not
+enough if another paragraph makes an unqualified current enforcement guarantee.
+
+**Why:** A four-file website snapshot initially described consent rejection and
+deletion outcomes that depend on a later server migration and native release.
+
+**How to apply:** Label rollout status at the top and at each affected claim.
+Qualify old SDK behaviour and provider erasure; update read-only wording checks
+rather than restoring misleading blanket promises just to satisfy a test.
