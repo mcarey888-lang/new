@@ -47,7 +47,7 @@ describe("synthetic erasure orchestration (no live providers/accounts)", () => {
     const { state, ops } = fixture();
     ops.removeRevenueCat.mockRejectedValueOnce(new Error("provider refused"));
     const result = await advanceAccountDeletion(state, ops);
-    expect(result).toEqual({ accountDeleted: true, deleted: false, pendingProviders: ["revenuecat", "firebase"] });
+    expect(result).toEqual({ accountDeleted: true, deleted: false, pendingProviders: ["revenuecat", "firebase"], retainedProviders: [] });
     expect(state.providers.revenuecat).toBe("pending_review");
   });
   it("reports complete only when every provider is resolved", async () => {
@@ -57,5 +57,13 @@ describe("synthetic erasure orchestration (no live providers/accounts)", () => {
     await advanceAccountDeletion(state, ops);
     expect(ops.removeIdentity).toHaveBeenCalledTimes(1);
     expect(ops.removeRevenueCat).toHaveBeenCalledTimes(1);
+  });
+  it("reports lawful retention separately instead of implying all provider data was erased", async () => {
+    const { state, ops } = fixture();
+    state.providers.firebase = "retained_lawfully";
+    const result = await advanceAccountDeletion(state, ops);
+    expect(result.deleted).toBe(false);
+    expect(result.pendingProviders).toEqual([]);
+    expect(result.retainedProviders).toEqual(["firebase"]);
   });
 });

@@ -37,5 +37,6 @@ export async function advanceAccountDeletion(state: DeletionState, ops: Deletion
     accountDeleted: true,
     deleted: Object.values(state.providers).every(status => status === "deleted"),
     pendingProviders: Object.keys(state.providers).filter(key => state.providers[key] === "pending_review"),
+    retainedProviders: Object.keys(state.providers).filter(key => state.providers[key] === "retained_lawfully"),
   };
 }

@@ -47,6 +47,7 @@
       },
       "env": {
         "EAS_BUILD_NO_EXPO_GO_WARNING": "true",
+        "EXPO_PUBLIC_REVENUECAT_USE_TEST_STORE": "false",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuYXV0aC5zdW1taXRyZWFkeS51ayQ",
         "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_NufKmHEkeErPpazVGfLCOIqZmCB",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_VrYCctlOQlErFHBkOryZgOSXnaT",

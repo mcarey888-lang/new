@@ -457,7 +457,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
       if (result.accountDeleted !== true && result.deleted !== true) {
         throw new Error("Account deletion is not confirmed. Please retry or contact support.");
       }
-      deletionMessage = result.pendingProviders?.length
+      deletionMessage = result.pendingProviders?.length || result.retainedProviders?.length
         ? `Account removed. Provider erasure/retention review is pending. Keep request reference ${result.requestId} and contact support@summitready.uk for progress. Deletion does not cancel your store subscription.`
         : "Account removed. Deletion does not cancel your store subscription.";
     } catch (err: unknown) {
